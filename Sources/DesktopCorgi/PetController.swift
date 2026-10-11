@@ -24,6 +24,9 @@ final class PetController {
     private enum FetchPhase { case chasing(returnX: CGFloat), returning }
     private var fetchPhase: FetchPhase?
     private var ball: SKShapeNode?
+    let debug = DebugOverlay()
+    private var paused = false
+    private var lastZzz: CFTimeInterval = 0
 
     init(needs: NeedsEngine, backend: AnimationBackend) {
         self.needs = needs
@@ -50,6 +53,40 @@ final class PetController {
             forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
         ) { [weak self] _ in self?.screensChanged() }
         setRate(30)
+        let distributed = DistributedNotificationCenter.default()
+        distributed.addObserver(forName: NSNotification.Name("com.apple.screenIsLocked"), object: nil, queue: .main) { [weak self] _ in
+            self?.setPaused(true)
+        }
+        distributed.addObserver(forName: NSNotification.Name("com.apple.screenIsUnlocked"), object: nil, queue: .main) { [weak self] _ in
+            self?.setPaused(false)
+        }
+        let ws = NSWorkspace.shared.notificationCenter
+        ws.addObserver(forName: NSWorkspace.screensDidSleepNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.setPaused(true)
+        }
+        ws.addObserver(forName: NSWorkspace.screensDidWakeNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.setPaused(false)
+        }
+    }
+
+    func greet() {
+        brain.interrupt(with: .greet, duration: 4)
+        beginBehavior(.greet)
+        Effects.floatEmoji("👋", on: backend.node, height: backend.size.height)
+    }
+
+    func setPaused(_ paused: Bool) {
+        guard paused != self.paused else { return }
+        self.paused = paused
+        overlays.setPaused(paused)
+        if paused {
+            timer?.invalidate()
+            timer = nil
+            timerFPS = 0
+        } else {
+            lastTick = CACurrentMediaTime()
+            setRate(30)
+        }
     }
 
     private func setRate(_ fps: Int) {
@@ -205,6 +242,11 @@ final class PetController {
         overlays.place(globalFeet: body.position)
         backend.setFacing(right: body.facingRight)
         updateAnimation(now)
+        if brain.current == .sleep && now - lastZzz > 2 {
+            lastZzz = now
+            Effects.floatEmoji("💤", on: backend.node, height: backend.size.height * 0.8)
+        }
+        debug.update(world: world, hitRect: hitRect, behavior: brain.current, overlays: overlays)
         overlays.setClickThrough(!(body.mode == .held || hitRect.contains(cursor)))
         setRate(body.isMoving || body.mode == .held || animOverride != nil ? 30 : 10)
     }

@@ -1,6 +1,7 @@
 #if canImport(AppKit)
 import AppKit
 import CorgiCore
+import SwiftUI
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var statusItem: NSStatusItem!
@@ -9,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var controller: PetController!
     var awaySeconds: TimeInterval = 0
     private var saveTimer: Timer?
+    private var popover: NSPopover?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         var loaded: NeedsState?
@@ -22,6 +24,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         controller = PetController(needs: needs, backend: makeBackend())
         controller.start()
+        if awaySeconds > 3600 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in self?.controller.greet() }
+        }
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.button?.title = "🐶"
@@ -61,6 +66,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         do { try store.save(needs.state) } catch { NSLog("DesktopCorgi: save failed: \(error)") }
     }
 
+    func showStats() {
+        guard let button = statusItem.button else { return }
+        let p = NSPopover()
+        p.behavior = .transient
+        p.contentViewController = NSHostingController(rootView: StatsView(state: needs.state, level: needs.level))
+        p.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        popover = p
+    }
+
     func menuNeedsUpdate(_ menu: NSMenu) {
         PetMenu.populate(menu, makeMenuActions())
     }
@@ -71,6 +85,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             play: { [weak self] in self?.controller.playBall() },
             bath: { [weak self] in self?.controller.bath() },
             nap: { [weak self] in self?.controller.nap() },
+            stats: { [weak self] in DispatchQueue.main.async { self?.showStats() } },
+            toggleDebug: { [weak self] in self?.controller.debug.enabled.toggle() },
+            debugOn: controller.debug.enabled,
             toggleLogin: { LoginItem.setEnabled(!LoginItem.isEnabled) },
             loginOn: LoginItem.isEnabled
         )

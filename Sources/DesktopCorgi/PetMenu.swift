@@ -20,6 +20,9 @@ struct PetMenuActions {
     var play: () -> Void
     var bath: () -> Void
     var nap: () -> Void
+    var stats: () -> Void
+    var toggleDebug: () -> Void
+    var debugOn: Bool
     var toggleLogin: () -> Void
     var loginOn: Bool
 }
@@ -31,6 +34,11 @@ enum PetMenu {
         menu.addItem(ClosureMenuItem("🎾 Play Ball", handler: a.play))
         menu.addItem(ClosureMenuItem("🫧 Bath", handler: a.bath))
         menu.addItem(ClosureMenuItem("💤 Nap", handler: a.nap))
+        menu.addItem(.separator())
+        menu.addItem(ClosureMenuItem("📊 Stats…", handler: a.stats))
+        let debug = ClosureMenuItem("Debug Overlay", handler: a.toggleDebug)
+        debug.state = a.debugOn ? .on : .off
+        menu.addItem(debug)
         menu.addItem(.separator())
         let login = ClosureMenuItem("Launch at Login", handler: a.toggleLogin)
         login.state = a.loginOn ? .on : .off
