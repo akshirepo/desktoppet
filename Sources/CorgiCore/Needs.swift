@@ -105,4 +105,41 @@ public final class NeedsEngine {
     public func isLow(_ need: Need) -> Bool {
         state[need] < config.lowThreshold
     }
+
+    private var petTimes: [Date] = []
+
+    public var level: Int {
+        1 + Int((Double(state.careXP) / 10).squareRoot())
+    }
+
+    private func restore(_ need: Need, by amount: Double) {
+        tick()
+        state[need] = min(100, state[need] + amount)
+        state.careXP += 1
+    }
+
+    public func feed() { restore(.hunger, by: config.feedAmount) }
+    public func play() { restore(.happiness, by: config.playAmount) }
+    public func bath() { restore(.cleanliness, by: config.bathAmount) }
+
+    /// Returns false when the per-minute pet limit is reached.
+    @discardableResult
+    public func pet() -> Bool {
+        let now = clock.now
+        petTimes.removeAll { now.timeIntervalSince($0) >= 60 }
+        guard petTimes.count < config.petsPerMinute else { return false }
+        petTimes.append(now)
+        restore(.happiness, by: config.petAmount)
+        return true
+    }
+
+    public func setAsleep(_ asleep: Bool) {
+        tick()
+        state.isAsleep = asleep
+    }
+
+    public func markSaved() {
+        tick()
+        state.lastSaved = clock.now
+    }
 }

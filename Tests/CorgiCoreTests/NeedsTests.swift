@@ -80,3 +80,74 @@ final class NeedsTests: XCTestCase {
         XCTAssertFalse(engine.isLow(.energy))
     }
 }
+
+final class CareActionTests: XCTestCase {
+    func engine(_ clock: FakeClock) -> NeedsEngine {
+        NeedsEngine(state: .fresh(at: clock.now), config: .default, clock: clock)
+    }
+
+    func testFeedPlayBathRestoreAndCapAt100() {
+        let clock = FakeClock()
+        let e = engine(clock)
+        e.feed()
+        XCTAssertEqual(e.state.hunger, 100)
+        e.bath()
+        XCTAssertEqual(e.state.cleanliness, 100)
+        e.play()
+        XCTAssertEqual(e.state.happiness, 95)
+        XCTAssertEqual(e.state.careXP, 3)
+    }
+
+    func testPetIsRateLimitedToTenPerMinute() {
+        let clock = FakeClock()
+        var s = NeedsState.fresh(at: clock.now)
+        s.happiness = 0
+        let e = NeedsEngine(state: s, config: .default, clock: clock)
+        for _ in 0..<10 { XCTAssertTrue(e.pet()); clock.advance(1) }
+        XCTAssertFalse(e.pet())
+        XCTAssertEqual(e.state.happiness, 50, accuracy: 0.1)
+        XCTAssertEqual(e.state.careXP, 10)
+        clock.advance(60)
+        XCTAssertTrue(e.pet())
+    }
+
+    func testActionsApplyPendingDecayFirst() {
+        let clock = FakeClock()
+        let e = engine(clock)
+        clock.advance(3600)
+        e.bath()
+        XCTAssertEqual(e.state.hunger, 62, accuracy: 0.001)
+        XCTAssertEqual(e.state.cleanliness, 100)
+    }
+
+    func testSetAsleepSwitchesEnergyRate() {
+        let clock = FakeClock()
+        let e = engine(clock)
+        e.setAsleep(true)
+        clock.advance(3600)
+        e.tick()
+        XCTAssertEqual(e.state.energy, 90, accuracy: 0.001)
+        e.setAsleep(false)
+        clock.advance(3600)
+        e.tick()
+        XCTAssertEqual(e.state.energy, 84, accuracy: 0.001)
+    }
+
+    func testMarkSavedStampsNow() {
+        let clock = FakeClock()
+        let e = engine(clock)
+        clock.advance(120)
+        e.markSaved()
+        XCTAssertEqual(e.state.lastSaved, clock.now)
+    }
+
+    func testLevelGrowsWithCareXP() {
+        let clock = FakeClock()
+        var s = NeedsState.fresh(at: clock.now)
+        let cases: [(Int, Int)] = [(0, 1), (9, 1), (10, 2), (40, 3), (90, 4)]
+        for (xp, level) in cases {
+            s.careXP = xp
+            XCTAssertEqual(NeedsEngine(state: s, clock: clock).level, level, "xp \(xp)")
+        }
+    }
+}
