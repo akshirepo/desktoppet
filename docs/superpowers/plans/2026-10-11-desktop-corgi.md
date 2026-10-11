@@ -25,6 +25,7 @@
 - Frame rate: 30fps moving, 10fps idle/sleeping, paused when screen locked or asleep.
 - Greeting plays on launch if away more than 1 hour.
 - Coordinates: all `CorgiCore` geometry uses AppKit global coordinates (origin bottom-left of the primary screen, y up). Positions are the corgi's feet.
+- Linux dev builds: `CorgiCore` must also build and test on Linux (Swift 6.4 at `~/.local/swift-6.4.0/usr/bin`). In `CorgiCore`, write `#if canImport(CoreGraphics)` / `import CoreGraphics` / `#endif` instead of a bare `import CoreGraphics`, and keep `Sources/CorgiCore/LinuxShims.swift` (created in Task 1) defining `CGVector` (Equatable, Hashable, `init(dx:dy:)`, `.zero`) inside `#if !canImport(CoreGraphics)`. Every file in `Sources/DesktopCorgi` is wrapped in `#if canImport(AppKit)` ... `#endif`; `main.swift` has an `#else` branch that prints "DesktopCorgi needs macOS". `swift test` must pass on Linux and macOS.
 
 ## Review Focus
 
