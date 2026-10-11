@@ -26,6 +26,8 @@ final class PetController {
     private var ball: SKShapeNode?
     let debug = DebugOverlay()
     private var paused = false
+    private var screenLocked = false
+    private var screensAsleep = false
     private var lastZzz: CFTimeInterval = 0
 
     init(needs: NeedsEngine, backend: AnimationBackend) {
@@ -55,17 +57,21 @@ final class PetController {
         setRate(30)
         let distributed = DistributedNotificationCenter.default()
         distributed.addObserver(forName: NSNotification.Name("com.apple.screenIsLocked"), object: nil, queue: .main) { [weak self] _ in
-            self?.setPaused(true)
+            self?.screenLocked = true
+            self?.updatePaused()
         }
         distributed.addObserver(forName: NSNotification.Name("com.apple.screenIsUnlocked"), object: nil, queue: .main) { [weak self] _ in
-            self?.setPaused(false)
+            self?.screenLocked = false
+            self?.updatePaused()
         }
         let ws = NSWorkspace.shared.notificationCenter
         ws.addObserver(forName: NSWorkspace.screensDidSleepNotification, object: nil, queue: .main) { [weak self] _ in
-            self?.setPaused(true)
+            self?.screensAsleep = true
+            self?.updatePaused()
         }
         ws.addObserver(forName: NSWorkspace.screensDidWakeNotification, object: nil, queue: .main) { [weak self] _ in
-            self?.setPaused(false)
+            self?.screensAsleep = false
+            self?.updatePaused()
         }
     }
 
@@ -73,6 +79,11 @@ final class PetController {
         brain.interrupt(with: .greet, duration: 4)
         beginBehavior(.greet)
         Effects.floatEmoji("👋", on: backend.node, height: backend.size.height)
+    }
+
+    /// Stays paused until the screen is both unlocked and awake.
+    private func updatePaused() {
+        setPaused(screenLocked || screensAsleep)
     }
 
     func setPaused(_ paused: Bool) {
@@ -106,6 +117,8 @@ final class PetController {
     func screensChanged() {
         world.setScreens(NSScreen.screens.map(\.visibleFrame))
         overlays.rebuild()
+        overlays.setPaused(paused)
+        if timerFPS > 0 { overlays.setFPS(timerFPS) }
         body.clamp(to: world.screens)
     }
 

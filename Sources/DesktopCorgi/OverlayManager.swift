@@ -36,7 +36,8 @@ final class OverlayManager {
     }
 
     func place(globalFeet p: CGPoint) {
-        guard let target = overlays.first(where: { $0.frame.minX <= p.x && p.x < $0.frame.maxX }) ?? overlays.first
+        guard let target = overlays.first(where: { $0.frame.contains(p) })
+            ?? overlays.first(where: { $0.frame.minX <= p.x && p.x < $0.frame.maxX }) ?? overlays.first
         else { return }
         if corgiNode.scene !== target.scene {
             corgiNode.removeFromParent()

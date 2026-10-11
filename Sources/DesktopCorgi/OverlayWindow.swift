@@ -20,14 +20,19 @@ final class OverlayScene: SKScene {
     }
 }
 
+/// Accepts the click that would otherwise only activate the inactive panel.
+final class OverlaySKView: SKView {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
+
 /// Transparent, borderless, always-on-top panel covering one screen.
 final class OverlayWindow: NSPanel {
-    let skView: SKView
+    let skView: OverlaySKView
     let scene: OverlayScene
 
     init(screen: NSScreen) {
         let frame = screen.frame
-        skView = SKView(frame: NSRect(origin: .zero, size: frame.size))
+        skView = OverlaySKView(frame: NSRect(origin: .zero, size: frame.size))
         scene = OverlayScene(size: frame.size)
         super.init(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         isOpaque = false
@@ -37,6 +42,7 @@ final class OverlayWindow: NSPanel {
         collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
         ignoresMouseEvents = true
         isReleasedWhenClosed = false
+        hidesOnDeactivate = false
         skView.allowsTransparency = true
         scene.backgroundColor = .clear
         scene.scaleMode = .resizeFill
@@ -44,6 +50,8 @@ final class OverlayWindow: NSPanel {
         contentView = skView
         setFrame(frame, display: false)
     }
+
+    required init?(coder: NSCoder) { fatalError("not used") }
 
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }

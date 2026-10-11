@@ -41,7 +41,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         save()
-        saveTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in self?.save() }
+        saveTimer = Timer.scheduledTimer(timeInterval: 60, target: self, selector: #selector(saveTimerFired),
+                                         userInfo: nil, repeats: true)
     }
 
     func makeBackend() -> AnimationBackend {
@@ -61,6 +62,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         save()
     }
 
+    @objc private func saveTimerFired() { save() }
+
     func save() {
         needs.markSaved()
         do { try store.save(needs.state) } catch { NSLog("DesktopCorgi: save failed: \(error)") }
@@ -71,6 +74,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let p = NSPopover()
         p.behavior = .transient
         p.contentViewController = NSHostingController(rootView: StatsView(state: needs.state, level: needs.level))
+        NSApp.activate()
         p.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         popover = p
     }
