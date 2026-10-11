@@ -21,6 +21,9 @@ final class PetController {
     var onRightClick: ((NSEvent, NSView) -> Void)?
     private var pressPoint: CGPoint?
     private var dragging = false
+    private enum FetchPhase { case chasing(returnX: CGFloat), returning }
+    private var fetchPhase: FetchPhase?
+    private var ball: SKShapeNode?
 
     init(needs: NeedsEngine, backend: AnimationBackend) {
         self.needs = needs
@@ -77,6 +80,7 @@ final class PetController {
     }
 
     func beginBehavior(_ b: Behavior) {
+        if b != .fetch && fetchPhase != nil { clearFetch() }
         if needs.state.isAsleep != (b == .sleep) { needs.setAsleep(b == .sleep) }
         executor.speedScale = needs.isLow(.happiness) ? 0.6 : 1
         executor.begin(b, body: body, world: world, cursor: NSEvent.mouseLocation)
@@ -84,7 +88,95 @@ final class PetController {
 
     /// The executor says the current behavior is done.
     func stepFinished() {
+        if brain.current == .fetch && advanceFetch() { return }
         brain.finishCurrent()
+    }
+
+    func feed() {
+        wake()
+        brain.interrupt(with: .eat, duration: 4)
+        beginBehavior(.eat)
+        needs.feed()
+        Effects.floatEmoji("🍖", on: backend.node, height: backend.size.height)
+    }
+
+    func bath() {
+        wake()
+        brain.interrupt(with: .bath, duration: 4)
+        beginBehavior(.bath)
+        needs.bath()
+        Effects.floatEmoji("🫧", on: backend.node, height: backend.size.height, count: 5)
+    }
+
+    func nap() {
+        brain.interrupt(with: .sleep, duration: 120)
+        beginBehavior(.sleep)
+    }
+
+    func playBall() {
+        wake()
+        guard body.mode == .grounded, let segment = body.standingOn, segment.width > 200,
+              let scene = overlays.currentScene else {
+            needs.play()
+            Effects.floatEmoji("❤️", on: backend.node, height: backend.size.height, count: 3)
+            animOverride = (.wiggle, CACurrentMediaTime() + 0.8)
+            return
+        }
+        let start = body.position.x
+        let roomRight = segment.maxX - 20 - start, roomLeft = start - (segment.minX + 20)
+        let rawX = roomRight >= roomLeft ? start + CGFloat.random(in: 100...max(100, roomRight))
+                                         : start - CGFloat.random(in: 100...max(100, roomLeft))
+        let ballX = min(max(rawX, segment.minX + 20), segment.maxX - 20)
+        let landing = overlays.toScene(CGPoint(x: ballX, y: segment.y + 7))
+        let launch = overlays.toScene(CGPoint(x: start, y: segment.y + 40))
+        let ball = Effects.makeBall()
+        ball.position = launch
+        scene.addChild(ball)
+        let path = CGMutablePath()
+        path.move(to: launch)
+        path.addQuadCurve(to: landing, control: CGPoint(x: (launch.x + landing.x) / 2, y: launch.y + 160))
+        ball.run(.follow(path, asOffset: false, orientToPath: false, duration: 0.7))
+        self.ball = ball
+
+        brain.interrupt(with: .fetch, duration: 20)
+        beginBehavior(.fetch)
+        executor.targetX = ballX
+        fetchPhase = .chasing(returnX: start)
+    }
+
+    private func wake() {
+        if brain.current == .sleep { brain.finishCurrent() }
+        if needs.state.isAsleep { needs.setAsleep(false) }
+    }
+
+    /// Moves the fetch along. Returns true while fetch still has work to do.
+    private func advanceFetch() -> Bool {
+        switch fetchPhase {
+        case .chasing(let returnX):
+            ball?.removeAllActions()
+            ball?.removeFromParent()
+            if let ball {
+                // Hold the ball at the mouth on the side the corgi is about to walk toward.
+                ball.position = CGPoint(x: returnX >= body.position.x ? 26 : -26, y: 30)
+                backend.node.addChild(ball)
+            }
+            executor.targetX = returnX
+            fetchPhase = .returning
+            return true
+        case .returning:
+            clearFetch()
+            needs.play()
+            Effects.floatEmoji("❤️", on: backend.node, height: backend.size.height, count: 3)
+            return false
+        case nil:
+            return false
+        }
+    }
+
+    private func clearFetch() {
+        ball?.removeFromParent()
+        ball = nil
+        fetchPhase = nil
     }
 
     func tick() {

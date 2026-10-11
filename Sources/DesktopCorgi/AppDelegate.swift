@@ -2,7 +2,7 @@
 import AppKit
 import CorgiCore
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var statusItem: NSStatusItem!
     let store = StateStore(directory: StateStore.defaultDirectory)
     var needs: NeedsEngine!
@@ -26,13 +26,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.button?.title = "🐶"
         let menu = NSMenu()
-        let login = NSMenuItem(title: "Launch at Login", action: #selector(toggleLogin(_:)), keyEquivalent: "")
-        login.target = self
-        login.state = LoginItem.isEnabled ? .on : .off
-        menu.addItem(login)
-        menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        menu.delegate = self
         statusItem.menu = menu
+        controller.onRightClick = { [weak self] event, view in
+            guard let self else { return }
+            let popup = NSMenu()
+            PetMenu.populate(popup, self.makeMenuActions())
+            NSMenu.popUpContextMenu(popup, with: event, for: view)
+        }
 
         save()
         saveTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in self?.save() }
@@ -60,9 +61,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         do { try store.save(needs.state) } catch { NSLog("DesktopCorgi: save failed: \(error)") }
     }
 
-    @objc func toggleLogin(_ sender: NSMenuItem) {
-        LoginItem.setEnabled(!LoginItem.isEnabled)
-        sender.state = LoginItem.isEnabled ? .on : .off
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        PetMenu.populate(menu, makeMenuActions())
+    }
+
+    func makeMenuActions() -> PetMenuActions {
+        PetMenuActions(
+            feed: { [weak self] in self?.controller.feed() },
+            play: { [weak self] in self?.controller.playBall() },
+            bath: { [weak self] in self?.controller.bath() },
+            nap: { [weak self] in self?.controller.nap() },
+            toggleLogin: { LoginItem.setEnabled(!LoginItem.isEnabled) },
+            loginOn: LoginItem.isEnabled
+        )
     }
 }
 #endif
