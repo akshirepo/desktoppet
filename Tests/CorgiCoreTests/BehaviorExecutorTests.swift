@@ -1,0 +1,119 @@
+import XCTest
+@testable import CorgiCore
+
+final class BehaviorExecutorTests: XCTestCase {
+    var windows: FakeWindows!
+    var world: World!
+    let dt = 1.0 / 60
+
+    override func setUp() {
+        windows = FakeWindows()
+        windows.windows = [WindowInfo(id: 1, frame: CGRect(x: 600, y: 0, width: 400, height: 300))]  // top 300
+        world = World(provider: windows, screens: [screen0])
+        world.refresh()
+    }
+
+    func groundedBody(x: CGFloat, y: CGFloat = 0) -> Body {
+        let body = Body(position: CGPoint(x: x, y: y))
+        body.step(dt: dt, world: world)
+        return body
+    }
+
+    /// Runs until the executor reports done or time runs out. Returns true if done.
+    func run(_ ex: BehaviorExecutor, _ b: Behavior, _ body: Body, cursor: CGPoint = .zero,
+             seconds: Double) -> Bool {
+        for _ in 0..<Int(seconds / dt) {
+            if ex.step(b, body: body, world: world, cursor: cursor) { return true }
+            if let e = body.step(dt: dt, world: world), ex.handle(e, behavior: b, body: body) { return true }
+        }
+        return false
+    }
+
+    func testWalkReachesRandomTargetOnSegment() {
+        let ex = BehaviorExecutor(rng: SeededRandom(seed: 3))
+        let body = groundedBody(x: 200)
+        ex.begin(.walk, body: body, world: world, cursor: .zero)
+        let target = try! XCTUnwrap(ex.targetX)
+        XCTAssertTrue((20...1420).contains(target))
+        XCTAssertTrue(run(ex, .walk, body, seconds: 30))
+        XCTAssertEqual(body.position.x, target, accuracy: 4)
+    }
+
+    func testChaseRunsTowardCursorOnSameSegment() {
+        let ex = BehaviorExecutor(rng: SeededRandom(seed: 1))
+        let body = groundedBody(x: 100)
+        let cursor = CGPoint(x: 500, y: 400)
+        ex.begin(.chaseCursor, body: body, world: world, cursor: cursor)
+        _ = run(ex, .chaseCursor, body, cursor: cursor, seconds: 3)
+        XCTAssertEqual(body.position.x, 500, accuracy: 31)
+        XCTAssertTrue(body.facingRight)
+    }
+
+    func testChaseWithCursorOffSegmentJustFacesIt() {
+        let ex = BehaviorExecutor(rng: SeededRandom(seed: 1))
+        let body = groundedBody(x: 800, y: 300)       // on window 1 (600...1000)
+        let cursor = CGPoint(x: 100, y: 50)
+        ex.begin(.chaseCursor, body: body, world: world, cursor: cursor)
+        _ = run(ex, .chaseCursor, body, cursor: cursor, seconds: 1)
+        XCTAssertEqual(body.position.x, 800)
+        XCTAssertFalse(body.facingRight)
+    }
+
+    func testHopJumpsOntoReachableWindowAndFinishesOnLanding() {
+        let ex = BehaviorExecutor(rng: SeededRandom(seed: 1))
+        let body = groundedBody(x: 400)
+        ex.begin(.hopToWindow, body: body, world: world, cursor: .zero)
+        XCTAssertEqual(body.mode, .airborne)
+        XCTAssertTrue(run(ex, .hopToWindow, body, seconds: 3))
+        XCTAssertEqual(body.standingOn?.windowID, 1)
+    }
+
+    func testHopFromWindowCanGoBackDown() {
+        let ex = BehaviorExecutor(rng: SeededRandom(seed: 1))
+        let body = groundedBody(x: 800, y: 300)       // on window 1, only the ground is reachable
+        ex.begin(.hopToWindow, body: body, world: world, cursor: .zero)
+        XCTAssertTrue(run(ex, .hopToWindow, body, seconds: 6))
+        XCTAssertEqual(body.standingOn?.kind, .ground(screen: 0))
+    }
+
+    func testHopWithNothingReachableFinishesImmediately() {
+        windows.windows = []
+        world.refresh()
+        let ex = BehaviorExecutor(rng: SeededRandom(seed: 1))
+        let body = groundedBody(x: 400)
+        ex.begin(.hopToWindow, body: body, world: world, cursor: .zero)
+        XCTAssertTrue(ex.step(.hopToWindow, body: body, world: world, cursor: .zero))
+    }
+
+    func testZoomiesBounceBetweenEdges() {
+        let ex = BehaviorExecutor(rng: SeededRandom(seed: 1))
+        let body = groundedBody(x: 800, y: 300)
+        ex.begin(.zoomies, body: body, world: world, cursor: .zero)
+        var facings = Set<Bool>()
+        for _ in 0..<Int(6 / dt) {
+            _ = ex.step(.zoomies, body: body, world: world, cursor: .zero)
+            if let e = body.step(dt: dt, world: world) { _ = ex.handle(e, behavior: .zoomies, body: body) }
+            facings.insert(body.facingRight)
+            XCTAssertTrue((600...1000).contains(body.position.x))
+        }
+        XCTAssertEqual(facings, [true, false])
+    }
+
+    func testFetchWalksToCallerTarget() {
+        let ex = BehaviorExecutor(rng: SeededRandom(seed: 1))
+        let body = groundedBody(x: 100)
+        ex.begin(.fetch, body: body, world: world, cursor: .zero)
+        ex.targetX = 400
+        XCTAssertTrue(run(ex, .fetch, body, seconds: 5))
+        XCTAssertEqual(body.position.x, 400, accuracy: 4)
+    }
+
+    func testStationaryBehaviorsStop() {
+        let ex = BehaviorExecutor(rng: SeededRandom(seed: 1))
+        let body = groundedBody(x: 100)
+        body.walk(direction: 1, speed: 70)
+        ex.begin(.sleep, body: body, world: world, cursor: .zero)
+        XCTAssertFalse(run(ex, .sleep, body, seconds: 1))
+        XCTAssertEqual(body.position.x, 100)
+    }
+}
