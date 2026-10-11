@@ -152,6 +152,7 @@ final class PetController {
 
     func playBall() {
         wake()
+        clearFetch()
         guard body.mode == .grounded, let segment = body.standingOn, segment.width > 200,
               let scene = overlays.currentScene else {
             needs.play()
