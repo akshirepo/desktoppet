@@ -111,6 +111,14 @@ final class CareActionTests: XCTestCase {
         XCTAssertTrue(e.pet())
     }
 
+    func testPetLimitDoesNotStickAfterClockGoesBackwards() {
+        let clock = FakeClock()
+        let e = engine(clock)
+        for _ in 0..<10 { XCTAssertTrue(e.pet()) }
+        clock.advance(-3600)
+        XCTAssertTrue(e.pet())
+    }
+
     func testActionsApplyPendingDecayFirst() {
         let clock = FakeClock()
         let e = engine(clock)

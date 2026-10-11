@@ -126,7 +126,7 @@ public final class NeedsEngine {
     @discardableResult
     public func pet() -> Bool {
         let now = clock.now
-        petTimes.removeAll { now.timeIntervalSince($0) >= 60 }
+        petTimes.removeAll { now.timeIntervalSince($0) >= 60 || $0 > now }
         guard petTimes.count < config.petsPerMinute else { return false }
         petTimes.append(now)
         restore(.happiness, by: config.petAmount)
