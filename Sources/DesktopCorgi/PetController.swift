@@ -18,6 +18,9 @@ final class PetController {
     private var timerFPS = 0
     private var worldTimer: Timer?
     private var lastTick = CACurrentMediaTime()
+    var onRightClick: ((NSEvent, NSView) -> Void)?
+    private var pressPoint: CGPoint?
+    private var dragging = false
 
     init(needs: NeedsEngine, backend: AnimationBackend) {
         self.needs = needs
@@ -26,6 +29,7 @@ final class PetController {
         world = World(provider: CGWindowListProvider(), screens: NSScreen.screens.map(\.visibleFrame))
         let vf = NSScreen.main?.visibleFrame ?? .zero
         body = Body(position: CGPoint(x: vf.midX, y: vf.maxY - 100))
+        overlays.input = self
     }
 
     var hitRect: CGRect {
@@ -67,6 +71,7 @@ final class PetController {
 
     /// Called when the floor disappears under the corgi.
     func fell() {
+        Effects.floatEmoji("❗", on: backend.node, height: backend.size.height)
         brain.interrupt(with: .fall, duration: 5)
         beginBehavior(.fall)
     }
@@ -119,6 +124,55 @@ final class PetController {
         if state != currentAnim {
             currentAnim = state
             backend.play(state)
+        }
+    }
+}
+
+extension PetController: SceneInputHandler {
+    func mouseDown(at global: CGPoint) {
+        pressPoint = global
+        dragging = false
+    }
+
+    func mouseDragged(to global: CGPoint) {
+        guard let start = pressPoint else { return }
+        if !dragging && hypot(global.x - start.x, global.y - start.y) > 4 {
+            dragging = true
+            body.pickUp()
+            brain.interrupt(with: .dangle, duration: .infinity)
+            beginBehavior(.dangle)
+        }
+        if dragging {
+            body.moveHeld(to: CGPoint(x: global.x, y: global.y - backend.size.height * 0.8))
+        }
+    }
+
+    func mouseUp(at global: CGPoint) {
+        defer {
+            pressPoint = nil
+            dragging = false
+        }
+        if dragging {
+            body.release()
+            brain.interrupt(with: .fall, duration: 5)
+            beginBehavior(.fall)
+        } else if pressPoint != nil {
+            pet()
+        }
+    }
+
+    func rightMouseDown(_ event: NSEvent, in view: NSView) {
+        onRightClick?(event, view)
+    }
+
+    func pet() {
+        if brain.current == .sleep {
+            brain.finishCurrent()
+            needs.setAsleep(false)
+        }
+        if needs.pet() {
+            Effects.floatEmoji("❤️", on: backend.node, height: backend.size.height, count: 3)
+            animOverride = (.wiggle, CACurrentMediaTime() + 0.8)
         }
     }
 }
