@@ -18,7 +18,15 @@ public struct WorldConfig {
 }
 
 public struct WorldUpdate: Equatable {
-    public init() {}
+    public var moved: [Int: CGVector] = [:]
+    public var vanished: Set<Int> = []
+
+    public init(moved: [Int: CGVector] = [:], vanished: Set<Int> = []) {
+        self.moved = moved
+        self.vanished = vanished
+    }
+
+    public var isEmpty: Bool { moved.isEmpty && vanished.isEmpty }
 }
 
 public final class World {
@@ -42,9 +50,39 @@ public final class World {
 
     @discardableResult
     public func refresh() -> WorldUpdate {
+        let old = Dictionary(uniqueKeysWithValues: windows.map { ($0.id, $0.frame) })
         windows = provider.visibleWindows()
+        var update = WorldUpdate()
+        var seen = Set<Int>()
+        for window in windows {
+            seen.insert(window.id)
+            guard let before = old[window.id] else { continue }
+            let delta = CGVector(dx: window.frame.minX - before.minX, dy: window.frame.maxY - before.maxY)
+            if delta.dx != 0 || delta.dy != 0 { update.moved[window.id] = delta }
+        }
+        update.vanished = Set(old.keys).subtracting(seen)
         rebuildSegments()
-        return WorldUpdate()
+        return update
+    }
+
+    public func segment(under p: CGPoint, tolerance: CGFloat = 2) -> FloorSegment? {
+        segments
+            .filter { $0.contains(x: p.x) && abs($0.y - p.y) <= tolerance }
+            .max { $0.y < $1.y }
+    }
+
+    public func reachableSegments(from p: CGPoint, maxJumpUp: CGFloat, maxJumpAcross: CGFloat) -> [FloorSegment] {
+        let current = segment(under: p)
+        return segments
+            .filter { $0 != current }
+            .filter { $0.y - p.y <= maxJumpUp }
+            .filter { abs($0.clampX(p.x) - p.x) <= maxJumpAcross }
+            .sorted { $0.y > $1.y }
+    }
+
+    public func screenIndex(containing p: CGPoint) -> Int? {
+        if let i = screens.firstIndex(where: { $0.minX <= p.x && p.x < $0.maxX }) { return i }
+        return screens.indices.min { abs(screens[$0].midX - p.x) < abs(screens[$1].midX - p.x) }
     }
 
     func rebuildSegments() {
