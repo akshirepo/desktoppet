@@ -1,8 +1,11 @@
 #if canImport(AppKit)
 import AppKit
+import CorgiCore
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem!
+    var backend: AnimationBackend!
+    var overlays: OverlayManager!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -15,6 +18,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         statusItem.menu = menu
+
+        backend = PlaceholderBackend()
+        overlays = OverlayManager(corgiNode: backend.node)
+        if let vf = NSScreen.main?.visibleFrame {
+            overlays.place(globalFeet: CGPoint(x: vf.midX, y: vf.minY))
+        }
+        backend.play(.walk)
     }
 
     @objc func toggleLogin(_ sender: NSMenuItem) {
