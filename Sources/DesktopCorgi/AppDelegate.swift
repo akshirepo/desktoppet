@@ -20,7 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         needs = NeedsEngine(state: loaded ?? .fresh(at: Date()), clock: SystemClock())
         if loaded != nil { awaySeconds = needs.catchUpOffline() }
 
-        controller = PetController(needs: needs, backend: PlaceholderBackend())
+        controller = PetController(needs: needs, backend: makeBackend())
         controller.start()
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -36,6 +36,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         save()
         saveTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in self?.save() }
+    }
+
+    func makeBackend() -> AnimationBackend {
+        let pack = StateStore.defaultDirectory.appendingPathComponent("CorgiPack")
+        guard FileManager.default.fileExists(atPath: pack.appendingPathComponent("manifest.json").path) else {
+            return PlaceholderBackend()
+        }
+        do {
+            return try FrameSequenceBackend(packURL: pack)
+        } catch {
+            NSLog("DesktopCorgi: could not load asset pack, using placeholder: \(error)")
+            return PlaceholderBackend()
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
