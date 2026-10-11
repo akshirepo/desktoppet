@@ -4,10 +4,25 @@ import CorgiCore
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem!
-    var backend: AnimationBackend!
-    var overlays: OverlayManager!
+    let store = StateStore(directory: StateStore.defaultDirectory)
+    var needs: NeedsEngine!
+    var controller: PetController!
+    var awaySeconds: TimeInterval = 0
+    private var saveTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        var loaded: NeedsState?
+        do {
+            loaded = try store.load()
+        } catch {
+            NSLog("DesktopCorgi: state file was corrupt, starting fresh: \(error)")
+        }
+        needs = NeedsEngine(state: loaded ?? .fresh(at: Date()), clock: SystemClock())
+        if loaded != nil { awaySeconds = needs.catchUpOffline() }
+
+        controller = PetController(needs: needs, backend: PlaceholderBackend())
+        controller.start()
+
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.button?.title = "🐶"
         let menu = NSMenu()
@@ -19,12 +34,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         statusItem.menu = menu
 
-        backend = PlaceholderBackend()
-        overlays = OverlayManager(corgiNode: backend.node)
-        if let vf = NSScreen.main?.visibleFrame {
-            overlays.place(globalFeet: CGPoint(x: vf.midX, y: vf.minY))
-        }
-        backend.play(.walk)
+        save()
+        saveTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in self?.save() }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        save()
+    }
+
+    func save() {
+        needs.markSaved()
+        do { try store.save(needs.state) } catch { NSLog("DesktopCorgi: save failed: \(error)") }
     }
 
     @objc func toggleLogin(_ sender: NSMenuItem) {
