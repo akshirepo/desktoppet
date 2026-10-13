@@ -98,7 +98,7 @@ final class PlaceholderBackend: AnimationBackend {
     let node = SKNode()
     let size = CGSize(width: 96, height: 80)
     var drawsProps: Bool { true }
-    var mouthPoint: CGPoint { CGPoint(x: 35, y: 35) }
+    var mouthPoint: CGPoint { CGPoint(x: 20, y: 33) }
     /// Tall hats reach above the hit box; bubbles float above them.
     var bubbleHeight: CGFloat {
         switch hat {
@@ -136,8 +136,8 @@ final class PlaceholderBackend: AnimationBackend {
     private let eyes = SKNode()
     private let eyeL = SKNode(), eyeR = SKNode()
     private let mouth = SKNode()
-    private let blushL = ell(9, 5.5, Palette.blush, at: pt(-14, -6))
-    private let blushR = ell(7, 4.5, Palette.blush, at: pt(23, -5))
+    private let blushL = ell(9, 5.5, Palette.blush, at: pt(-15, -6))
+    private let blushR = ell(9, 5.5, Palette.blush, at: pt(15, -6))
     private let sweat = SKNode()
     private let headBubbles = SKNode()
     private let headphones = SKNode()
@@ -234,8 +234,8 @@ final class PlaceholderBackend: AnimationBackend {
         headBreath.addChild(headTilt)
         headTilt.addChild(head)
 
-        for (ear, twitch, p, r) in [(earBack, earBackTwitch, pt(-13, 14), CGFloat(0.35)),
-                                    (earFront, earFrontTwitch, pt(7, 16), CGFloat(-0.2))] {
+        for (ear, twitch, p, r) in [(earBack, earBackTwitch, pt(-13, 15), CGFloat(0.3)),
+                                    (earFront, earFrontTwitch, pt(13, 15), CGFloat(-0.3))] {
             ear.position = p
             ear.zRotation = r
             ear.zPosition = -1
@@ -258,8 +258,8 @@ final class PlaceholderBackend: AnimationBackend {
 
         head.addChild(ell(52, 46, Palette.fur, stroke: Palette.furLine))
         let shine = ell(18, 9, Palette.furLight, at: pt(-10, 13), rot: 0.4)
-        let blaze = ell(7, 17, Palette.cream, at: pt(5, 11))
-        let muzzle = ell(27, 17, Palette.cream, at: pt(12, -8))
+        let blaze = ell(7, 17, Palette.cream, at: pt(0, 11))
+        let muzzle = ell(28, 17, Palette.cream, at: pt(0, -8))
         for (i, n) in [shine, blaze, muzzle, blushL, blushR].enumerated() {
             n.zPosition = 0.1 + CGFloat(i) * 0.1
             head.addChild(n)
@@ -270,14 +270,14 @@ final class PlaceholderBackend: AnimationBackend {
         head.addChild(face)
         eyes.position = pt(0, 3)
         face.addChild(eyes)
-        eyeL.position = pt(-5, 0)
-        eyeR.position = pt(15, 0)
+        eyeL.position = pt(-10, 0)
+        eyeR.position = pt(10, 0)
         eyes.addChild(eyeL)
         eyes.addChild(eyeR)
-        let nose = ell(7.5, 5, Palette.ink, at: pt(13, -2.5))
+        let nose = ell(7.5, 5, Palette.ink, at: pt(0, -2.5))
         nose.addChild(ell(2.4, 1.4, NSColor(white: 1, alpha: 0.8), at: pt(-1, 1)))
         face.addChild(nose)
-        mouth.position = pt(13, -6.5)
+        mouth.position = pt(0, -6.5)
         face.addChild(mouth)
 
         sweat.position = pt(-21, 12)
@@ -299,21 +299,20 @@ final class PlaceholderBackend: AnimationBackend {
         buildHeadphones()
         headphones.zPosition = 2.5
         head.addChild(headphones)
-        hatNode.position = pt(1, 20)
+        hatNode.position = pt(0, 20)
         hatNode.zPosition = 10
         head.addChild(hatNode)
     }
 
     private func buildHeadphones() {
         headphones.addChild(line(rgb(0x555566), 3.2) { p in
-            p.move(to: pt(-21, 3))
-            p.addQuadCurve(to: pt(21, 6), control: pt(-2, 48))
+            p.move(to: pt(-22, 4))
+            p.addQuadCurve(to: pt(22, 4), control: pt(0, 48))
         })
-        let far = rrect(CGRect(x: 17, y: -2, width: 7, height: 11), 3.5, rgb(0xFF6F91), stroke: rgb(0xD94C73), width: 1)
-        far.zPosition = -3
-        headphones.addChild(far)
-        headphones.addChild(rrect(CGRect(x: -26, y: -6, width: 9, height: 14), 4.5, rgb(0xFF6F91),
-                                  stroke: rgb(0xD94C73), width: 1))
+        for x in [CGFloat(-27), CGFloat(18)] {
+            headphones.addChild(rrect(CGRect(x: x, y: -6, width: 9, height: 14), 4.5, rgb(0xFF6F91),
+                                      stroke: rgb(0xD94C73), width: 1))
+        }
     }
 
     // MARK: - Expressions
@@ -326,7 +325,7 @@ final class PlaceholderBackend: AnimationBackend {
             eye.removeAllChildren()
             eye.removeAllActions()
             eye.setScale(1)
-            drawEye(style, into: eye, r: far ? 5 : 5.8, mirrored: far)
+            drawEye(style, into: eye, r: 5.8, mirrored: far)
         }
     }
 
