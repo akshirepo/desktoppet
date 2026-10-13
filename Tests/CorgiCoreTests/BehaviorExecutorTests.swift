@@ -152,6 +152,18 @@ final class BehaviorExecutorTests: XCTestCase {
         XCTAssertEqual(body.position.x, 1360, accuracy: 4)
     }
 
+    func testGoHomeFromFarSideOfLowerMonitorWalksOverThenJumpsUp() {
+        // Dock only on the main screen, so its ground is higher than the second screen's.
+        world.setScreens([CGRect(x: 0, y: 70, width: 1440, height: 830), CGRect(x: 1440, y: 0, width: 1920, height: 1000)])
+        let ex = BehaviorExecutor(rng: SeededRandom(seed: 1))
+        ex.home = CGPoint(x: 1360, y: 70)
+        let body = groundedBody(x: 2400)
+        ex.begin(.goHome, body: body, world: world, cursor: .zero)
+        XCTAssertTrue(run(ex, .goHome, body, seconds: 20))
+        XCTAssertEqual(body.standingOn?.kind, .ground(screen: 0))
+        XCTAssertEqual(body.position.x, 1360, accuracy: 4)
+    }
+
     func testGoHomeAfterDropWaitsForLanding() {
         let ex = homeExecutor()
         let body = Body(position: CGPoint(x: 500, y: 600))   // just released, still in the air

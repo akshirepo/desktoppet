@@ -179,16 +179,20 @@ public final class BehaviorExecutor {
             body.walk(direction: dx, speed: abs(dx) > 300 ? body.config.runSpeed : body.config.walkSpeed)
             return false
         }
-        if !homePlanned {
-            homePlanned = true
-            if home.y > s.y + 2 {
-                guard let hs = world.segment(under: home),
-                      home.y - s.y <= body.config.maxJumpUp,
-                      abs(hs.clampX(body.position.x) - body.position.x) <= body.config.maxJumpAcross
-                else { return true }
-                body.jump(to: CGPoint(x: min(max(body.position.x, hs.minX + 30), hs.maxX - 30), y: home.y))
+        if home.y > s.y + 2 {
+            guard let hs = world.segment(under: home), home.y - s.y <= body.config.maxJumpUp else { return true }
+            let gap = hs.clampX(body.position.x) - body.position.x
+            if abs(gap) > body.config.maxJumpAcross {
+                let x = s.clampX(hs.clampX(body.position.x))
+                guard abs(hs.clampX(x) - x) <= body.config.maxJumpAcross else { return true }
+                body.walk(direction: gap, speed: body.config.runSpeed)
                 return false
             }
+            body.jump(to: CGPoint(x: min(max(body.position.x, hs.minX + 30), hs.maxX - 30), y: home.y))
+            return false
+        }
+        if !homePlanned {
+            homePlanned = true
             if home.x < s.minX {
                 homeLeapDirection = -1
             } else if home.x > s.maxX {
