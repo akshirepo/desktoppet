@@ -46,6 +46,18 @@ final class OverlayManager {
         corgiNode.position = CGPoint(x: p.x - target.frame.minX, y: p.y - target.frame.minY)
     }
 
+    /// Puts any node (the ball) on the overlay of the screen containing the global point `p`.
+    func place(_ node: SKNode, global p: CGPoint) {
+        guard let target = overlays.first(where: { $0.frame.contains(p) })
+            ?? overlays.first(where: { $0.frame.minX <= p.x && p.x < $0.frame.maxX }) ?? overlays.first
+        else { return }
+        if node.scene !== target.scene {
+            node.removeFromParent()
+            target.scene.addChild(node)
+        }
+        node.position = CGPoint(x: p.x - target.frame.minX, y: p.y - target.frame.minY)
+    }
+
     func setClickThrough(_ through: Bool) {
         for o in overlays where o.ignoresMouseEvents != through { o.ignoresMouseEvents = through }
     }

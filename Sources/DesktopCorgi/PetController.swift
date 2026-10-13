@@ -21,9 +21,10 @@ final class PetController {
     var onRightClick: ((NSEvent, NSView) -> Void)?
     private var pressPoint: CGPoint?
     private var dragging = false
-    private enum FetchPhase { case chasing(returnX: CGFloat), returning }
-    private var fetchPhase: FetchPhase?
-    private var ball: SKShapeNode?
+    private(set) var chaseMe = false
+    let boredom = BoredomTimer(clock: SystemClock())
+    private var ball: Ball?
+    private var ballNode: SKShapeNode?
     let debug = DebugOverlay()
     private var paused = false
     private var screenLocked = false
@@ -48,6 +49,7 @@ final class PetController {
         body = Body(position: CGPoint(x: vf.midX, y: vf.maxY - 100))
         overlays.input = self
         updateHome()
+        executor.onBallCaught = { [weak self] in self?.ballCaught() }
     }
 
     /// Home is on the primary screen (the one with the menu bar), index 0 in `world.screens`.
@@ -142,6 +144,7 @@ final class PetController {
         if timerFPS > 0 { overlays.setFPS(timerFPS) }
         body.clamp(to: world.screens)
         updateHome()
+        ball?.setScreens(world.screens)
     }
 
     /// Called when the floor disappears under the corgi.
@@ -152,20 +155,27 @@ final class PetController {
     }
 
     func beginBehavior(_ b: Behavior) {
-        if b != .fetch && fetchPhase != nil { clearFetch() }
+        if b != .ballChase { endBall() }
+        if chaseMe && b != .chaseMe && b != .dangle { chaseMe = false }
         if needs.state.isAsleep != b.countsAsSleep { needs.setAsleep(b.countsAsSleep) }
         executor.speedScale = needs.isLow(.happiness) ? 0.6 : 1
         executor.begin(b, body: body, world: world, cursor: NSEvent.mouseLocation)
+        if b == .ballChase { spawnBall() }
     }
 
     /// The executor says the current behavior is done.
     func stepFinished() {
-        if brain.current == .fetch && advanceFetch() { return }
+        if brain.current == .ballChase && executor.carryingBall {
+            brain.interrupt(with: .playBallHome, duration: Double.random(in: 8...15))
+            beginBehavior(.playBallHome)
+            return
+        }
         brain.finishCurrent()
     }
 
     func feed() {
         wake()
+        boredom.noteInteraction()
         brain.interrupt(with: .eat, duration: 4)
         beginBehavior(.eat)
         needs.feed()
@@ -174,6 +184,7 @@ final class PetController {
 
     func bath() {
         wake()
+        boredom.noteInteraction()
         brain.interrupt(with: .bath, duration: 4)
         beginBehavior(.bath)
         needs.bath()
@@ -181,40 +192,33 @@ final class PetController {
     }
 
     func nap() {
+        boredom.noteInteraction()
         brain.interrupt(with: .sleep, duration: 120)
         beginBehavior(.sleep)
     }
 
+    /// Throws a ball that flies around the screen. The corgi chases it, carries it home, and plays.
     func playBall() {
         wake()
-        clearFetch()
-        guard body.mode == .grounded, let segment = body.standingOn, segment.width > 200,
-              let scene = overlays.currentScene else {
-            needs.play()
-            Effects.floatEmoji("❤️", on: backend.node, height: backend.size.height, count: 3)
-            animOverride = (.wiggle, CACurrentMediaTime() + 0.8)
-            return
-        }
-        let start = body.position.x
-        let roomRight = segment.maxX - 20 - start, roomLeft = start - (segment.minX + 20)
-        let rawX = roomRight >= roomLeft ? start + CGFloat.random(in: 100...max(100, roomRight))
-                                         : start - CGFloat.random(in: 100...max(100, roomLeft))
-        let ballX = min(max(rawX, segment.minX + 20), segment.maxX - 20)
-        let landing = overlays.toScene(CGPoint(x: ballX, y: segment.y + 7))
-        let launch = overlays.toScene(CGPoint(x: start, y: segment.y + 40))
-        let ball = Effects.makeBall()
-        ball.position = launch
-        scene.addChild(ball)
-        let path = CGMutablePath()
-        path.move(to: launch)
-        path.addQuadCurve(to: landing, control: CGPoint(x: (launch.x + landing.x) / 2, y: launch.y + 160))
-        ball.run(.follow(path, asOffset: false, orientToPath: false, duration: 0.7))
-        self.ball = ball
+        boredom.noteInteraction()
+        brain.interrupt(with: .ballChase, duration: 30)
+        beginBehavior(.ballChase)
+    }
 
-        brain.interrupt(with: .fetch, duration: 20)
-        beginBehavior(.fetch)
-        executor.targetX = ballX
-        fetchPhase = .chasing(returnX: start)
+    /// Menu toggle. On: roam freely and dodge the cursor. Off: fall to the floor and go home.
+    func setChaseMe(_ on: Bool) {
+        guard on != chaseMe else { return }
+        boredom.noteInteraction()
+        if on {
+            wake()
+            brain.interrupt(with: .chaseMe, duration: .infinity)
+            beginBehavior(.chaseMe)
+            chaseMe = true
+        } else {
+            chaseMe = false
+            brain.interrupt(with: .goHome, duration: 30)
+            beginBehavior(.goHome)
+        }
     }
 
     private func wake() {
@@ -222,34 +226,54 @@ final class PetController {
         if needs.state.isAsleep { needs.setAsleep(false) }
     }
 
-    /// Moves the fetch along. Returns true while fetch still has work to do.
-    private func advanceFetch() -> Bool {
-        switch fetchPhase {
-        case .chasing(let returnX):
-            ball?.removeAllActions()
-            ball?.removeFromParent()
-            if let ball {
-                // Hold the ball at the mouth on the side the corgi is about to walk toward.
-                ball.position = CGPoint(x: returnX >= body.position.x ? 26 : -26, y: 30)
-                backend.node.addChild(ball)
-            }
-            executor.targetX = returnX
-            fetchPhase = .returning
-            return true
-        case .returning:
-            clearFetch()
-            needs.play()
-            Effects.floatEmoji("❤️", on: backend.node, height: backend.size.height, count: 3)
-            return false
-        case nil:
-            return false
+    private func spawnBall() {
+        endBall()
+        let b = Ball(start: CGPoint(x: body.position.x, y: body.position.y + 60), screens: world.screens)
+        ball = b
+        let node = Effects.makeBall()
+        ballNode = node
+        overlays.place(node, global: b.position)
+        executor.ballPosition = b.position
+        boredom.noteInteraction()
+    }
+
+    /// The executor reached the ball: +25 happiness and the ball moves to the corgi's mouth.
+    private func ballCaught() {
+        needs.play()
+        boredom.noteInteraction()
+        Effects.floatEmoji("❤️", on: backend.node, height: backend.size.height, count: 3)
+        ball = nil
+        executor.ballPosition = nil
+        if let node = ballNode {
+            node.removeFromParent()
+            node.position = CGPoint(x: body.facingRight ? 26 : -26, y: 30)
+            backend.node.addChild(node)
         }
     }
 
-    private func clearFetch() {
-        ball?.removeFromParent()
+    private func stepBall(dt: TimeInterval) {
+        guard let b = ball else { return }
+        b.step(dt: dt)
+        if b.popped {
+            if let node = ballNode, let scene = node.parent {
+                let pop = SKLabelNode(text: "💥")
+                pop.fontSize = 22
+                pop.position = node.position
+                scene.addChild(pop)
+                pop.run(.sequence([.fadeOut(withDuration: 0.6), .removeFromParent()]))
+            }
+            endBall()
+            return
+        }
+        executor.ballPosition = b.position
+        if let node = ballNode { overlays.place(node, global: b.position) }
+    }
+
+    private func endBall() {
+        ballNode?.removeFromParent()
+        ballNode = nil
         ball = nil
-        fetchPhase = nil
+        executor.ballPosition = nil
     }
 
     /// Seconds since any keyboard or mouse event. Needs no permission.
@@ -258,7 +282,7 @@ final class PetController {
     }
 
     private var restBusy: Bool {
-        dragging || body.mode == .held || body.mode == .roaming || brain.current == .ballChase
+        dragging || chaseMe || body.mode == .held || body.mode == .roaming || brain.current == .ballChase
     }
 
     private func updateRest(dt: TimeInterval, now: CFTimeInterval) {
@@ -289,6 +313,7 @@ final class PetController {
     }
 
     private func hoverPet() {
+        boredom.noteInteraction()
         if needs.pet() {
             Effects.floatEmoji("❤️", on: backend.node, height: backend.size.height, count: 2)
             animOverride = (.happy, CACurrentMediaTime() + 0.8)
@@ -329,11 +354,13 @@ final class PetController {
         let canHop = !world.reachableSegments(from: body.position, maxJumpUp: body.config.maxJumpUp,
                                               maxJumpAcross: body.config.maxJumpAcross).isEmpty
         let ctx = BrainContext(needs: needs.state, lowThreshold: needs.config.lowThreshold, canHop: canHop,
-                               atHome: home.isHome(body.position), secondsAwayFromHome: home.secondsAway)
+                               atHome: home.isHome(body.position), secondsAwayFromHome: home.secondsAway,
+                               bored: boredom.isBored(needs.state))
         if let next = brain.update(dt: dt, ctx) { beginBehavior(next) }
 
         let cursor = NSEvent.mouseLocation
         updateHover(dt: dt, cursor: cursor)
+        stepBall(dt: dt)
         if executor.step(brain.current, body: body, world: world, cursor: cursor) { stepFinished() }
         if let event = body.step(dt: dt, world: world) {
             if executor.handle(event, behavior: brain.current, body: body) { stepFinished() }
@@ -365,7 +392,8 @@ final class PetController {
     private func updateAnimation(_ now: CFTimeInterval) {
         if let o = animOverride, o.until <= now { animOverride = nil }
         let state = animOverride?.state
-            ?? animState(for: brain.current, mode: body.mode, isMoving: body.isMoving, isRunning: body.isRunning)
+            ?? animState(for: brain.current, mode: body.mode, isMoving: body.isMoving,
+                         isRunning: body.isRunning, carrying: executor.carryingBall)
         if state != currentAnim {
             currentAnim = state
             backend.play(state)
@@ -383,6 +411,7 @@ extension PetController: SceneInputHandler {
         guard let start = pressPoint else { return }
         if !dragging && hypot(global.x - start.x, global.y - start.y) > 4 {
             dragging = true
+            boredom.noteInteraction()
             body.pickUp()
             brain.interrupt(with: .dangle, duration: .infinity)
             beginBehavior(.dangle)
@@ -399,8 +428,13 @@ extension PetController: SceneInputHandler {
         }
         if dragging {
             body.release()
-            brain.interrupt(with: .goHome, duration: 30)
-            beginBehavior(.goHome)
+            if chaseMe {
+                brain.interrupt(with: .chaseMe, duration: .infinity)
+                beginBehavior(.chaseMe)
+            } else {
+                brain.interrupt(with: .goHome, duration: 30)
+                beginBehavior(.goHome)
+            }
         } else if pressPoint != nil {
             pet()
         }
@@ -411,6 +445,14 @@ extension PetController: SceneInputHandler {
     }
 
     func pet() {
+        boredom.noteInteraction()
+        if chaseMe {
+            if needs.catchPet() {
+                Effects.floatEmoji("❤️", on: backend.node, height: backend.size.height, count: 4)
+                animOverride = (.happy, CACurrentMediaTime() + 0.8)
+            }
+            return
+        }
         if brain.current.countsAsSleep {
             brain.finishCurrent()
             needs.setAsleep(false)

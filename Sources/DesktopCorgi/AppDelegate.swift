@@ -88,6 +88,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         PetMenuActions(
             feed: { [weak self] in self?.controller.feed() },
             play: { [weak self] in self?.controller.playBall() },
+            toggleChaseMe: { [weak self] in
+                guard let c = self?.controller else { return }
+                c.setChaseMe(!c.chaseMe)
+            },
+            chaseMeOn: controller.chaseMe,
             bath: { [weak self] in self?.controller.bath() },
             nap: { [weak self] in self?.controller.nap() },
             stats: { [weak self] in DispatchQueue.main.async { self?.showStats() } },
