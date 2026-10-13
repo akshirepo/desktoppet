@@ -17,6 +17,7 @@ public struct NeedsConfig: Codable, Equatable {
     public var petsPerMinute = 10
     public var playAmount = 25.0
     public var bathAmount = 60.0
+    public var catchAmount = 10.0
 
     public init() {}
     public static let `default` = NeedsConfig()
@@ -124,12 +125,18 @@ public final class NeedsEngine {
 
     /// Returns false when the per-minute pet limit is reached.
     @discardableResult
-    public func pet() -> Bool {
+    public func pet() -> Bool { rateLimitedHappiness(config.petAmount) }
+
+    /// Catching the corgi in Chase Me. Shares the pet rate limit.
+    @discardableResult
+    public func catchPet() -> Bool { rateLimitedHappiness(config.catchAmount) }
+
+    private func rateLimitedHappiness(_ amount: Double) -> Bool {
         let now = clock.now
         petTimes.removeAll { now.timeIntervalSince($0) >= 60 || $0 > now }
         guard petTimes.count < config.petsPerMinute else { return false }
         petTimes.append(now)
-        restore(.happiness, by: config.petAmount)
+        restore(.happiness, by: amount)
         return true
     }
 
