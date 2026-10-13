@@ -33,7 +33,7 @@ Each unit has one job and talks to others through small interfaces.
 
 ### OverlayWindow
 - One borderless, transparent `NSPanel` per screen, level above normal windows, `canJoinAllSpaces`, `ignoresMouseEvents` toggled per frame based on whether the cursor is over the corgi's hit box.
-- Hides when the frontmost app is full screen.
+- Stays visible on full screen Spaces (`.fullScreenAuxiliary`); the corgi sleeps there (see v2).
 - Hosts an `SKView` with a transparent background.
 
 ### World
@@ -65,7 +65,7 @@ Each unit has one job and talks to others through small interfaces.
 - Every 3 to 8 seconds (or when a behavior ends), scores every behavior and picks one by weighted random.
 - Weights come from needs: low energy boosts `sleep`, low hunger boosts `beg`, high happiness + energy boost `zoomies`, `chaseCursor`, `hopToWindow`.
 - User actions (feed, play, bath, nap, drag) interrupt and override the current behavior.
-- Greeting behavior plays on launch if away more than 1 hour.
+- Greeting plays on every launch: wave + "Hi!" bubble, plus "Missed you!" if away more than 1 hour (see v2).
 - Random source injected (seeded in tests).
 
 Behaviors: `idle`, `walk`, `sit`, `sleep`, `zoomies`, `chaseCursor` (gives up after ~5s), `hopToWindow`, `beg`, `eat`, `fetch`, `bath`, `dangle`, `fall`, `greet`.
@@ -99,11 +99,60 @@ CorgiPack/
 - Play ball: a ball sprite gets thrown from the corgi's position, corgi runs to fetch it and brings it back.
 - Stats: SwiftUI popover with four bars, level, and time together.
 
+## v2: Companion features
+
+Added 2026-10-13, based on a reference reel of another desktop corgi. Only the behaviors are copied. The art stays original.
+
+### Home spot
+- Home is the bottom-right of the main screen's visible frame (above the Dock): `x = visibleFrame.maxX - 80`, on the ground segment.
+- New behavior `goHome`: walks (or runs if far) to home. If home is on another segment, it hops or leaps toward it, the same way `hopToWindow` does.
+- Brain: `goHome` weight grows with time away from home (0 at home, +1 per minute away, capped at 8). Wander behaviors (`walk`, `zoomies`, `hopToWindow`) get half weight while at home so it mostly hangs out there.
+- After a drag ends (landed), the corgi always runs home.
+
+### Speech bubbles and greeting
+- `Effects.speech(text)` shows a rounded bubble above the corgi for 2.5s.
+- On every launch: `greet` = wave animation + "Hi!". If away more than 1 hour, a second bubble says "Missed you!".
+
+### Idle activities and fidgets
+- New autonomous behaviors, weighted higher at home: `read`, `music`, `watchTV`, `wave`, `turnAround`, `playBallHome`.
+- Durations: read 20-60s, music 20-60s, watchTV 30-90s, wave 2s, turnAround 3-5s, playBallHome 8-15s.
+- `read` turns into `readSleep` (dozing over the book) after 15s with 30% chance, or right away if energy is low. It counts as sleeping for energy.
+- Placeholder props until the art pack has them: 📖 (read), 🎧 (music), 📺 (watchTV), ⚽️ (playBallHome) drawn next to the corgi.
+
+### Idle sleep (user inactivity)
+- The app reads seconds since the last keyboard or mouse event (`CGEventSource.secondsSinceLastEventType`, no permission needed).
+- At 90s idle the corgi plays `yawn` (2s), then `sleep` until there is any input. On input it wakes (short `wiggle`) and the brain picks again.
+- This is separate from energy-based napping. Idle sleep also counts as asleep for energy.
+
+### Full screen
+- Full screen = the frontmost window's frame equals a screen's full frame. While full screen is active the corgi sleeps where it is. It wakes when full screen ends.
+
+### Hover pet
+- Cursor resting on the corgi's hit box for 0.4s (not dragging) pets it: `happy` animation + hearts. Continued hover repeats every 1.5s. Same 10 pets/minute limit as clicks.
+
+### Scared drag
+- While held, the animation is `scared` with 💦. After release and landing, `goHome`.
+
+### Chase Me mode
+- Menu toggle "Chase Me". While on, the body is in `.roaming` mode: no gravity, no floors, moves freely within the screens' visible frames at run speed toward random waypoints.
+- If the cursor gets within 150pt, it picks a waypoint away from the cursor (dodge).
+- Clicking it while roaming "catches" it: hearts + happiness +10 (counts as a pet for the rate limit).
+- Turning the mode off: it falls to the nearest floor and goes home.
+
+### Ball chase (replaces v1 ledge fetch)
+- A ball flies around the visible screen area on a smooth random path (new waypoint every 1-2s).
+- The corgi roams after it. Within 30pt it catches the ball, carries it home (roaming), drops to the floor, then does `playBallHome`. Happiness +25 on catch.
+- Triggered by the Play Ball menu item, or by boredom: no user interaction with the corgi for 10 minutes while happiness > 50 and energy > 40 (boredom adds weight to `ballChase`).
+- Gives up after 30s (the ball "pops").
+
+### New animation states
+`wave`, `back`, `read`, `readSleep`, `music`, `watch`, `yawn`, `scared`, `happy`, `holdBall`, `kick`, `roam`. Missing ones fall back to `idle` as before. The README lists them for anyone making or commissioning art.
+
 ## Edge cases
 
 - Multiple monitors: one overlay per screen, corgi can walk across touching edges.
 - Spaces: overlay joins all Spaces.
-- Full screen apps: corgi hides until full screen ends.
+- Full screen apps: corgi stays visible and sleeps until full screen ends.
 - Perched window closes/minimizes: corgi falls with a surprised animation.
 - Dropped off-screen: clamped back into the nearest visible area.
 - Screen locked or display asleep: rendering paused, needs still tracked by wall clock.
