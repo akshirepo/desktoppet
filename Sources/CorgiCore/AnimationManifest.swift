@@ -47,7 +47,7 @@ public func animState(for behavior: Behavior, mode: BodyMode, isMoving: Bool) ->
     switch mode {
     case .held: return .dangle
     case .airborne: return .fall
-    case .grounded: break
+    case .grounded, .roaming: break
     }
     if isMoving {
         switch behavior {

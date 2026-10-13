@@ -11,11 +11,13 @@ public struct BodyConfig {
     public var maxJumpAcross: CGFloat = 520
     public var jumpClearance: CGFloat = 50
     public var maxFallSpeed: CGFloat = 1800
+    /// Room kept free above a roaming corgi's feet so it never slides under the menu bar.
+    public var roamHeadroom: CGFloat = 80
 
     public init() {}
 }
 
-public enum BodyMode: Equatable { case grounded, airborne, held }
+public enum BodyMode: Equatable { case grounded, airborne, held, roaming }
 
 public enum BodyEvent: Equatable { case landed, hitEdge, startedFalling }
 
@@ -33,7 +35,9 @@ public final class Body {
         self.config = config
     }
 
-    public var isMoving: Bool { mode == .airborne || walkVelocity != 0 }
+    public var isMoving: Bool {
+        mode == .airborne || walkVelocity != 0 || (mode == .roaming && velocity != .zero)
+    }
 
     public func walk(direction: CGFloat, speed: CGFloat) {
         guard mode == .grounded else { return }
@@ -68,6 +72,34 @@ public final class Body {
         walkVelocity = 0
         standingOn = nil
         mode = .airborne
+    }
+
+    /// Free flight with no gravity or floors (Chase Me and ball chase).
+    public func startRoaming() {
+        guard mode != .held else { return }
+        mode = .roaming
+        standingOn = nil
+        velocity = .zero
+        walkVelocity = 0
+    }
+
+    /// Sets the roaming velocity toward `target`. Stops when within 1pt of it.
+    public func roam(toward target: CGPoint, speed: CGFloat) {
+        guard mode == .roaming else { return }
+        let dx = target.x - position.x, dy = target.y - position.y
+        let dist = hypot(dx, dy)
+        guard dist > 1 else {
+            velocity = .zero
+            return
+        }
+        velocity = CGVector(dx: dx / dist * speed, dy: dy / dist * speed)
+        if abs(dx) > 1 { facingRight = dx > 0 }
+    }
+
+    /// Ends roaming. The body falls to whatever floor is below.
+    public func stopRoaming() {
+        guard mode == .roaming else { return }
+        startFalling()
     }
 
     public func pickUp() {
@@ -119,6 +151,16 @@ public final class Body {
             position.x = segment.clampX(nextX)
             walkVelocity = 0
             return .hitEdge
+        case .roaming:
+            let area = insetRects(world.screens, side: 20, top: config.roamHeadroom)
+            let next = CGPoint(x: position.x + velocity.dx * dt, y: position.y + velocity.dy * dt)
+            if area.isEmpty || rects(area, contain: next) {
+                position = next
+                return nil
+            }
+            position = nearestPoint(to: next, in: area)
+            velocity = .zero
+            return .hitEdge
         case .airborne:
             velocity.dy = max(velocity.dy - config.gravity * dt, -config.maxFallSpeed)
             let next = CGPoint(x: position.x + velocity.dx * dt, y: position.y + velocity.dy * dt)
@@ -150,7 +192,7 @@ public final class Body {
                               y: min(max(position.y, screen.minY), screen.maxY - 10))
         guard clamped != position else { return }
         position = clamped
-        if mode != .held { startFalling() }
+        if mode == .grounded || mode == .airborne { startFalling() }
     }
 
     @discardableResult

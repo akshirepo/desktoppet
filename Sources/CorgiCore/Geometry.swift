@@ -62,3 +62,19 @@ public func subtractIntervals(_ base: ClosedRange<CGFloat>,
     }
     return pieces
 }
+
+/// Screens shrunk by a side margin and a top headroom, so a free-moving corgi or ball stays fully visible.
+public func insetRects(_ screens: [CGRect], side: CGFloat, top: CGFloat) -> [CGRect] {
+    screens.map { CGRect(x: $0.minX + side, y: $0.minY,
+                         width: max(0, $0.width - 2 * side), height: max(0, $0.height - top)) }
+}
+
+public func rects(_ rects: [CGRect], contain p: CGPoint) -> Bool {
+    rects.contains { $0.minX <= p.x && p.x <= $0.maxX && $0.minY <= p.y && p.y <= $0.maxY }
+}
+
+/// Closest point to `p` inside any of `rects`. Returns `p` when `rects` is empty.
+public func nearestPoint(to p: CGPoint, in rects: [CGRect]) -> CGPoint {
+    rects.map { CGPoint(x: min(max(p.x, $0.minX), $0.maxX), y: min(max(p.y, $0.minY), $0.maxY)) }
+        .min { hypot($0.x - p.x, $0.y - p.y) < hypot($1.x - p.x, $1.y - p.y) } ?? p
+}
