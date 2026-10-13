@@ -11,6 +11,7 @@ protocol AnimationBackend: AnyObject {
     func setFacing(right: Bool)
     func setHat(_ hat: Hat)
     func setName(_ name: String)
+    func setNameTagVisible(_ visible: Bool)
     func setHovering(_ hovering: Bool)
     func setHappy(_ happy: Bool)
     /// True when the backend draws its own book, headphones, TV and ball, so no emoji prop is needed.
@@ -24,6 +25,7 @@ protocol AnimationBackend: AnyObject {
 extension AnimationBackend {
     func setHat(_ hat: Hat) {}
     func setName(_ name: String) {}
+    func setNameTagVisible(_ visible: Bool) {}
     func setHovering(_ hovering: Bool) {}
     func setHappy(_ happy: Bool) {}
     var drawsProps: Bool { false }

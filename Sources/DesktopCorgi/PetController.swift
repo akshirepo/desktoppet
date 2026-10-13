@@ -433,6 +433,7 @@ final class PetController {
     /// The name tag and the hat, from the saved profile.
     func applyProfile(_ profile: PetProfile) {
         backend.setName(profile.name)
+        backend.setNameTagVisible(profile.showNameTag)
         backend.setHat(profile.hat)
         sounds.enabled = profile.soundsOn
     }

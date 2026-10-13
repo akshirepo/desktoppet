@@ -499,6 +499,10 @@ final class PlaceholderBackend: AnimationBackend {
         tagPill.addChild(tagLabel)
     }
 
+    func setNameTagVisible(_ visible: Bool) {
+        tagPill.isHidden = !visible
+    }
+
     func setHat(_ hat: Hat) {
         self.hat = hat
         hatNode.removeAllChildren()

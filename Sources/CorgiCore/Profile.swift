@@ -29,18 +29,20 @@ public struct PetProfile: Codable, Equatable {
     public var hat: Hat
     public var soundsOn: Bool
     public var askedForName: Bool
+    public var showNameTag: Bool
 
     public init(name: String = PetProfile.defaultName, hat: Hat = .none,
-                soundsOn: Bool = false, askedForName: Bool = false) {
+                soundsOn: Bool = false, askedForName: Bool = false, showNameTag: Bool = false) {
         self.name = name
         self.hat = hat
         self.soundsOn = soundsOn
         self.askedForName = askedForName
+        self.showNameTag = showNameTag
     }
 
     public static let `default` = PetProfile()
 
-    private enum CodingKeys: String, CodingKey { case name, hat, soundsOn, askedForName }
+    private enum CodingKeys: String, CodingKey { case name, hat, soundsOn, askedForName, showNameTag }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -49,6 +51,7 @@ public struct PetProfile: Codable, Equatable {
         hat = (try? c.decodeIfPresent(Hat.self, forKey: .hat)) ?? d.hat
         soundsOn = try c.decodeIfPresent(Bool.self, forKey: .soundsOn) ?? d.soundsOn
         askedForName = try c.decodeIfPresent(Bool.self, forKey: .askedForName) ?? d.askedForName
+        showNameTag = try c.decodeIfPresent(Bool.self, forKey: .showNameTag) ?? d.showNameTag
     }
 
     /// Trims whitespace and caps at 20 characters. Empty input keeps `old`.

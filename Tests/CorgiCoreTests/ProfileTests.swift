@@ -19,7 +19,19 @@ final class ProfileTests: XCTestCase {
         XCTAssertEqual(p.hat, .none)
         XCTAssertFalse(p.soundsOn)
         XCTAssertFalse(p.askedForName)
+        XCTAssertFalse(p.showNameTag)
         XCTAssertEqual(PetProfile.default, p)
+    }
+
+    func testNameTagSettingRoundTripsAndDefaultsOffForOldFiles() throws {
+        let old = try JSONDecoder().decode(PetProfile.self,
+            from: Data(#"{"name":"Mochi","hat":"bow","soundsOn":true,"askedForName":true}"#.utf8))
+        XCTAssertFalse(old.showNameTag)
+        var p = old
+        p.showNameTag = true
+        let back = try JSONDecoder().decode(PetProfile.self, from: JSONEncoder().encode(p))
+        XCTAssertTrue(back.showNameTag)
+        XCTAssertEqual(back, p)
     }
 
     func testHatCasesAndDisplayNames() {

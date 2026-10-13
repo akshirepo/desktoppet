@@ -162,7 +162,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             hat: profile.hat,
             setHat: { [weak self] hat in self?.updateProfile { $0.hat = hat } },
             toggleSounds: { [weak self] in self?.updateProfile { $0.soundsOn.toggle() } },
-            soundsOn: profile.soundsOn
+            soundsOn: profile.soundsOn,
+            toggleNameTag: { [weak self] in self?.updateProfile { $0.showNameTag.toggle() } },
+            nameTagOn: profile.showNameTag
         )
     }
 }
