@@ -116,4 +116,67 @@ final class BehaviorExecutorTests: XCTestCase {
         XCTAssertFalse(run(ex, .sleep, body, seconds: 1))
         XCTAssertEqual(body.position.x, 100)
     }
+
+    func homeExecutor() -> BehaviorExecutor {
+        let ex = BehaviorExecutor(rng: SeededRandom(seed: 1))
+        ex.home = CGPoint(x: 1360, y: 0)
+        return ex
+    }
+
+    func testGoHomeRunsWhenFarAndArrives() {
+        let ex = homeExecutor()
+        let body = groundedBody(x: 100)
+        ex.begin(.goHome, body: body, world: world, cursor: .zero)
+        _ = ex.step(.goHome, body: body, world: world, cursor: .zero)
+        XCTAssertTrue(body.isRunning)
+        XCTAssertTrue(run(ex, .goHome, body, seconds: 10))
+        XCTAssertEqual(body.position.x, 1360, accuracy: 4)
+    }
+
+    func testGoHomeFromPerchLeapsDownThenWalksHome() {
+        let ex = homeExecutor()
+        let body = groundedBody(x: 800, y: 300)        // on window 1 (600...1000)
+        ex.begin(.goHome, body: body, world: world, cursor: .zero)
+        XCTAssertTrue(run(ex, .goHome, body, seconds: 15))
+        XCTAssertEqual(body.standingOn?.kind, .ground(screen: 0))
+        XCTAssertEqual(body.position.x, 1360, accuracy: 4)
+    }
+
+    func testGoHomeFromOtherMonitorCrossesOver() {
+        world.setScreens([screen0, CGRect(x: 1440, y: 0, width: 1920, height: 1000)])
+        let ex = homeExecutor()
+        let body = groundedBody(x: 2400)
+        ex.begin(.goHome, body: body, world: world, cursor: .zero)
+        XCTAssertTrue(run(ex, .goHome, body, seconds: 15))
+        XCTAssertEqual(body.standingOn?.kind, .ground(screen: 0))
+        XCTAssertEqual(body.position.x, 1360, accuracy: 4)
+    }
+
+    func testGoHomeAfterDropWaitsForLanding() {
+        let ex = homeExecutor()
+        let body = Body(position: CGPoint(x: 500, y: 600))   // just released, still in the air
+        ex.begin(.goHome, body: body, world: world, cursor: .zero)
+        XCTAssertFalse(ex.step(.goHome, body: body, world: world, cursor: .zero))
+        XCTAssertTrue(run(ex, .goHome, body, seconds: 12))
+        XCTAssertEqual(body.position.x, 1360, accuracy: 4)
+    }
+
+    func testGreetStandsAndFacesCursor() {
+        let ex = BehaviorExecutor(rng: SeededRandom(seed: 1))
+        let body = groundedBody(x: 500)
+        ex.begin(.greet, body: body, world: world, cursor: CGPoint(x: 100, y: 400))
+        XCTAssertFalse(run(ex, .greet, body, cursor: CGPoint(x: 100, y: 400), seconds: 1))
+        XCTAssertEqual(body.position.x, 500)
+        XCTAssertFalse(body.facingRight)
+    }
+
+    func testNonRoamingBehaviorEndsRoaming() {
+        let ex = BehaviorExecutor(rng: SeededRandom(seed: 1))
+        let body = Body(position: CGPoint(x: 300, y: 500))
+        body.startRoaming()
+        ex.begin(.chaseMe, body: body, world: world, cursor: .zero)
+        XCTAssertEqual(body.mode, .roaming)
+        ex.begin(.idle, body: body, world: world, cursor: .zero)
+        XCTAssertEqual(body.mode, .airborne)
+    }
 }
