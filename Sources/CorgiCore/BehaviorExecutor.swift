@@ -8,6 +8,16 @@ public final class BehaviorExecutor {
     public var speedScale: CGFloat = 1
     /// Home spot for `goHome`. Set by the caller whenever screens change.
     public var home: CGPoint?
+    /// Live ball position for `ballChase`. Set by the caller every tick; nil once the ball is gone.
+    public var ballPosition: CGPoint?
+    /// Called once when the corgi reaches the ball.
+    public var onBallCaught: (() -> Void)?
+    public private(set) var carryingBall = false
+    public var dodgeRadius: CGFloat = 150
+    public var catchRadius: CGFloat = 30
+    private enum BallPhase { case chasing, carrying, dropping }
+    private var ballPhase: BallPhase = .chasing
+    private var waypoint: CGPoint?
     private var rng: any RandomNumberGenerator
     private var zoomDirection: CGFloat = 1
     private var hopStarted = false
@@ -29,6 +39,9 @@ public final class BehaviorExecutor {
         hopDownDirection = nil
         homePlanned = false
         homeLeapDirection = nil
+        carryingBall = false
+        ballPhase = .chasing
+        waypoint = nil
         if body.mode == .roaming && b != .chaseMe && b != .ballChase { body.stopRoaming() }
         body.stop()
         let segment = body.standingOn ?? world.segment(under: body.position)
@@ -42,6 +55,8 @@ public final class BehaviorExecutor {
             body.face(right: cursor.x >= body.position.x)
         case .zoomies:
             zoomDirection = random() < 0.5 ? -1 : 1
+        case .chaseMe, .ballChase:
+            body.startRoaming()
         case .hopToWindow:
             let options = world.reachableSegments(from: body.position,
                                                   maxJumpUp: body.config.maxJumpUp,
@@ -69,6 +84,11 @@ public final class BehaviorExecutor {
     }
 
     public func step(_ b: Behavior, body: Body, world: World, cursor: CGPoint) -> Bool {
+        if b == .chaseMe {
+            stepChaseMe(body: body, world: world, cursor: cursor)
+            return false
+        }
+        if b == .ballChase { return stepBallChase(body: body) }
         if b == .hopToWindow {
             guard hopStarted else { return true }
             if let dir = hopDownDirection, body.mode == .grounded, let target = targetX {
@@ -120,6 +140,11 @@ public final class BehaviorExecutor {
             return true
         case (.hopToWindow, .landed):
             return true
+        case (.chaseMe, .hitEdge):
+            waypoint = nil
+            return false
+        case (.ballChase, .landed):
+            return ballPhase == .dropping
         case (.goHome, .landed):
             homePlanned = false
             return false
@@ -180,6 +205,57 @@ public final class BehaviorExecutor {
             } else {
                 body.walk(direction: edge - body.position.x, speed: body.config.runSpeed)
             }
+        }
+        return false
+    }
+
+    private func randomPoint(in area: [CGRect]) -> CGPoint? {
+        guard !area.isEmpty else { return nil }
+        let r = area[Int(random() * CGFloat(area.count)) % area.count]
+        return CGPoint(x: r.minX + random() * r.width, y: r.minY + random() * r.height)
+    }
+
+    /// Runs between random waypoints; inside `dodgeRadius` of the cursor it heads straight away from it.
+    private func stepChaseMe(body: Body, world: World, cursor: CGPoint) {
+        guard body.mode == .roaming else { return }
+        let area = insetRects(world.screens, side: 20, top: body.config.roamHeadroom)
+        let ax = body.position.x - cursor.x, ay = body.position.y - cursor.y
+        let d = hypot(ax, ay)
+        if d < dodgeRadius {
+            let ux = d > 0.1 ? ax / d : (random() < 0.5 ? -1 : 1), uy = d > 0.1 ? ay / d : 0
+            waypoint = nearestPoint(to: CGPoint(x: body.position.x + ux * 300, y: body.position.y + uy * 300), in: area)
+        } else if waypoint.map({ hypot($0.x - body.position.x, $0.y - body.position.y) < 10 }) ?? true {
+            waypoint = randomPoint(in: area)
+        }
+        if let w = waypoint { body.roam(toward: w, speed: body.config.runSpeed) }
+    }
+
+    /// Chase the ball (mouth 30pt above the feet), carry it above home, then drop to the floor.
+    /// Returns true when the ball is gone before the catch, or after landing with it.
+    private func stepBallChase(body: Body) -> Bool {
+        switch ballPhase {
+        case .chasing:
+            guard body.mode == .roaming else { return false }
+            guard let ball = ballPosition else { return true }
+            let mouth = CGPoint(x: body.position.x, y: body.position.y + 30)
+            if hypot(ball.x - mouth.x, ball.y - mouth.y) <= catchRadius {
+                ballPhase = .carrying
+                carryingBall = true
+                onBallCaught?()
+            } else {
+                body.roam(toward: CGPoint(x: ball.x, y: ball.y - 30), speed: body.config.runSpeed)
+            }
+        case .carrying:
+            guard body.mode == .roaming else { return false }
+            let target = home.map { CGPoint(x: $0.x, y: $0.y + 60) } ?? body.position
+            if hypot(target.x - body.position.x, target.y - body.position.y) < 10 {
+                body.stopRoaming()
+                ballPhase = .dropping
+            } else {
+                body.roam(toward: target, speed: body.config.runSpeed)
+            }
+        case .dropping:
+            break
         }
         return false
     }
