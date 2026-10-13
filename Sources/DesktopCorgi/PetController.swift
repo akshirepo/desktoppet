@@ -36,6 +36,8 @@ final class PetController {
     let hover = HoverPet()
     private var prop: SKLabelNode?
     private var propEmoji: String?
+    private var restPollElapsed: TimeInterval = 0
+    private var lastClickPet: CFTimeInterval = 0
     private static let props: [Behavior: String] = [
         .read: "📖", .readSleep: "📖", .music: "🎧", .watchTV: "📺", .playBallHome: "⚽️",
     ]
@@ -281,11 +283,18 @@ final class PetController {
         CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: CGEventType(rawValue: ~0)!)
     }
 
+    /// A nap or a doze over the book is already rest; idle sleep must not yawn over it.
     private var restBusy: Bool {
         dragging || chaseMe || body.mode == .held || body.mode == .roaming || brain.current == .ballChase
+            || brain.current == .sleep || brain.current == .readSleep
     }
 
+    /// Polls idle time and full screen twice a second, not every frame.
     private func updateRest(dt: TimeInterval, now: CFTimeInterval) {
+        restPollElapsed += dt
+        guard restPollElapsed >= 0.5 else { return }
+        let dt = restPollElapsed
+        restPollElapsed = 0
         let fullScreen = isFullScreen(frontWindow: world.windows.first?.frame,
                                       screenFrames: NSScreen.screens.map(\.frame))
         switch rest.update(dt: dt, idleSeconds: userIdleSeconds, fullScreen: fullScreen, busy: restBusy) {
@@ -302,13 +311,19 @@ final class PetController {
                 animOverride = (.wiggle, now + 0.8)
             }
         case nil:
-            break
+            // Still resting but something (a fall) took it out of idle sleep: settle back down.
+            if rest.phase == .asleep && brain.current != .idleSleep && brain.current != .fall
+                && body.mode == .grounded && !restBusy {
+                brain.interrupt(with: .idleSleep, duration: .infinity)
+                beginBehavior(.idleSleep)
+            }
         }
     }
 
     private func updateHover(dt: TimeInterval, cursor: CGPoint) {
         let blocked = dragging || pressPoint != nil || body.mode != .grounded
             || brain.current.countsAsSleep || brain.current == .yawn
+            || CACurrentMediaTime() - lastClickPet < hover.repeatEvery
         if hover.update(dt: dt, hovering: hitRect.contains(cursor), blocked: blocked) { hoverPet() }
     }
 
@@ -383,10 +398,13 @@ final class PetController {
             lastSweat = now
             Effects.floatEmoji("💦", on: backend.node, height: backend.size.height * 0.9)
         }
+        if executor.carryingBall, let n = ballNode, n.parent === backend.node {
+            n.position.x = body.facingRight ? 26 : -26
+        }
         updateProp()
         debug.update(world: world, hitRect: hitRect, behavior: brain.current, overlays: overlays)
         overlays.setClickThrough(!(body.mode == .held || hitRect.contains(cursor)))
-        setRate(body.isMoving || body.mode == .held || animOverride != nil ? 30 : 10)
+        setRate(body.isMoving || body.mode == .held || animOverride != nil || ball != nil ? 30 : 10)
     }
 
     private func updateAnimation(_ now: CFTimeInterval) {
@@ -403,6 +421,11 @@ final class PetController {
 
 extension PetController: SceneInputHandler {
     func mouseDown(at global: CGPoint) {
+        // The panel takes clicks while the cursor was over the corgi last tick; a roaming corgi may have moved off.
+        guard hitRect.contains(global) else {
+            pressPoint = nil
+            return
+        }
         pressPoint = global
         dragging = false
     }
@@ -446,6 +469,7 @@ extension PetController: SceneInputHandler {
 
     func pet() {
         boredom.noteInteraction()
+        lastClickPet = CACurrentMediaTime()
         if chaseMe {
             if needs.catchPet() {
                 Effects.floatEmoji("❤️", on: backend.node, height: backend.size.height, count: 4)
