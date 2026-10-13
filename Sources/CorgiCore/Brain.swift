@@ -7,7 +7,10 @@ public enum Behavior: String, CaseIterable {
     case yawn, idleSleep, chaseMe, ballChase
 
     /// Behaviors the brain picks on its own. The rest only happen through `interrupt`.
-    public static let autonomous: [Behavior] = [.idle, .walk, .sit, .sleep, .zoomies, .chaseCursor, .hopToWindow, .beg]
+    public static let autonomous: [Behavior] = [
+        .idle, .walk, .sit, .sleep, .zoomies, .chaseCursor, .hopToWindow, .beg,
+        .goHome, .read, .music, .watchTV, .wave, .turnAround, .playBallHome, .ballChase,
+    ]
 
     /// Behaviors during which energy refills at the asleep rate.
     public var countsAsSleep: Bool { self == .sleep || self == .readSleep || self == .idleSleep }
@@ -17,8 +20,13 @@ public struct BrainConfig {
     public var durations: [Behavior: ClosedRange<Double>] = [
         .idle: 3...8, .walk: 3...8, .sit: 4...10, .sleep: 60...180,
         .zoomies: 4...8, .chaseCursor: 5...5, .hopToWindow: 6...8, .beg: 6...10,
+        .goHome: 30...30, .read: 20...60, .readSleep: 30...90, .music: 20...60, .watchTV: 30...90,
+        .wave: 2...2, .turnAround: 3...5, .playBallHome: 8...15, .ballChase: 30...30,
     ]
     public var wakeEnergy = 95.0
+    /// Seconds of reading before the one-time doze roll, and the chance it dozes off.
+    public var readDozeAfter = 15.0
+    public var readDozeChance = 0.3
 
     public init() {}
 }
@@ -27,11 +35,18 @@ public struct BrainContext {
     public var needs: NeedsState
     public var lowThreshold: Double
     public var canHop: Bool
+    public var atHome: Bool
+    public var secondsAwayFromHome: TimeInterval
+    public var bored: Bool
 
-    public init(needs: NeedsState, lowThreshold: Double, canHop: Bool) {
+    public init(needs: NeedsState, lowThreshold: Double, canHop: Bool,
+                atHome: Bool = false, secondsAwayFromHome: TimeInterval = 0, bored: Bool = false) {
         self.needs = needs
         self.lowThreshold = lowThreshold
         self.canHop = canHop
+        self.atHome = atHome
+        self.secondsAwayFromHome = secondsAwayFromHome
+        self.bored = bored
     }
 }
 
@@ -40,6 +55,8 @@ public final class Brain {
     private var rng: any RandomNumberGenerator
     public private(set) var current: Behavior = .idle
     public private(set) var remaining: TimeInterval = 0
+    private var readElapsed: TimeInterval = 0
+    private var readRolled = false
 
     public init(config: BrainConfig = .init(), rng: any RandomNumberGenerator = SystemRandomNumberGenerator()) {
         self.config = config
@@ -55,7 +72,15 @@ public final class Brain {
         var w: [Behavior: Double] = [
             .idle: 3, .walk: 4, .sit: 2, .sleep: 0.5,
             .zoomies: 0.5, .chaseCursor: 0.5, .hopToWindow: 1, .beg: 0,
+            .read: 1, .music: 1, .watchTV: 1, .wave: 0.5, .turnAround: 0.5, .playBallHome: 0.5,
+            .goHome: ctx.atHome ? 0 : min(8, max(0, ctx.secondsAwayFromHome) / 60),
+            .ballChase: ctx.bored ? 6 : 0,
         ]
+        if ctx.atHome {
+            for b in [Behavior.read, .music, .watchTV, .playBallHome] { w[b]! *= 3 }
+            for b in [Behavior.wave, .turnAround] { w[b]! *= 2 }
+            for b in [Behavior.walk, .zoomies, .hopToWindow] { w[b]! *= 0.5 }
+        }
         if n.happiness > 70 && n.energy > 60 {
             w[.zoomies]! += 1.5
             w[.chaseCursor]! += 1.5
@@ -74,6 +99,11 @@ public final class Brain {
             w[.zoomies] = 0
             w[.chaseCursor] = 0
             w[.hopToWindow] = 0
+            w[.music] = 0
+            w[.wave] = 0
+            w[.turnAround] = 0
+            w[.playBallHome] = 0
+            w[.ballChase] = 0
         }
         if n.energy >= config.wakeEnergy { w[.sleep] = 0 }
         if !ctx.canHop { w[.hopToWindow] = 0 }
@@ -94,13 +124,27 @@ public final class Brain {
     @discardableResult
     public func update(dt: TimeInterval, _ ctx: BrainContext) -> Behavior? {
         remaining -= dt
+        if current == .read {
+            readElapsed += dt
+            if ctx.needs.energy < ctx.lowThreshold || (!readRolled && readElapsed >= config.readDozeAfter) {
+                let doze = ctx.needs.energy < ctx.lowThreshold || random() < config.readDozeChance
+                readRolled = true
+                if doze { return start(.readSleep) }
+            }
+        }
         guard remaining <= 0 else { return nil }
         if current == .sleep && ctx.needs.energy < config.wakeEnergy {
             remaining = 10
             return nil
         }
-        let next = choose(ctx)
+        let pick = choose(ctx)
+        return start(pick == .read && ctx.needs.energy < ctx.lowThreshold ? .readSleep : pick)
+    }
+
+    private func start(_ next: Behavior) -> Behavior {
         current = next
+        readElapsed = 0
+        readRolled = false
         let range = config.durations[next] ?? 3...8
         remaining = range.lowerBound + random() * (range.upperBound - range.lowerBound)
         return next
@@ -109,6 +153,8 @@ public final class Brain {
     public func interrupt(with behavior: Behavior, duration: TimeInterval) {
         current = behavior
         remaining = duration
+        readElapsed = 0
+        readRolled = false
     }
 
     public func finishCurrent() {

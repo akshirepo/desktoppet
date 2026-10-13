@@ -56,7 +56,7 @@ final class BrainTests: XCTestCase {
         let c = ctx(energy: 5)
         let picks = (0..<500).map { _ in b.choose(c) }
         let sleeps = picks.filter { $0 == .sleep }.count
-        XCTAssertGreaterThan(sleeps, 200)   // expected share is about 54%
+        XCTAssertGreaterThan(sleeps, 200)   // expected share is about 49%
         XCTAssertFalse(picks.contains(.zoomies))
     }
 
@@ -98,5 +98,60 @@ final class BrainTests: XCTestCase {
         b.finishCurrent()
         XCTAssertEqual(b.current, .idle)
         XCTAssertNotNil(b.update(dt: 0, ctx()))
+    }
+
+    func homeCtx(atHome: Bool, away: TimeInterval = 0, bored: Bool = false,
+                 energy: Double = 70) -> BrainContext {
+        var c = ctx(energy: energy)
+        c.atHome = atHome
+        c.secondsAwayFromHome = away
+        c.bored = bored
+        return c
+    }
+
+    func testIdleActivitiesWeightedHigherAtHome() {
+        let away = brain().weights(homeCtx(atHome: false))
+        let home = brain().weights(homeCtx(atHome: true))
+        for b in [Behavior.read, .music, .watchTV, .playBallHome] {
+            XCTAssertEqual(home[b]!, away[b]! * 3, accuracy: 0.001, "\(b)")
+        }
+        for b in [Behavior.wave, .turnAround] { XCTAssertEqual(home[b]!, away[b]! * 2, accuracy: 0.001, "\(b)") }
+        for b in [Behavior.walk, .zoomies, .hopToWindow] { XCTAssertEqual(home[b]!, away[b]! * 0.5, accuracy: 0.001, "\(b)") }
+    }
+
+    func testGoHomeGrowsWithTimeAwayAndCapsAtEight() {
+        XCTAssertEqual(brain().weights(homeCtx(atHome: false, away: 0))[.goHome], 0)
+        XCTAssertEqual(brain().weights(homeCtx(atHome: false, away: 120))[.goHome]!, 2, accuracy: 0.001)
+        XCTAssertEqual(brain().weights(homeCtx(atHome: false, away: 3600))[.goHome], 8)
+        XCTAssertEqual(brain().weights(homeCtx(atHome: true, away: 3600))[.goHome], 0)
+    }
+
+    func testBoredomAddsBallChaseUnlessTired() {
+        XCTAssertEqual(brain().weights(homeCtx(atHome: true))[.ballChase], 0)
+        XCTAssertEqual(brain().weights(homeCtx(atHome: true, bored: true))[.ballChase], 6)
+        XCTAssertEqual(brain().weights(homeCtx(atHome: true, bored: true, energy: 10))[.ballChase], 0)
+    }
+
+    func testReadTurnsIntoReadSleepRightAwayWhenTired() {
+        let b = brain()
+        b.interrupt(with: .read, duration: 40)
+        XCTAssertEqual(b.update(dt: 0.1, ctx(energy: 10)), .readSleep)
+        XCTAssertTrue(b.current.countsAsSleep)
+    }
+
+    func testReadDozesOnceAfterFifteenSecondsAboutThirtyPercent() {
+        var dozed = 0
+        for seed in UInt64(1)...200 {
+            let b = brain(seed: seed)
+            b.interrupt(with: .read, duration: 60)
+            XCTAssertNil(b.update(dt: 14.9, ctx()))
+            if b.update(dt: 0.2, ctx()) == .readSleep {
+                dozed += 1
+            } else {
+                XCTAssertNil(b.update(dt: 10, ctx()))   // the roll happens only once
+                XCTAssertEqual(b.current, .read)
+            }
+        }
+        XCTAssertTrue((40...80).contains(dozed), "\(dozed)")   // expected about 60
     }
 }
