@@ -45,7 +45,7 @@ public struct PetProfile: Codable, Equatable {
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         let d = PetProfile()
-        name = try c.decodeIfPresent(String.self, forKey: .name) ?? d.name
+        name = PetProfile.sanitizedName(try c.decodeIfPresent(String.self, forKey: .name) ?? d.name, keeping: d.name)
         hat = (try? c.decodeIfPresent(Hat.self, forKey: .hat)) ?? d.hat
         soundsOn = try c.decodeIfPresent(Bool.self, forKey: .soundsOn) ?? d.soundsOn
         askedForName = try c.decodeIfPresent(Bool.self, forKey: .askedForName) ?? d.askedForName

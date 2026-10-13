@@ -106,4 +106,12 @@ final class ProfileTests: XCTestCase {
     func testStatsTitle() {
         XCTAssertEqual(PetProfile(name: "Mochi").statsTitle(level: 3), "Mochi · Level 3")
     }
+
+    func testDecodedNameIsSanitized() throws {
+        let blank = try JSONDecoder().decode(PetProfile.self, from: Data(#"{"name":"   "}"#.utf8))
+        XCTAssertEqual(blank.name, PetProfile.defaultName)
+        let long = String(repeating: "b", count: 30)
+        let p = try JSONDecoder().decode(PetProfile.self, from: Data("{\"name\":\" \(long) \"}".utf8))
+        XCTAssertEqual(p.name, String(repeating: "b", count: 20))
+    }
 }

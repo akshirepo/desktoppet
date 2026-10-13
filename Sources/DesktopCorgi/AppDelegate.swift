@@ -24,6 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         needs = NeedsEngine(state: loaded ?? .fresh(at: Date()), clock: SystemClock())
         if loaded != nil { awaySeconds = needs.catchUpOffline() }
 
+        installEditMenu()
         profile = profileStore.load()
         controller = PetController(needs: needs, backend: makeBackend())
         controller.applyProfile(profile)
@@ -90,6 +91,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         change(&profile)
         controller.applyProfile(profile)
         saveProfile()
+    }
+
+    /// An accessory app has no visible menu bar, but without an Edit menu Cmd-C/V/X/A/Z do nothing in the rename field.
+    private func installEditMenu() {
+        let main = NSMenu()
+        let editItem = NSMenuItem(title: "Edit", action: nil, keyEquivalent: "")
+        let edit = NSMenu(title: "Edit")
+        edit.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
+        edit.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "Z")
+        edit.addItem(.separator())
+        edit.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        editItem.submenu = edit
+        main.addItem(editItem)
+        NSApp.mainMenu = main
     }
 
     /// NSAlert with a text field. OK renames; Later keeps the current name.

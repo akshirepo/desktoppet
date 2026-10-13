@@ -104,7 +104,7 @@ final class PetController {
         brain.interrupt(with: .greet, duration: lines.count > 1 ? 5.5 : 3)
         beginBehavior(.greet)
         for (i, line) in lines.enumerated() {
-            Effects.speech(line, on: backend.node, height: backend.size.height, delay: Double(i) * 2.6)
+            Effects.speech(line, on: backend.node, height: backend.bubbleHeight, delay: Double(i) * 2.6)
         }
     }
 
@@ -427,7 +427,7 @@ final class PetController {
         let blocked = needs.state.isAsleep || brain.current.countsAsSleep
             || body.mode == .held || body.mode == .roaming
         guard let need = moodBubbles.update(dt: dt, needs: needs.state, blocked: blocked) else { return }
-        Effects.speech(MoodBubbles.bubbleText(for: need), on: backend.node, height: backend.size.height, thought: true)
+        Effects.speech(MoodBubbles.bubbleText(for: need), on: backend.node, height: backend.bubbleHeight, thought: true)
     }
 
     /// The name tag and the hat, from the saved profile.

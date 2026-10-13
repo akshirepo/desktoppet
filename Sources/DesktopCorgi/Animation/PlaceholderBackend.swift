@@ -99,6 +99,15 @@ final class PlaceholderBackend: AnimationBackend {
     let size = CGSize(width: 96, height: 80)
     var drawsProps: Bool { true }
     var mouthPoint: CGPoint { CGPoint(x: 35, y: 35) }
+    /// Tall hats reach above the hit box; bubbles float above them.
+    var bubbleHeight: CGFloat {
+        switch hat {
+        case .partyHat: return size.height + 16
+        case .beanie, .santaHat: return size.height + 8
+        default: return size.height
+        }
+    }
+    private var hat: Hat = .none
 
     // Tree: node > squash > figure (facing) > pose > parts.
     private let squash = SKNode()
@@ -492,6 +501,7 @@ final class PlaceholderBackend: AnimationBackend {
     }
 
     func setHat(_ hat: Hat) {
+        self.hat = hat
         hatNode.removeAllChildren()
         hatNode.zRotation = 0
         switch hat {
@@ -633,9 +643,9 @@ final class PlaceholderBackend: AnimationBackend {
             n.addChild(page)
             page.run(.repeatForever(.sequence([
                 .wait(forDuration: 4, withRange: 3),
-                .run { page.isHidden = false; page.xScale = 1 },
+                .run { [weak page] in page?.isHidden = false; page?.xScale = 1 },
                 .scaleX(to: -1, duration: 0.35),
-                .run { page.isHidden = true; page.xScale = 1 },
+                .run { [weak page] in page?.isHidden = true; page?.xScale = 1 },
             ])))
         }
         return n
@@ -665,9 +675,9 @@ final class PlaceholderBackend: AnimationBackend {
         n.addChild(ell(2.2, 2.2, dark, at: pt(9, 10)))
         let colors = [rgb(0x9AD0FF), rgb(0xB8F2C8), rgb(0xFFD6E7), rgb(0xFFF1A8)]
         var i = 0
-        n.run(.repeatForever(.sequence([.wait(forDuration: 0.6, withRange: 0.5), .run {
+        n.run(.repeatForever(.sequence([.wait(forDuration: 0.6, withRange: 0.5), .run { [weak screen] in
             i = (i + 1) % colors.count
-            screen.fillColor = colors[i]
+            screen?.fillColor = colors[i]
         }])))
         return n
     }
