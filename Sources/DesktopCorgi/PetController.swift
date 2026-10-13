@@ -131,7 +131,7 @@ final class PetController {
 
     func beginBehavior(_ b: Behavior) {
         if b != .fetch && fetchPhase != nil { clearFetch() }
-        if needs.state.isAsleep != (b == .sleep) { needs.setAsleep(b == .sleep) }
+        if needs.state.isAsleep != b.countsAsSleep { needs.setAsleep(b.countsAsSleep) }
         executor.speedScale = needs.isLow(.happiness) ? 0.6 : 1
         executor.begin(b, body: body, world: world, cursor: NSEvent.mouseLocation)
     }
@@ -196,7 +196,7 @@ final class PetController {
     }
 
     private func wake() {
-        if brain.current == .sleep { brain.finishCurrent() }
+        if brain.current.countsAsSleep { brain.finishCurrent() }
         if needs.state.isAsleep { needs.setAsleep(false) }
     }
 
@@ -256,7 +256,7 @@ final class PetController {
         overlays.place(globalFeet: body.position)
         backend.setFacing(right: body.facingRight)
         updateAnimation(now)
-        if brain.current == .sleep && now - lastZzz > 2 {
+        if brain.current.countsAsSleep && now - lastZzz > 2 {
             lastZzz = now
             Effects.floatEmoji("💤", on: backend.node, height: backend.size.height * 0.8)
         }
@@ -268,7 +268,7 @@ final class PetController {
     private func updateAnimation(_ now: CFTimeInterval) {
         if let o = animOverride, o.until <= now { animOverride = nil }
         let state = animOverride?.state
-            ?? animState(for: brain.current, mode: body.mode, isMoving: body.isMoving)
+            ?? animState(for: brain.current, mode: body.mode, isMoving: body.isMoving, isRunning: body.isRunning)
         if state != currentAnim {
             currentAnim = state
             backend.play(state)
@@ -314,7 +314,7 @@ extension PetController: SceneInputHandler {
     }
 
     func pet() {
-        if brain.current == .sleep {
+        if brain.current.countsAsSleep {
             brain.finishCurrent()
             needs.setAsleep(false)
         }

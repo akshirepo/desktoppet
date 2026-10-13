@@ -71,4 +71,13 @@ final class RoamingBodyTests: XCTestCase {
         body.release()
         XCTAssertEqual(run(body, seconds: 2), [.landed])
     }
+
+    func testIsRunningOnlyAboveStrollPace() {
+        let body = Body(position: CGPoint(x: 300, y: 0))
+        _ = run(body, seconds: 0.1)
+        body.walk(direction: 1, speed: body.config.walkSpeed)
+        XCTAssertFalse(body.isRunning)
+        body.walk(direction: 1, speed: body.config.runSpeed)
+        XCTAssertTrue(body.isRunning)
+    }
 }

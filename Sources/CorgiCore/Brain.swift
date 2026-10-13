@@ -3,9 +3,14 @@ import Foundation
 public enum Behavior: String, CaseIterable {
     case idle, walk, sit, sleep, zoomies, chaseCursor, hopToWindow, beg
     case eat, fetch, bath, dangle, fall, greet
+    case goHome, read, readSleep, music, watchTV, wave, turnAround, playBallHome
+    case yawn, idleSleep, chaseMe, ballChase
 
     /// Behaviors the brain picks on its own. The rest only happen through `interrupt`.
     public static let autonomous: [Behavior] = [.idle, .walk, .sit, .sleep, .zoomies, .chaseCursor, .hopToWindow, .beg]
+
+    /// Behaviors during which energy refills at the asleep rate.
+    public var countsAsSleep: Bool { self == .sleep || self == .readSleep || self == .idleSleep }
 }
 
 public struct BrainConfig {
@@ -108,6 +113,6 @@ public final class Brain {
 
     public func finishCurrent() {
         remaining = 0
-        if current == .sleep { current = .idle }
+        if current.countsAsSleep { current = .idle }
     }
 }

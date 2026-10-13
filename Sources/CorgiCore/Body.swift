@@ -39,6 +39,9 @@ public final class Body {
         mode == .airborne || walkVelocity != 0 || (mode == .roaming && velocity != .zero)
     }
 
+    /// True when walking faster than a stroll, so the animation should be `run`.
+    public var isRunning: Bool { abs(walkVelocity) > config.walkSpeed * 1.6 }
+
     public func walk(direction: CGFloat, speed: CGFloat) {
         guard mode == .grounded else { return }
         walkVelocity = direction.sign == .minus ? -speed : (direction == 0 ? 0 : speed)

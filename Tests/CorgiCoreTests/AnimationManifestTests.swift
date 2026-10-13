@@ -37,7 +37,7 @@ final class AnimationManifestTests: XCTestCase {
     }
 
     func testBehaviorToAnimation() {
-        XCTAssertEqual(animState(for: .walk, mode: .held, isMoving: false), .dangle)
+        XCTAssertEqual(animState(for: .walk, mode: .held, isMoving: false), .scared)
         XCTAssertEqual(animState(for: .hopToWindow, mode: .airborne, isMoving: true), .fall)
         XCTAssertEqual(animState(for: .walk, mode: .grounded, isMoving: true), .walk)
         XCTAssertEqual(animState(for: .zoomies, mode: .grounded, isMoving: true), .run)
@@ -49,7 +49,32 @@ final class AnimationManifestTests: XCTestCase {
         XCTAssertEqual(animState(for: .beg, mode: .grounded, isMoving: false), .beg)
         XCTAssertEqual(animState(for: .eat, mode: .grounded, isMoving: false), .eat)
         XCTAssertEqual(animState(for: .bath, mode: .grounded, isMoving: false), .bath)
-        XCTAssertEqual(animState(for: .greet, mode: .grounded, isMoving: false), .wiggle)
+        XCTAssertEqual(animState(for: .greet, mode: .grounded, isMoving: false), .wave)
         XCTAssertEqual(animState(for: .idle, mode: .grounded, isMoving: false), .idle)
+    }
+
+    func testCompanionBehaviorsToAnimation() {
+        XCTAssertEqual(animState(for: .chaseMe, mode: .roaming, isMoving: true), .roam)
+        XCTAssertEqual(animState(for: .ballChase, mode: .roaming, isMoving: true, carrying: true), .holdBall)
+        XCTAssertEqual(animState(for: .goHome, mode: .grounded, isMoving: true), .walk)
+        XCTAssertEqual(animState(for: .goHome, mode: .grounded, isMoving: true, isRunning: true), .run)
+        XCTAssertEqual(animState(for: .wave, mode: .grounded, isMoving: false), .wave)
+        XCTAssertEqual(animState(for: .turnAround, mode: .grounded, isMoving: false), .back)
+        XCTAssertEqual(animState(for: .read, mode: .grounded, isMoving: false), .read)
+        XCTAssertEqual(animState(for: .readSleep, mode: .grounded, isMoving: false), .readSleep)
+        XCTAssertEqual(animState(for: .music, mode: .grounded, isMoving: false), .music)
+        XCTAssertEqual(animState(for: .watchTV, mode: .grounded, isMoving: false), .watch)
+        XCTAssertEqual(animState(for: .yawn, mode: .grounded, isMoving: false), .yawn)
+        XCTAssertEqual(animState(for: .idleSleep, mode: .grounded, isMoving: false), .sleep)
+        XCTAssertEqual(animState(for: .playBallHome, mode: .grounded, isMoving: false), .kick)
+    }
+
+    func testNewStatesFallBackToIdleInOldPacks() throws {
+        XCTAssertEqual(AnimState.allCases.count, 25)
+        let m = try AnimationManifest.load(from: write(sample))
+        for s in [AnimState.wave, .back, .read, .readSleep, .music, .watch, .yawn, .scared, .happy, .holdBall, .kick, .roam] {
+            XCTAssertEqual(m.resolve(s)?.state, .idle, "\(s)")
+            XCTAssertTrue(m.missingStates.contains(s), "\(s)")
+        }
     }
 }

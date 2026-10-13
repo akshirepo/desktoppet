@@ -90,4 +90,13 @@ final class BrainTests: XCTestCase {
         XCTAssertNotNil(b.update(dt: 20, ctx(energy: 96, asleep: true)))
         XCTAssertNotEqual(b.current, .sleep)
     }
+
+    func testSleepLikeBehaviorsCountAsSleepAndFinishWakes() {
+        XCTAssertEqual(Behavior.allCases.filter(\.countsAsSleep), [.sleep, .readSleep, .idleSleep])
+        let b = brain()
+        b.interrupt(with: .readSleep, duration: 60)
+        b.finishCurrent()
+        XCTAssertEqual(b.current, .idle)
+        XCTAssertNotNil(b.update(dt: 0, ctx()))
+    }
 }

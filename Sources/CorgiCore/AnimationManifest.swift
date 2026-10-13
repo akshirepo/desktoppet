@@ -2,6 +2,7 @@ import Foundation
 
 public enum AnimState: String, CaseIterable, Codable {
     case idle, walk, run, sit, sleep, eat, beg, dangle, fall, land, wiggle, bath, fetch
+    case wave, back, read, readSleep, music, watch, yawn, scared, happy, holdBall, kick, roam
 }
 
 public struct AnimationSpec: Codable, Equatable {
@@ -43,28 +44,37 @@ public struct AnimationManifest: Codable, Equatable {
     }
 }
 
-public func animState(for behavior: Behavior, mode: BodyMode, isMoving: Bool) -> AnimState {
+public func animState(for behavior: Behavior, mode: BodyMode, isMoving: Bool,
+                      isRunning: Bool = false, carrying: Bool = false) -> AnimState {
     switch mode {
-    case .held: return .dangle
+    case .held: return .scared
     case .airborne: return .fall
-    case .grounded, .roaming: break
+    case .roaming: return carrying ? .holdBall : .roam
+    case .grounded: break
     }
     if isMoving {
         switch behavior {
         case .zoomies, .chaseCursor, .fetch, .greet: return .run
-        default: return .walk
+        default: return isRunning ? .run : .walk
         }
     }
     switch behavior {
     case .sit, .chaseCursor: return .sit
-    case .sleep: return .sleep
+    case .sleep, .idleSleep: return .sleep
     case .beg: return .beg
     case .eat: return .eat
     case .bath: return .bath
     case .fetch: return .fetch
-    case .greet: return .wiggle
+    case .greet, .wave: return .wave
     case .dangle: return .dangle
     case .fall: return .fall
+    case .turnAround: return .back
+    case .read: return .read
+    case .readSleep: return .readSleep
+    case .music: return .music
+    case .watchTV: return .watch
+    case .yawn: return .yawn
+    case .playBallHome: return .kick
     default: return .idle
     }
 }

@@ -53,12 +53,12 @@ final class PlaceholderBackend: AnimationBackend {
         figure.setScale(1)
         setFacing(right: facingRight)
         switch state {
-        case .walk, .run:
-            let t = state == .run ? 0.08 : 0.16
+        case .walk, .run, .roam, .holdBall:
+            let t = state == .walk ? 0.16 : 0.08
             figure.run(.repeatForever(.sequence([.moveBy(x: 0, y: 3, duration: t), .moveBy(x: 0, y: -3, duration: t)])))
-        case .sleep:
+        case .sleep, .readSleep:
             figure.yScale = 0.7
-        case .sit:
+        case .sit, .read, .music, .watch:
             figure.yScale = 0.9
         case .beg:
             figure.zRotation = 0.25
@@ -66,8 +66,22 @@ final class PlaceholderBackend: AnimationBackend {
             figure.run(.repeatForever(.sequence([.rotate(toAngle: -0.15, duration: 0.2), .rotate(toAngle: 0, duration: 0.2)])))
         case .dangle:
             figure.run(.repeatForever(.sequence([.rotate(toAngle: 0.2, duration: 0.4), .rotate(toAngle: -0.2, duration: 0.4)])))
+        case .scared:
+            figure.run(.repeatForever(.sequence([.moveBy(x: 2, y: 0, duration: 0.04), .moveBy(x: -2, y: 0, duration: 0.04)])))
         case .wiggle:
             figure.run(.repeat(.sequence([.rotate(toAngle: 0.15, duration: 0.08), .rotate(toAngle: -0.15, duration: 0.08)]), count: 4))
+        case .wave:
+            figure.run(.repeatForever(.sequence([.rotate(toAngle: 0.12, duration: 0.15), .rotate(toAngle: -0.04, duration: 0.15)])))
+        case .happy:
+            figure.run(.repeat(.sequence([.moveBy(x: 0, y: 6, duration: 0.12), .moveBy(x: 0, y: -6, duration: 0.12)]), count: 3))
+        case .back:
+            figure.run(.sequence([.scaleX(by: 0.3, y: 1, duration: 0.25), .wait(forDuration: 1.5),
+                                  .scaleX(by: 1 / 0.3, y: 1, duration: 0.25)]))
+        case .yawn:
+            figure.run(.sequence([.scaleY(to: 1.1, duration: 0.6), .scaleY(to: 0.8, duration: 1.4)]))
+        case .kick:
+            figure.run(.repeatForever(.sequence([.rotate(toAngle: -0.2, duration: 0.15), .rotate(toAngle: 0, duration: 0.25),
+                                                 .wait(forDuration: 0.1)])))
         case .bath:
             figure.run(.repeatForever(.sequence([.moveBy(x: 3, y: 0, duration: 0.05), .moveBy(x: -3, y: 0, duration: 0.05)])))
         case .fall:
