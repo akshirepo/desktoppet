@@ -1,5 +1,6 @@
 #if canImport(AppKit)
 import AppKit
+import CorgiCore
 
 final class ClosureMenuItem: NSMenuItem {
     private let handler: () -> Void
@@ -27,6 +28,11 @@ struct PetMenuActions {
     var debugOn: Bool
     var toggleLogin: () -> Void
     var loginOn: Bool
+    var rename: () -> Void
+    var hat: Hat
+    var setHat: (Hat) -> Void
+    var toggleSounds: () -> Void
+    var soundsOn: Bool
 }
 
 enum PetMenu {
@@ -41,6 +47,19 @@ enum PetMenu {
         menu.addItem(ClosureMenuItem("💤 Nap", handler: a.nap))
         menu.addItem(.separator())
         menu.addItem(ClosureMenuItem("📊 Stats…", handler: a.stats))
+        menu.addItem(ClosureMenuItem("Rename…", handler: a.rename))
+        let hats = NSMenuItem(title: "Hats", action: nil, keyEquivalent: "")
+        let hatMenu = NSMenu()
+        for hat in Hat.allCases {
+            let item = ClosureMenuItem(hat.displayName) { a.setHat(hat) }
+            item.state = hat == a.hat ? .on : .off
+            hatMenu.addItem(item)
+        }
+        hats.submenu = hatMenu
+        menu.addItem(hats)
+        let sounds = ClosureMenuItem("Sounds", handler: a.toggleSounds)
+        sounds.state = a.soundsOn ? .on : .off
+        menu.addItem(sounds)
         let debug = ClosureMenuItem("Debug Overlay", handler: a.toggleDebug)
         debug.state = a.debugOn ? .on : .off
         menu.addItem(debug)

@@ -7,6 +7,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var statusItem: NSStatusItem!
     let store = StateStore(directory: StateStore.defaultDirectory)
     var needs: NeedsEngine!
+    let profileStore = ProfileStore(directory: StateStore.defaultDirectory)
+    var profile = PetProfile()
     var controller: PetController!
     var awaySeconds: TimeInterval = 0
     private var saveTimer: Timer?
@@ -22,11 +24,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         needs = NeedsEngine(state: loaded ?? .fresh(at: Date()), clock: SystemClock())
         if loaded != nil { awaySeconds = needs.catchUpOffline() }
 
+        profile = profileStore.load()
         controller = PetController(needs: needs, backend: makeBackend())
+        controller.applyProfile(profile)
         controller.start()
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
             guard let self else { return }
             self.controller.greet(awaySeconds: self.awaySeconds)
+        }
+        if !profile.askedForName {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak self] in
+                guard let self else { return }
+                self.profile.askedForName = true
+                self.saveProfile()
+                self.promptRename(firstTime: true)
+            }
         }
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -70,11 +82,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         do { try store.save(needs.state) } catch { NSLog("DesktopCorgi: save failed: \(error)") }
     }
 
+    func saveProfile() {
+        do { try profileStore.save(profile) } catch { NSLog("DesktopCorgi: profile save failed: \(error)") }
+    }
+
+    func updateProfile(_ change: (inout PetProfile) -> Void) {
+        change(&profile)
+        controller.applyProfile(profile)
+        saveProfile()
+    }
+
+    /// NSAlert with a text field. OK renames; Later keeps the current name.
+    func promptRename(firstTime: Bool) {
+        let alert = NSAlert()
+        alert.messageText = firstTime ? "Say hi to your new corgi!" : "Rename your corgi"
+        alert.informativeText = firstTime ? "What should we call them? You can change it later from the menu."
+            : "Pick a new name (up to \(PetProfile.maxNameLength) characters)."
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 220, height: 24))
+        field.stringValue = profile.name
+        field.placeholderString = PetProfile.defaultName
+        alert.accessoryView = field
+        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: "Later")
+        alert.window.initialFirstResponder = field
+        NSApp.activate()
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        updateProfile { $0.rename(to: field.stringValue) }
+    }
+
     func showStats() {
         guard let button = statusItem.button else { return }
         let p = NSPopover()
         p.behavior = .transient
-        p.contentViewController = NSHostingController(rootView: StatsView(state: needs.state, level: needs.level))
+        p.contentViewController = NSHostingController(rootView: StatsView(state: needs.state, title: profile.statsTitle(level: needs.level)))
         NSApp.activate()
         p.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         popover = p
@@ -99,7 +139,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             toggleDebug: { [weak self] in self?.controller.debug.enabled.toggle() },
             debugOn: controller.debug.enabled,
             toggleLogin: { LoginItem.setEnabled(!LoginItem.isEnabled) },
-            loginOn: LoginItem.isEnabled
+            loginOn: LoginItem.isEnabled,
+            rename: { [weak self] in DispatchQueue.main.async { self?.promptRename(firstTime: false) } },
+            hat: profile.hat,
+            setHat: { [weak self] hat in self?.updateProfile { $0.hat = hat } },
+            toggleSounds: { [weak self] in self?.updateProfile { $0.soundsOn.toggle() } },
+            soundsOn: profile.soundsOn
         )
     }
 }

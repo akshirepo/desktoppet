@@ -20,8 +20,9 @@ enum Effects {
         }
     }
 
-    /// Rounded speech bubble above the corgi for 2.5s, after `delay`.
-    static func speech(_ text: String, on node: SKNode, height: CGFloat, delay: TimeInterval = 0) {
+    /// Rounded speech bubble above the corgi for 2.5s, after `delay`. `thought` adds the little trailing dots.
+    static func speech(_ text: String, on node: SKNode, height: CGFloat, delay: TimeInterval = 0,
+                       thought: Bool = false) {
         let label = SKLabelNode(text: text)
         label.fontName = NSFont.boldSystemFont(ofSize: 13).fontName
         label.fontSize = 13
@@ -33,6 +34,16 @@ enum Effects {
         bubble.strokeColor = NSColor(white: 0.2, alpha: 1)
         bubble.lineWidth = 1.5
         bubble.addChild(label)
+        if thought {
+            for (x, y, r) in [(-w / 2 + 10, -h / 2 - 6, 3.5), (-w / 2 + 5, -h / 2 - 13, 2.2)] as [(CGFloat, CGFloat, CGFloat)] {
+                let dot = SKShapeNode(circleOfRadius: r)
+                dot.fillColor = .white
+                dot.strokeColor = NSColor(white: 0.2, alpha: 1)
+                dot.lineWidth = 1.5
+                dot.position = CGPoint(x: x, y: y)
+                bubble.addChild(dot)
+            }
+        }
         bubble.position = CGPoint(x: 0, y: height + 22)
         bubble.zPosition = 50
         bubble.alpha = 0

@@ -4,11 +4,11 @@ import SwiftUI
 
 struct StatsView: View {
     let state: NeedsState
-    let level: Int
+    let title: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Corgi · Level \(level)").font(.headline)
+            Text(title).font(.headline)
             bar("🍖 Hunger", state.hunger)
             bar("❤️ Happiness", state.happiness)
             bar("⚡️ Energy", state.energy)

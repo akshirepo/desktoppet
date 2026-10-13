@@ -38,6 +38,8 @@ final class PetController {
     private var propEmoji: String?
     private var restPollElapsed: TimeInterval = 0
     private var lastClickPet: CFTimeInterval = 0
+    let sounds = SoundPlayer()
+    private var moodBubbles = MoodBubbles()
     private static let props: [Behavior: String] = [
         .read: "📖", .readSleep: "📖", .music: "🎧", .watchTV: "📺", .playBallHome: "⚽️",
     ]
@@ -159,7 +161,9 @@ final class PetController {
     func beginBehavior(_ b: Behavior) {
         if b != .ballChase { endBall() }
         if chaseMe && b != .chaseMe && b != .dangle { chaseMe = false }
+        if b.countsAsSleep && !needs.state.isAsleep { sounds.play(.purr) }
         if needs.state.isAsleep != b.countsAsSleep { needs.setAsleep(b.countsAsSleep) }
+        if b == .eat { sounds.play(.bottle) }
         executor.speedScale = needs.isLow(.happiness) ? 0.6 : 1
         executor.begin(b, body: body, world: world, cursor: NSEvent.mouseLocation)
         if b == .ballChase { spawnBall() }
@@ -243,14 +247,21 @@ final class PetController {
     private func ballCaught() {
         needs.play()
         boredom.noteInteraction()
+        sounds.play(.tink)
         Effects.floatEmoji("❤️", on: backend.node, height: backend.size.height, count: 3)
         ball = nil
         executor.ballPosition = nil
         if let node = ballNode {
             node.removeFromParent()
-            node.position = CGPoint(x: body.facingRight ? 26 : -26, y: 30)
+            node.position = carryPoint
+            node.zPosition = 20
             backend.node.addChild(node)
         }
+    }
+
+    private var carryPoint: CGPoint {
+        let m = backend.mouthPoint
+        return CGPoint(x: body.facingRight ? m.x : -m.x, y: m.y)
     }
 
     private func stepBall(dt: TimeInterval) {
@@ -330,6 +341,7 @@ final class PetController {
     private func hoverPet() {
         boredom.noteInteraction()
         if needs.pet() {
+            sounds.play(.pop)
             Effects.floatEmoji("❤️", on: backend.node, height: backend.size.height, count: 2)
             animOverride = (.happy, CACurrentMediaTime() + 0.8)
         }
@@ -337,7 +349,7 @@ final class PetController {
 
     /// Emoji props for idle activities until the art pack has them.
     private func updateProp() {
-        let want = body.mode == .grounded ? Self.props[brain.current] : nil
+        let want = body.mode == .grounded && !backend.drawsProps ? Self.props[brain.current] : nil
         guard want != propEmoji else { return }
         prop?.removeFromParent()
         prop = nil
@@ -375,6 +387,9 @@ final class PetController {
 
         let cursor = NSEvent.mouseLocation
         updateHover(dt: dt, cursor: cursor)
+        backend.setHovering(body.mode == .grounded && hitRect.contains(cursor))
+        backend.setHappy(needs.state.happiness > 70)
+        updateMoodBubble(dt: dt)
         stepBall(dt: dt)
         if executor.step(brain.current, body: body, world: world, cursor: cursor) { stepFinished() }
         if let event = body.step(dt: dt, world: world) {
@@ -399,12 +414,27 @@ final class PetController {
             Effects.floatEmoji("💦", on: backend.node, height: backend.size.height * 0.9)
         }
         if executor.carryingBall, let n = ballNode, n.parent === backend.node {
-            n.position.x = body.facingRight ? 26 : -26
+            n.position = carryPoint
         }
         updateProp()
         debug.update(world: world, hitRect: hitRect, behavior: brain.current, overlays: overlays)
         overlays.setClickThrough(!(body.mode == .held || hitRect.contains(cursor)))
-        setRate(body.isMoving || body.mode == .held || animOverride != nil || ball != nil ? 30 : 10)
+        setRate(body.isMoving || body.mode == .held || animOverride != nil || ball != nil ? 30 : 15)
+    }
+
+    /// A "💭" thought bubble for the lowest low need, about once a minute.
+    private func updateMoodBubble(dt: TimeInterval) {
+        let blocked = needs.state.isAsleep || brain.current.countsAsSleep
+            || body.mode == .held || body.mode == .roaming
+        guard let need = moodBubbles.update(dt: dt, needs: needs.state, blocked: blocked) else { return }
+        Effects.speech(MoodBubbles.bubbleText(for: need), on: backend.node, height: backend.size.height, thought: true)
+    }
+
+    /// The name tag and the hat, from the saved profile.
+    func applyProfile(_ profile: PetProfile) {
+        backend.setName(profile.name)
+        backend.setHat(profile.hat)
+        sounds.enabled = profile.soundsOn
     }
 
     private func updateAnimation(_ now: CFTimeInterval) {
@@ -472,6 +502,7 @@ extension PetController: SceneInputHandler {
         lastClickPet = CACurrentMediaTime()
         if chaseMe {
             if needs.catchPet() {
+                sounds.play(.pop)
                 Effects.floatEmoji("❤️", on: backend.node, height: backend.size.height, count: 4)
                 animOverride = (.happy, CACurrentMediaTime() + 0.8)
             }
@@ -482,6 +513,7 @@ extension PetController: SceneInputHandler {
             needs.setAsleep(false)
         }
         if needs.pet() {
+            sounds.play(.pop)
             Effects.floatEmoji("❤️", on: backend.node, height: backend.size.height, count: 3)
             animOverride = (.wiggle, CACurrentMediaTime() + 0.8)
         }
