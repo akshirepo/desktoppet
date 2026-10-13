@@ -175,3 +175,38 @@ Development has to happen on the Mac (Xcode). The Linux cloud desktop can't buil
 ## Out of scope for v1
 
 Sounds, multiple pets, syncing between machines, Rive backend, custom art creation.
+
+## v3: Cuter corgi and extras
+
+### Look
+- Original "chibi bean" corgi, drawn in code in `PlaceholderBackend` (no copied art). Reference mockup: card "A. Chibi bean" in `~/corgi-preview/styles.html`.
+- Huge round head, tiny loaf body, stubby paws, big glossy eyes with two white highlights, pink blush ovals, small pink tongue, cream muzzle and chest blaze, orange fur (about #f2a541), pink inner ears.
+- Small constant life: blink every 3-6s (random), an ear twitch now and then, tail wag (faster when happiness > 70), gentle breathing bob, squash on landing, head tilt while the cursor hovers.
+- Every `AnimState` gets its own pose and expression in this style (sleep is curled up with closed curved eyes, scared has wobbly eyes and a sweat drop, happy has sparkly eyes, and so on).
+- Drawn props replace v2 emoji where the pose draws them (book, headphones, TV, ball). Emoji stay only where nothing is drawn.
+- Stays inside roughly the current hit box (about 96x80pt) with feet at the node origin.
+
+### Name
+- Default name "Corgi". On the first launch of v3 (`askedForName == false`) a rename prompt shows (text field, OK and Later). `askedForName` becomes true either way.
+- "Rename…" menu item any time.
+- Name input is trimmed, capped at 20 characters, and an empty result keeps the old name.
+- The name shows on a small collar tag (first 6 characters, then "…" if longer) and in the Stats title as "<Name> · Level N".
+
+### Hats
+- Hats submenu with radio items: None, Bow, Party Hat, Beanie, Flower Crown, Santa Hat.
+- Drawn in code and placed on the head in every pose (follows head offset, rotation, and facing). The choice is saved.
+
+### Sounds
+- "Sounds" menu toggle, off by default, saved.
+- Only built-in macOS system sounds (`NSSound(named:)`) at volume 0.3: "Pop" on pet, "Tink" on ball catch, "Purr" when it falls asleep (at most once per sleep), "Bottle" on eat. No downloaded audio.
+
+### Mood bubbles
+- When a need is below the low threshold (30), a thought bubble shows "💭" plus an emoji for the lowest need: hunger 🍖, cleanliness 🛁, energy 💤, happiness 🎾.
+- The first bubble shows 10s after a need goes low, then about once every 60s.
+- No bubbles while asleep, held, or roaming. Being blocked also resets the timer.
+
+### Data
+- `PetProfile` in CorgiCore (name, hat, soundsOn, askedForName), saved as `profile.json` next to `state.json` by `ProfileStore`.
+- Missing file gives defaults. A corrupt file is moved to `profile.corrupt.json` and defaults are used. An unknown hat value decodes to none.
+- Mood bubble timing is a pure CorgiCore unit (`MoodBubbles`) fed elapsed time, the needs state, and a blocked flag. It returns the need to show, if any.
+- All of the above is unit tested.
