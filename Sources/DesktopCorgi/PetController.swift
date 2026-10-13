@@ -29,6 +29,15 @@ final class PetController {
     private var screenLocked = false
     private var screensAsleep = false
     private var lastZzz: CFTimeInterval = 0
+    private var lastSweat: CFTimeInterval = 0
+    let home = HomeTracker(clock: SystemClock())
+    let rest = RestMonitor()
+    let hover = HoverPet()
+    private var prop: SKLabelNode?
+    private var propEmoji: String?
+    private static let props: [Behavior: String] = [
+        .read: "📖", .readSleep: "📖", .music: "🎧", .watchTV: "📺", .playBallHome: "⚽️",
+    ]
 
     init(needs: NeedsEngine, backend: AnimationBackend) {
         self.needs = needs
@@ -38,6 +47,13 @@ final class PetController {
         let vf = NSScreen.main?.visibleFrame ?? .zero
         body = Body(position: CGPoint(x: vf.midX, y: vf.maxY - 100))
         overlays.input = self
+        updateHome()
+    }
+
+    /// Home is on the primary screen (the one with the menu bar), index 0 in `world.screens`.
+    private func updateHome() {
+        home.setScreens(world.screens, mainIndex: 0)
+        executor.home = home.spot
     }
 
     var hitRect: CGRect {
@@ -75,10 +91,15 @@ final class PetController {
         }
     }
 
-    func greet() {
-        brain.interrupt(with: .greet, duration: 4)
+    /// Wave and say hi on every launch; a second bubble if away more than an hour.
+    func greet(awaySeconds: TimeInterval) {
+        wake()
+        let lines = Greeting.lines(awaySeconds: awaySeconds)
+        brain.interrupt(with: .greet, duration: lines.count > 1 ? 5.5 : 3)
         beginBehavior(.greet)
-        Effects.floatEmoji("👋", on: backend.node, height: backend.size.height)
+        for (i, line) in lines.enumerated() {
+            Effects.speech(line, on: backend.node, height: backend.size.height, delay: Double(i) * 2.6)
+        }
     }
 
     /// Stays paused until the screen is both unlocked and awake.
@@ -120,6 +141,7 @@ final class PetController {
         overlays.setPaused(paused)
         if timerFPS > 0 { overlays.setFPS(timerFPS) }
         body.clamp(to: world.screens)
+        updateHome()
     }
 
     /// Called when the floor disappears under the corgi.
@@ -230,18 +252,88 @@ final class PetController {
         fetchPhase = nil
     }
 
+    /// Seconds since any keyboard or mouse event. Needs no permission.
+    private var userIdleSeconds: TimeInterval {
+        CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: CGEventType(rawValue: ~0)!)
+    }
+
+    private var restBusy: Bool {
+        dragging || body.mode == .held || body.mode == .roaming || brain.current == .ballChase
+    }
+
+    private func updateRest(dt: TimeInterval, now: CFTimeInterval) {
+        let fullScreen = isFullScreen(frontWindow: world.windows.first?.frame,
+                                      screenFrames: NSScreen.screens.map(\.frame))
+        switch rest.update(dt: dt, idleSeconds: userIdleSeconds, fullScreen: fullScreen, busy: restBusy) {
+        case .startYawn?:
+            brain.interrupt(with: .yawn, duration: .infinity)
+            beginBehavior(.yawn)
+        case .fallAsleep?:
+            brain.interrupt(with: .idleSleep, duration: .infinity)
+            beginBehavior(.idleSleep)
+        case .wake?:
+            if brain.current == .yawn || brain.current == .idleSleep {
+                brain.finishCurrent()
+                needs.setAsleep(false)
+                animOverride = (.wiggle, now + 0.8)
+            }
+        case nil:
+            break
+        }
+    }
+
+    private func updateHover(dt: TimeInterval, cursor: CGPoint) {
+        let blocked = dragging || pressPoint != nil || body.mode != .grounded
+            || brain.current.countsAsSleep || brain.current == .yawn
+        if hover.update(dt: dt, hovering: hitRect.contains(cursor), blocked: blocked) { hoverPet() }
+    }
+
+    private func hoverPet() {
+        if needs.pet() {
+            Effects.floatEmoji("❤️", on: backend.node, height: backend.size.height, count: 2)
+            animOverride = (.happy, CACurrentMediaTime() + 0.8)
+        }
+    }
+
+    /// Emoji props for idle activities until the art pack has them.
+    private func updateProp() {
+        let want = body.mode == .grounded ? Self.props[brain.current] : nil
+        guard want != propEmoji else { return }
+        prop?.removeFromParent()
+        prop = nil
+        propEmoji = want
+        guard let want else { return }
+        let p = Effects.makeProp(want)
+        let side: CGFloat = body.facingRight ? 1 : -1
+        let w = backend.size.width, h = backend.size.height
+        switch brain.current {
+        case .music: p.position = CGPoint(x: side * w * 0.35, y: h * 0.7)
+        case .watchTV: p.position = CGPoint(x: side * (w / 2 + 26), y: 0)
+        case .playBallHome:
+            p.position = CGPoint(x: side * (w / 2 + 6), y: 0)
+            p.run(.repeatForever(.sequence([.moveBy(x: 0, y: 16, duration: 0.25), .moveBy(x: 0, y: -16, duration: 0.25)])))
+        default: p.position = CGPoint(x: side * (w / 2 + 2), y: 2)
+        }
+        backend.node.addChild(p)
+        prop = p
+    }
+
     func tick() {
         let now = CACurrentMediaTime()
         let dt = min(now - lastTick, 0.1)
         lastTick = now
         needs.tick()
+        updateRest(dt: dt, now: now)
 
+        home.observe(body.position)
         let canHop = !world.reachableSegments(from: body.position, maxJumpUp: body.config.maxJumpUp,
                                               maxJumpAcross: body.config.maxJumpAcross).isEmpty
-        let ctx = BrainContext(needs: needs.state, lowThreshold: needs.config.lowThreshold, canHop: canHop)
+        let ctx = BrainContext(needs: needs.state, lowThreshold: needs.config.lowThreshold, canHop: canHop,
+                               atHome: home.isHome(body.position), secondsAwayFromHome: home.secondsAway)
         if let next = brain.update(dt: dt, ctx) { beginBehavior(next) }
 
         let cursor = NSEvent.mouseLocation
+        updateHover(dt: dt, cursor: cursor)
         if executor.step(brain.current, body: body, world: world, cursor: cursor) { stepFinished() }
         if let event = body.step(dt: dt, world: world) {
             if executor.handle(event, behavior: brain.current, body: body) { stepFinished() }
@@ -260,6 +352,11 @@ final class PetController {
             lastZzz = now
             Effects.floatEmoji("💤", on: backend.node, height: backend.size.height * 0.8)
         }
+        if body.mode == .held && now - lastSweat > 0.6 {
+            lastSweat = now
+            Effects.floatEmoji("💦", on: backend.node, height: backend.size.height * 0.9)
+        }
+        updateProp()
         debug.update(world: world, hitRect: hitRect, behavior: brain.current, overlays: overlays)
         overlays.setClickThrough(!(body.mode == .held || hitRect.contains(cursor)))
         setRate(body.isMoving || body.mode == .held || animOverride != nil ? 30 : 10)
@@ -302,8 +399,8 @@ extension PetController: SceneInputHandler {
         }
         if dragging {
             body.release()
-            brain.interrupt(with: .fall, duration: 5)
-            beginBehavior(.fall)
+            brain.interrupt(with: .goHome, duration: 30)
+            beginBehavior(.goHome)
         } else if pressPoint != nil {
             pet()
         }

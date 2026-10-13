@@ -39,7 +39,7 @@ final class OverlayWindow: NSPanel {
         backgroundColor = .clear
         hasShadow = false
         level = .floating
-        collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
+        collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
         ignoresMouseEvents = true
         isReleasedWhenClosed = false
         hidesOnDeactivate = false

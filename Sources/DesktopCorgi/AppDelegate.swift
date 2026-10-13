@@ -24,8 +24,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         controller = PetController(needs: needs, backend: makeBackend())
         controller.start()
-        if awaySeconds > 3600 {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in self?.controller.greet() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            guard let self else { return }
+            self.controller.greet(awaySeconds: self.awaySeconds)
         }
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)

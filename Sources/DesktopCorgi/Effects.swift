@@ -20,6 +20,41 @@ enum Effects {
         }
     }
 
+    /// Rounded speech bubble above the corgi for 2.5s, after `delay`.
+    static func speech(_ text: String, on node: SKNode, height: CGFloat, delay: TimeInterval = 0) {
+        let label = SKLabelNode(text: text)
+        label.fontName = NSFont.boldSystemFont(ofSize: 13).fontName
+        label.fontSize = 13
+        label.fontColor = .black
+        label.verticalAlignmentMode = .center
+        let w = label.frame.width + 18, h: CGFloat = 24
+        let bubble = SKShapeNode(rect: CGRect(x: -w / 2, y: -h / 2, width: w, height: h), cornerRadius: 10)
+        bubble.fillColor = .white
+        bubble.strokeColor = NSColor(white: 0.2, alpha: 1)
+        bubble.lineWidth = 1.5
+        bubble.addChild(label)
+        bubble.position = CGPoint(x: 0, y: height + 22)
+        bubble.zPosition = 50
+        bubble.alpha = 0
+        node.addChild(bubble)
+        bubble.run(.sequence([
+            .wait(forDuration: delay),
+            .fadeIn(withDuration: 0.15),
+            .wait(forDuration: 2.2),
+            .fadeOut(withDuration: 0.15),
+            .removeFromParent(),
+        ]))
+    }
+
+    /// Placeholder prop drawn next to the corgi (📖 🎧 📺 ⚽️) until the art pack has one.
+    static func makeProp(_ emoji: String) -> SKLabelNode {
+        let label = SKLabelNode(text: emoji)
+        label.fontSize = 22
+        label.verticalAlignmentMode = .baseline
+        label.zPosition = 5
+        return label
+    }
+
     static func makeBall() -> SKShapeNode {
         let ball = SKShapeNode(circleOfRadius: 7)
         ball.fillColor = .systemRed
