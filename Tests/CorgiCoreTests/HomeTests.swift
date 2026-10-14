@@ -2,6 +2,18 @@ import XCTest
 @testable import CorgiCore
 
 final class HomeTests: XCTestCase {
+    func testHomeGoesToBottomRightOfRightmostScreen() {
+        let laptop = CGRect(x: 0, y: 90, width: 1728, height: 994)
+        let external = CGRect(x: 1728, y: 37, width: 1920, height: 1080)
+        XCTAssertEqual(HomeTracker.cornerScreenIndex([laptop, external]), 1)
+        XCTAssertEqual(HomeTracker.cornerScreenIndex([external, laptop]), 0)
+        XCTAssertEqual(HomeTracker.cornerScreenIndex([laptop]), 0)
+        XCTAssertNil(HomeTracker.cornerScreenIndex([]))
+        let tracker = HomeTracker(clock: FakeClock())
+        tracker.setScreens([laptop, external], mainIndex: HomeTracker.cornerScreenIndex([laptop, external])!)
+        XCTAssertEqual(tracker.spot, CGPoint(x: 3648 - 80, y: 37))
+    }
+
     let screen1 = CGRect(x: 1440, y: 0, width: 1920, height: 1000)
 
     func testHomeIsBottomRightOfMainVisibleFrame() {

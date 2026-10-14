@@ -3,6 +3,17 @@ import AppKit
 import CorgiCore
 import SpriteKit
 
+/// Temporary debug trace for the Play Ball investigation.
+func corgiDebug(_ msg: String) {
+    let line = "\(Date()) \(msg)\n"
+    let url = URL(fileURLWithPath: "/tmp/corgi-debug.log")
+    if let h = try? FileHandle(forWritingTo: url) {
+        h.seekToEndOfFile(); h.write(Data(line.utf8)); try? h.close()
+    } else {
+        try? Data(line.utf8).write(to: url)
+    }
+}
+
 final class PetController {
     let needs: NeedsEngine
     let brain = Brain()
@@ -49,8 +60,9 @@ final class PetController {
         self.backend = backend
         overlays = OverlayManager(corgiNode: backend.node)
         world = World(provider: CGWindowListProvider(), screens: NSScreen.screens.map(\.visibleFrame))
-        let vf = NSScreen.main?.visibleFrame ?? .zero
-        body = Body(position: CGPoint(x: vf.midX, y: vf.maxY - 100))
+        let frames = NSScreen.screens.map(\.visibleFrame)
+        let vf = HomeTracker.cornerScreenIndex(frames).map { frames[$0] } ?? .zero
+        body = Body(position: CGPoint(x: vf.maxX - 80, y: vf.maxY - 100))
         overlays.input = self
         updateHome()
         executor.onBallCaught = { [weak self] in self?.ballCaught() }
@@ -58,7 +70,7 @@ final class PetController {
 
     /// Home is on the primary screen (the one with the menu bar), index 0 in `world.screens`.
     private func updateHome() {
-        home.setScreens(world.screens, mainIndex: 0)
+        home.setScreens(world.screens, mainIndex: HomeTracker.cornerScreenIndex(world.screens) ?? 0)
         executor.home = home.spot
     }
 
@@ -159,6 +171,7 @@ final class PetController {
     }
 
     func beginBehavior(_ b: Behavior) {
+        corgiDebug("begin \(b.rawValue) mode=\(body.mode) pos=\(body.position) ball=\(ball != nil)")
         if b != .ballChase { endBall() }
         if chaseMe && b != .chaseMe && b != .dangle { chaseMe = false }
         if b.countsAsSleep && !needs.state.isAsleep { sounds.play(.purr) }
@@ -171,6 +184,7 @@ final class PetController {
 
     /// The executor says the current behavior is done.
     func stepFinished() {
+        corgiDebug("stepFinished \(brain.current.rawValue) carrying=\(executor.carryingBall)")
         if brain.current == .ballChase && executor.carryingBall {
             brain.interrupt(with: .playBallHome, duration: Double.random(in: 8...15))
             beginBehavior(.playBallHome)
@@ -205,6 +219,7 @@ final class PetController {
 
     /// Throws a ball that flies around the screen. The corgi chases it, carries it home, and plays.
     func playBall() {
+        corgiDebug("playBall current=\(brain.current.rawValue)")
         wake()
         boredom.noteInteraction()
         brain.interrupt(with: .ballChase, duration: 30)
@@ -239,12 +254,14 @@ final class PetController {
         let node = Effects.makeBall()
         ballNode = node
         overlays.place(node, global: b.position)
+        corgiDebug("spawnBall at=\(b.position) screens=\(world.screens) scene=\(node.scene != nil) bodyMode=\(body.mode)")
         executor.ballPosition = b.position
         boredom.noteInteraction()
     }
 
     /// The executor reached the ball: +25 happiness and the ball moves to the corgi's mouth.
     private func ballCaught() {
+        corgiDebug("ballCaught")
         needs.play()
         boredom.noteInteraction()
         sounds.play(.tink)
@@ -268,6 +285,7 @@ final class PetController {
         guard let b = ball else { return }
         b.step(dt: dt)
         if b.popped {
+            corgiDebug("ball popped at=\(b.position) corgi=\(body.position)")
             if let node = ballNode, let scene = node.parent {
                 let pop = SKLabelNode(text: "💥")
                 pop.fontSize = 22
@@ -283,6 +301,7 @@ final class PetController {
     }
 
     private func endBall() {
+        if ball != nil || ballNode != nil { corgiDebug("endBall current=\(brain.current.rawValue)") }
         ballNode?.removeFromParent()
         ballNode = nil
         ball = nil
@@ -486,8 +505,9 @@ extension PetController: SceneInputHandler {
                 brain.interrupt(with: .chaseMe, duration: .infinity)
                 beginBehavior(.chaseMe)
             } else {
-                brain.interrupt(with: .goHome, duration: 30)
-                beginBehavior(.goHome)
+                // Stay where dropped. Home still pulls it back slowly via the brain's goHome weight.
+                brain.interrupt(with: .fall, duration: 5)
+                beginBehavior(.fall)
             }
         } else if pressPoint != nil {
             pet()

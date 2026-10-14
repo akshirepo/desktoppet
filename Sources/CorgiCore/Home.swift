@@ -35,6 +35,11 @@ public final class HomeTracker {
         spot = CGPoint(x: vf.maxX - config.insetFromRight, y: vf.minY)
     }
 
+    /// The screen whose right edge is furthest right: the bottom-right corner of the whole desktop.
+    public static func cornerScreenIndex(_ visibleFrames: [CGRect]) -> Int? {
+        visibleFrames.indices.max { visibleFrames[$0].maxX < visibleFrames[$1].maxX }
+    }
+
     public func isHome(_ p: CGPoint) -> Bool {
         guard let h = spot else { return false }
         return abs(p.x - h.x) <= config.radius && abs(p.y - h.y) <= 2
