@@ -3,7 +3,7 @@ import Foundation
 public enum AnimState: String, CaseIterable, Codable {
     case idle, walk, run, sit, sleep, eat, beg, dangle, fall, land, wiggle, bath, fetch
     case wave, back, read, readSleep, music, watch, yawn, scared, happy, holdBall, kick, roam
-    case clingSit, clingHang, clingLeft, clingRight, letGo
+    case clingSit, clingHang, clingPeek, clingLeft, clingRight, letGo
 }
 
 public struct AnimationSpec: Codable, Equatable {

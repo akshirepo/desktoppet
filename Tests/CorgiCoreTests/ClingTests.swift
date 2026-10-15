@@ -44,7 +44,7 @@ final class ClingTests: XCTestCase {
 
     func testAnimationStatePerEdge() {
         XCTAssertEqual(ClingSpot(windowID: 1, edge: .top, along: 0.5, above: true).animState, .clingSit)
-        XCTAssertEqual(ClingSpot(windowID: 1, edge: .top, along: 0.5, above: false).animState, .clingHang)
+        XCTAssertEqual(ClingSpot(windowID: 1, edge: .top, along: 0.5, above: false).animState, .clingPeek)
         XCTAssertEqual(ClingSpot(windowID: 1, edge: .bottom, along: 0.5, above: false).animState, .clingHang)
         XCTAssertEqual(ClingSpot(windowID: 1, edge: .left, along: 0.5, above: false).animState, .clingLeft)
         XCTAssertEqual(ClingSpot(windowID: 1, edge: .right, along: 0.5, above: false).animState, .clingRight)

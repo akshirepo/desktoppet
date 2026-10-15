@@ -1069,7 +1069,7 @@ final class PlaceholderBackend: AnimationBackend {
         case .clingSit:
             sitBody()
             eyeChoice = .happy
-        case .clingHang, .clingLeft, .clingRight:
+        case .clingHang, .clingPeek, .clingLeft, .clingRight:
             flyBody()
             eyeChoice = .sparkle
         case .letGo:

@@ -13,7 +13,7 @@ public struct ClingSpot: Equatable {
     public var windowID: Int
     public var edge: ClingEdge
     public var along: CGFloat
-    /// Top edge only: sitting on the edge (true) or hanging below it (false).
+    /// Top edge only: sitting on the edge (true) or peeking over it from below (false).
     public var above: Bool
 
     public init(windowID: Int, edge: ClingEdge, along: CGFloat, above: Bool) {
@@ -25,7 +25,8 @@ public struct ClingSpot: Equatable {
 
     public var animState: AnimState {
         switch edge {
-        case .top: return above ? .clingSit : .clingHang
+        // Just below a top edge it peeks over: face and paws above the edge, body hidden behind the window.
+        case .top: return above ? .clingSit : .clingPeek
         case .bottom: return .clingHang
         case .left: return .clingLeft
         case .right: return .clingRight
