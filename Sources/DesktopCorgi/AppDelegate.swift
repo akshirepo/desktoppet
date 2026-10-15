@@ -43,7 +43,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        statusItem.button?.title = "🐶"
+        statusItem.button?.title = profile.character == .sheep ? "🐑" : "🐶"
         let menu = NSMenu()
         menu.delegate = self
         statusItem.menu = menu
@@ -59,9 +59,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                                          userInfo: nil, repeats: true)
     }
 
+    static func packURL(for character: Character) -> URL {
+        StateStore.defaultDirectory.appendingPathComponent(character.packFolderName)
+    }
+
+    static func packExists(for character: Character) -> Bool {
+        FileManager.default.fileExists(atPath: packURL(for: character).appendingPathComponent("manifest.json").path)
+    }
+
     func makeBackend() -> AnimationBackend {
-        let pack = StateStore.defaultDirectory.appendingPathComponent("CorgiPack")
-        guard FileManager.default.fileExists(atPath: pack.appendingPathComponent("manifest.json").path) else {
+        let pack = Self.packURL(for: profile.character)
+        guard Self.packExists(for: profile.character) else {
+            if profile.character != .corgi { NSLog("DesktopCorgi: no \(pack.lastPathComponent), using placeholder") }
             return PlaceholderBackend()
         }
         do {
@@ -85,6 +94,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func saveProfile() {
         do { try profileStore.save(profile) } catch { NSLog("DesktopCorgi: profile save failed: \(error)") }
+    }
+
+    /// The backend is fixed for the life of the controller, so a new character saves and relaunches the app.
+    func switchCharacter(to character: Character) {
+        guard character != profile.character, Self.packExists(for: character) || character == .corgi else { return }
+        updateProfile { $0.character = character }
+        save()
+        let config = NSWorkspace.OpenConfiguration()
+        config.createsNewApplicationInstance = true
+        NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: config) { _, error in
+            DispatchQueue.main.async {
+                if let error {
+                    NSLog("DesktopCorgi: relaunch failed, new character applies on next launch: \(error)")
+                } else {
+                    NSApp.terminate(nil)
+                }
+            }
+        }
     }
 
     func updateProfile(_ change: (inout PetProfile) -> Void) {
@@ -113,7 +140,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// NSAlert with a text field. OK renames; Later keeps the current name.
     func promptRename(firstTime: Bool) {
         let alert = NSAlert()
-        alert.messageText = firstTime ? "Say hi to your new corgi!" : "Rename your corgi"
+        let kind = profile.character.displayName.lowercased()
+        alert.messageText = firstTime ? "Say hi to your new \(kind)!" : "Rename your \(kind)"
         alert.informativeText = firstTime ? "What should we call them? You can change it later from the menu."
             : "Pick a new name (up to \(PetProfile.maxNameLength) characters)."
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 220, height: 24))
@@ -164,7 +192,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             toggleSounds: { [weak self] in self?.updateProfile { $0.soundsOn.toggle() } },
             soundsOn: profile.soundsOn,
             toggleNameTag: { [weak self] in self?.updateProfile { $0.showNameTag.toggle() } },
-            nameTagOn: profile.showNameTag
+            nameTagOn: profile.showNameTag,
+            character: profile.character,
+            characterAvailable: { $0 == .corgi || AppDelegate.packExists(for: $0) },
+            setCharacter: { [weak self] c in DispatchQueue.main.async { self?.switchCharacter(to: c) } }
         )
     }
 }

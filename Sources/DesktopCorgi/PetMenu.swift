@@ -35,6 +35,9 @@ struct PetMenuActions {
     var soundsOn: Bool
     var toggleNameTag: () -> Void
     var nameTagOn: Bool
+    var character: Character
+    var characterAvailable: (Character) -> Bool
+    var setCharacter: (Character) -> Void
 }
 
 enum PetMenu {
@@ -53,6 +56,17 @@ enum PetMenu {
         let tag = ClosureMenuItem("Name Tag", handler: a.toggleNameTag)
         tag.state = a.nameTagOn ? .on : .off
         menu.addItem(tag)
+        let chars = NSMenuItem(title: "Character", action: nil, keyEquivalent: "")
+        let charMenu = NSMenu()
+        charMenu.autoenablesItems = false
+        for c in Character.allCases {
+            let item = ClosureMenuItem(c.displayName) { a.setCharacter(c) }
+            item.state = c == a.character ? .on : .off
+            item.isEnabled = a.characterAvailable(c)
+            charMenu.addItem(item)
+        }
+        chars.submenu = charMenu
+        menu.addItem(chars)
         let hats = NSMenuItem(title: "Hats", action: nil, keyEquivalent: "")
         let hatMenu = NSMenu()
         for hat in Hat.allCases {
