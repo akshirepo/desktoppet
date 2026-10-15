@@ -45,7 +45,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        statusItem.button?.title = profile.character == .sheep ? "🐑" : "🐶"
+        if let icon = Doodles.statusIcon(sheep: profile.character == .sheep) {
+            statusItem.button?.image = icon
+        } else {
+            statusItem.button?.title = profile.character == .sheep ? "🐑" : "🐶"
+        }
         let menu = NSMenu()
         menu.delegate = self
         statusItem.menu = menu

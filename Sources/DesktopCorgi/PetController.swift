@@ -165,7 +165,7 @@ final class PetController {
 
     /// Called when the floor disappears under the corgi.
     func fell() {
-        Effects.floatEmoji("❗", on: backend.node, height: backend.size.height)
+        Effects.floatDoodle("exclamation", fallback: "❗", on: backend.node, height: backend.size.height)
         brain.interrupt(with: .fall, duration: 5)
         beginBehavior(.fall)
     }
@@ -199,7 +199,7 @@ final class PetController {
         brain.interrupt(with: .eat, duration: 4)
         beginBehavior(.eat)
         needs.feed()
-        Effects.floatEmoji("🍖", on: backend.node, height: backend.size.height)
+        Effects.floatDoodle("menu:feed", fallback: "🍖", on: backend.node, height: backend.size.height)
     }
 
     func bath() {
@@ -208,7 +208,7 @@ final class PetController {
         brain.interrupt(with: .bath, duration: 4)
         beginBehavior(.bath)
         needs.bath()
-        Effects.floatEmoji("🫧", on: backend.node, height: backend.size.height, count: 5)
+        Effects.floatDoodle("sparkles", fallback: "🫧", on: backend.node, height: backend.size.height, count: 5)
     }
 
     func nap() {
@@ -265,7 +265,7 @@ final class PetController {
         needs.play()
         boredom.noteInteraction()
         sounds.play(.tink)
-        Effects.floatEmoji("❤️", on: backend.node, height: backend.size.height, count: 3)
+        Effects.floatDoodle("heart", fallback: "❤️", on: backend.node, height: backend.size.height, count: 3)
         ball = nil
         executor.ballPosition = nil
         if let node = ballNode {
@@ -287,8 +287,8 @@ final class PetController {
         if b.popped {
             corgiDebug("ball popped at=\(b.position) corgi=\(body.position)")
             if let node = ballNode, let scene = node.parent {
-                let pop = SKLabelNode(text: "💥")
-                pop.fontSize = 22
+                let pop: SKNode = Doodles.texture("starburst").map { SKSpriteNode(texture: $0, size: CGSize(width: 30, height: 30)) }
+                    ?? { let l = SKLabelNode(text: "💥"); l.fontSize = 22; return l }()
                 pop.position = node.position
                 scene.addChild(pop)
                 pop.run(.sequence([.fadeOut(withDuration: 0.6), .removeFromParent()]))
@@ -361,7 +361,7 @@ final class PetController {
         boredom.noteInteraction()
         if needs.pet() {
             sounds.play(.pop)
-            Effects.floatEmoji("❤️", on: backend.node, height: backend.size.height, count: 2)
+            Effects.floatDoodle("heart", fallback: "❤️", on: backend.node, height: backend.size.height, count: 2)
             animOverride = (.happy, CACurrentMediaTime() + 0.8)
         }
     }
@@ -426,11 +426,11 @@ final class PetController {
         updateAnimation(now)
         if brain.current.countsAsSleep && now - lastZzz > 2 {
             lastZzz = now
-            Effects.floatEmoji("💤", on: backend.node, height: backend.size.height * 0.8)
+            Effects.floatDoodle("zzz", fallback: "💤", on: backend.node, height: backend.size.height * 0.8)
         }
         if body.mode == .held && now - lastSweat > 0.6 {
             lastSweat = now
-            Effects.floatEmoji("💦", on: backend.node, height: backend.size.height * 0.9)
+            Effects.floatDoodle("sweat-drops", fallback: "💦", on: backend.node, height: backend.size.height * 0.9)
         }
         if executor.carryingBall, let n = ballNode, n.parent === backend.node {
             n.position = carryPoint
@@ -442,12 +442,20 @@ final class PetController {
         setRate(body.isMoving || body.mode == .held || animOverride != nil || ball != nil ? 30 : 15)
     }
 
-    /// A "💭" thought bubble for the lowest low need, about once a minute.
+    /// A thought bubble for the lowest low need, about once a minute.
     private func updateMoodBubble(dt: TimeInterval) {
         let blocked = needs.state.isAsleep || brain.current.countsAsSleep
             || body.mode == .held || body.mode == .roaming
         guard let need = moodBubbles.update(dt: dt, needs: needs.state, blocked: blocked) else { return }
-        Effects.speech(MoodBubbles.bubbleText(for: need), on: backend.node, height: backend.bubbleHeight, thought: true)
+        let icon: String
+        switch need {
+        case .hunger: icon = "menu:feed"
+        case .happiness: icon = "heart"
+        case .energy: icon = "moon"
+        case .cleanliness: icon = "sparkles"
+        }
+        Effects.thought(icon: icon, fallback: MoodBubbles.bubbleText(for: need), on: backend.node,
+                        height: backend.bubbleHeight)
     }
 
     /// The name tag and the hat, from the saved profile.
@@ -525,7 +533,7 @@ extension PetController: SceneInputHandler {
         if chaseMe {
             if needs.catchPet() {
                 sounds.play(.pop)
-                Effects.floatEmoji("❤️", on: backend.node, height: backend.size.height, count: 4)
+                Effects.floatDoodle("heart", fallback: "❤️", on: backend.node, height: backend.size.height, count: 4)
                 animOverride = (.happy, CACurrentMediaTime() + 0.8)
             }
             return
@@ -536,7 +544,7 @@ extension PetController: SceneInputHandler {
         }
         if needs.pet() {
             sounds.play(.pop)
-            Effects.floatEmoji("❤️", on: backend.node, height: backend.size.height, count: 3)
+            Effects.floatDoodle("heart", fallback: "❤️", on: backend.node, height: backend.size.height, count: 3)
             animOverride = (.wiggle, CACurrentMediaTime() + 0.8)
         }
     }

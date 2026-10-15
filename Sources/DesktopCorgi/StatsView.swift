@@ -9,10 +9,10 @@ struct StatsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title).font(.headline)
-            bar("🍖 Hunger", state.hunger)
-            bar("❤️ Happiness", state.happiness)
-            bar("⚡️ Energy", state.energy)
-            bar("🫧 Cleanliness", state.cleanliness)
+            bar("feed", "🍖", "Hunger", state.hunger)
+            bar("affection", "❤️", "Happiness", state.happiness)
+            bar("sleep", "⚡️", "Energy", state.energy)
+            bar("play", "🫧", "Cleanliness", state.cleanliness)
             Text("Together since \(state.firstMet.formatted(date: .abbreviated, time: .omitted))")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -21,9 +21,17 @@ struct StatsView: View {
         .frame(width: 240)
     }
 
-    private func bar(_ label: String, _ value: Double) -> some View {
+    private func bar(_ icon: String, _ fallback: String, _ label: String, _ value: Double) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text("\(label)  \(Int(value.rounded()))").font(.caption)
+            HStack(spacing: 4) {
+                if let img = Doodles.colorIcon(icon, size: 14) {
+                    Image(nsImage: img)
+                } else {
+                    Text(fallback)
+                }
+                Text("\(label)  \(Int(value.rounded()))")
+            }
+            .font(.caption)
             ProgressView(value: value, total: 100)
                 .tint(value < 30 ? .red : .accentColor)
         }

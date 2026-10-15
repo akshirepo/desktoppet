@@ -20,9 +20,77 @@ enum Effects {
         }
     }
 
-    /// Rounded speech bubble above the corgi for 2.5s, after `delay`. `thought` adds the little trailing dots.
+    /// Doodle icon that floats up from above the pet and fades out. Falls back to `fallback` text.
+    static func floatDoodle(_ name: String, fallback: String, on node: SKNode, height: CGFloat,
+                            count: Int = 1, size: CGFloat = 24) {
+        guard let texture = Doodles.texture(name) else {
+            floatEmoji(fallback, on: node, height: height, count: count)
+            return
+        }
+        for i in 0..<count {
+            let sprite = SKSpriteNode(texture: texture, size: CGSize(width: size, height: size))
+            sprite.position = CGPoint(x: CGFloat.random(in: -18...18), y: height + size / 2)
+            sprite.alpha = 0
+            sprite.zPosition = 40
+            node.addChild(sprite)
+            sprite.run(.sequence([
+                .wait(forDuration: Double(i) * 0.15),
+                .fadeIn(withDuration: 0.1),
+                .group([.moveBy(x: 0, y: 40, duration: 1.0), .fadeOut(withDuration: 1.0)]),
+                .removeFromParent(),
+            ]))
+        }
+    }
+
+    /// Doodle thought bubble with an icon inside (mood bubbles). Falls back to the text bubble.
+    static func thought(icon: String, fallback: String, on node: SKNode, height: CGFloat) {
+        guard let cloud = Doodles.texture("thought"), let inner = Doodles.texture(icon) else {
+            speech(fallback, on: node, height: height, thought: true)
+            return
+        }
+        let bubble = SKSpriteNode(texture: cloud, size: CGSize(width: 54, height: 54))
+        let symbol = SKSpriteNode(texture: inner, size: CGSize(width: 22, height: 22))
+        symbol.position = CGPoint(x: 0, y: 6)
+        symbol.zPosition = 1
+        bubble.addChild(symbol)
+        show(bubble, on: node, at: CGPoint(x: 0, y: height + 30), delay: 0)
+    }
+
+    private static func show(_ bubble: SKNode, on node: SKNode, at position: CGPoint, delay: TimeInterval) {
+        bubble.position = position
+        bubble.zPosition = 50
+        bubble.alpha = 0
+        node.addChild(bubble)
+        bubble.run(.sequence([
+            .wait(forDuration: delay),
+            .fadeIn(withDuration: 0.15),
+            .wait(forDuration: 2.2),
+            .fadeOut(withDuration: 0.15),
+            .removeFromParent(),
+        ]))
+    }
+
+    /// Speech bubble above the pet for 2.5s, after `delay`: the doodle bubble when bundled, else a rounded box.
+    /// `thought` adds the little trailing dots (text fallback only).
     static func speech(_ text: String, on node: SKNode, height: CGFloat, delay: TimeInterval = 0,
                        thought: Bool = false) {
+        if !thought, let tex = Doodles.texture("speech-oval") {
+            let label = SKLabelNode(text: text)
+            label.fontName = NSFont(name: "Chalkboard SE Bold", size: 14) != nil ? "Chalkboard SE Bold" : NSFont.boldSystemFont(ofSize: 14).fontName
+            label.fontSize = 14
+            label.fontColor = NSColor(white: 0.15, alpha: 1)
+            label.verticalAlignmentMode = .center
+            label.horizontalAlignmentMode = .center
+            let w = max(64, label.frame.width + 34), h = w / 2
+            let container = SKNode()
+            let bubble = SKSpriteNode(texture: tex, size: CGSize(width: w, height: h))
+            container.addChild(bubble)
+            label.position = CGPoint(x: 0, y: h * 0.06)
+            label.zPosition = 1
+            container.addChild(label)
+            show(container, on: node, at: CGPoint(x: 0, y: height + h / 2 + 6), delay: delay)
+            return
+        }
         let label = SKLabelNode(text: text)
         label.fontName = NSFont.boldSystemFont(ofSize: 13).fontName
         label.fontSize = 13

@@ -5,10 +5,11 @@ import CorgiCore
 final class ClosureMenuItem: NSMenuItem {
     private let handler: () -> Void
 
-    init(_ title: String, key: String = "", handler: @escaping () -> Void) {
+    init(_ title: String, key: String = "", icon: String? = nil, handler: @escaping () -> Void) {
         self.handler = handler
         super.init(title: title, action: #selector(fire), keyEquivalent: key)
         target = self
+        if let icon { image = Doodles.menuIcon(icon) }
     }
 
     required init(coder: NSCoder) { fatalError("not used") }
@@ -47,15 +48,15 @@ struct PetMenuActions {
 enum PetMenu {
     static func populate(_ menu: NSMenu, _ a: PetMenuActions) {
         menu.removeAllItems()
-        menu.addItem(ClosureMenuItem("🍖 Feed", handler: a.feed))
-        menu.addItem(ClosureMenuItem("🎾 Play Ball", handler: a.play))
-        let chase = ClosureMenuItem("🏃 Chase Me", handler: a.toggleChaseMe)
+        menu.addItem(ClosureMenuItem("Feed", icon: "feed", handler: a.feed))
+        menu.addItem(ClosureMenuItem("Play Ball", icon: "play", handler: a.play))
+        let chase = ClosureMenuItem("Chase Me", icon: "resume", handler: a.toggleChaseMe)
         chase.state = a.chaseMeOn ? .on : .off
         menu.addItem(chase)
-        menu.addItem(ClosureMenuItem("🫧 Bath", handler: a.bath))
-        menu.addItem(ClosureMenuItem("💤 Nap", handler: a.nap))
+        menu.addItem(ClosureMenuItem("Bath", icon: "affection", handler: a.bath))
+        menu.addItem(ClosureMenuItem("Nap", icon: "sleep", handler: a.nap))
         menu.addItem(.separator())
-        menu.addItem(ClosureMenuItem("📊 Stats…", handler: a.stats))
+        menu.addItem(ClosureMenuItem("Stats…", icon: "settings", handler: a.stats))
         menu.addItem(ClosureMenuItem("Rename…", handler: a.rename))
         if !a.artPackInUse {
             let tag = ClosureMenuItem("Name Tag", handler: a.toggleNameTag)
@@ -66,7 +67,7 @@ enum PetMenu {
         let charMenu = NSMenu()
         charMenu.autoenablesItems = false
         for c in Character.allCases {
-            let item = ClosureMenuItem(c.displayName) { a.setCharacter(c) }
+            let item = ClosureMenuItem(c.displayName, icon: c == .sheep ? "sheep" : "corgi") { a.setCharacter(c) }
             item.state = c == a.character ? .on : .off
             item.isEnabled = a.characterAvailable(c)
             charMenu.addItem(item)
@@ -93,7 +94,7 @@ enum PetMenu {
             hats.submenu = hatMenu
             menu.addItem(hats)
         }
-        let sounds = ClosureMenuItem("Sounds", handler: a.toggleSounds)
+        let sounds = ClosureMenuItem("Sounds", icon: a.soundsOn ? "sound-on" : "sound-off", handler: a.toggleSounds)
         sounds.state = a.soundsOn ? .on : .off
         menu.addItem(sounds)
         let debug = ClosureMenuItem("Debug Overlay", handler: a.toggleDebug)
@@ -104,7 +105,9 @@ enum PetMenu {
         login.state = a.loginOn ? .on : .off
         menu.addItem(login)
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        let quit = NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        quit.image = Doodles.menuIcon("quit")
+        menu.addItem(quit)
     }
 }
 #endif
