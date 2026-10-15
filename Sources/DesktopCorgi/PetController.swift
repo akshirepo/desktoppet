@@ -525,7 +525,8 @@ extension PetController: SceneInputHandler {
             if chaseMe {
                 brain.interrupt(with: .chaseMe, duration: .infinity)
                 beginBehavior(.chaseMe)
-            } else if let spot = ClingFinder.find(global, windows: world.windows),
+            } else if let spot = ClingFinder.find(body.position, windows: world.windows)    // where its feet are
+                        ?? ClingFinder.find(global, windows: world.windows),               // or where you let go
                       let contact = ClingFinder.contact(spot, windows: world.windows) {
                 // Dropped near a window edge: hold on to it until bored.
                 body.startClinging(spot, at: contact)
