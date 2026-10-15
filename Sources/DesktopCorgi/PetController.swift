@@ -434,6 +434,7 @@ final class PetController {
         }
         if executor.carryingBall, let n = ballNode, n.parent === backend.node {
             n.position = carryPoint
+            n.isHidden = backend.drawsProps   // the holdBall sprite already has the ball in its mouth
         }
         updateProp()
         debug.update(world: world, hitRect: hitRect, behavior: brain.current, overlays: overlays)

@@ -59,6 +59,9 @@ final class FrameSequenceBackend: AnimationBackend {
         sprite.run(entry.spec.loop ? .repeatForever(animation) : animation)
     }
 
+    /// Pack sprites already include their props (book, headphones, TV, ball).
+    var drawsProps: Bool { true }
+
     func setFacing(right: Bool) {
         facingRight = right
         sprite.xScale = (right ? 1 : -1) * scale
