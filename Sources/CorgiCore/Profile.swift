@@ -20,6 +20,29 @@ public enum Hat: String, Codable, CaseIterable {
     }
 }
 
+public enum Character: String, Codable, CaseIterable {
+    case corgi, sheep
+
+    public var displayName: String {
+        switch self {
+        case .corgi: return "Corgi"
+        case .sheep: return "Sheep"
+        }
+    }
+
+    public var packFolderName: String {
+        switch self {
+        case .corgi: return "CorgiPack"
+        case .sheep: return "SheepPack"
+        }
+    }
+
+    public init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        self = Character(rawValue: raw) ?? .corgi
+    }
+}
+
 public struct PetProfile: Codable, Equatable {
     public static let defaultName = "Corgi"
     public static let maxNameLength = 20
@@ -30,19 +53,22 @@ public struct PetProfile: Codable, Equatable {
     public var soundsOn: Bool
     public var askedForName: Bool
     public var showNameTag: Bool
+    public var character: Character
 
     public init(name: String = PetProfile.defaultName, hat: Hat = .none,
-                soundsOn: Bool = false, askedForName: Bool = false, showNameTag: Bool = false) {
+                soundsOn: Bool = false, askedForName: Bool = false, showNameTag: Bool = false,
+                character: Character = .corgi) {
         self.name = name
         self.hat = hat
         self.soundsOn = soundsOn
         self.askedForName = askedForName
         self.showNameTag = showNameTag
+        self.character = character
     }
 
     public static let `default` = PetProfile()
 
-    private enum CodingKeys: String, CodingKey { case name, hat, soundsOn, askedForName, showNameTag }
+    private enum CodingKeys: String, CodingKey { case name, hat, soundsOn, askedForName, showNameTag, character }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -52,6 +78,7 @@ public struct PetProfile: Codable, Equatable {
         soundsOn = try c.decodeIfPresent(Bool.self, forKey: .soundsOn) ?? d.soundsOn
         askedForName = try c.decodeIfPresent(Bool.self, forKey: .askedForName) ?? d.askedForName
         showNameTag = try c.decodeIfPresent(Bool.self, forKey: .showNameTag) ?? d.showNameTag
+        character = (try? c.decodeIfPresent(Character.self, forKey: .character)) ?? d.character
     }
 
     /// Trims whitespace and caps at 20 characters. Empty input keeps `old`.

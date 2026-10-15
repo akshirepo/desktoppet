@@ -20,7 +20,40 @@ final class ProfileTests: XCTestCase {
         XCTAssertFalse(p.soundsOn)
         XCTAssertFalse(p.askedForName)
         XCTAssertFalse(p.showNameTag)
+        XCTAssertEqual(p.character, .corgi)
         XCTAssertEqual(PetProfile.default, p)
+    }
+
+    func testCharacterCasesNamesAndPackFolders() {
+        XCTAssertEqual(Character.allCases, [.corgi, .sheep])
+        XCTAssertEqual(Character.allCases.map(\.displayName), ["Corgi", "Sheep"])
+        XCTAssertEqual(Character.allCases.map(\.packFolderName), ["CorgiPack", "SheepPack"])
+    }
+
+    func testOldFilesDecodeToCorgi() throws {
+        let old = try JSONDecoder().decode(PetProfile.self,
+            from: Data(#"{"name":"Mochi","hat":"bow","soundsOn":true,"askedForName":true,"showNameTag":true}"#.utf8))
+        XCTAssertEqual(old.character, .corgi)
+        XCTAssertEqual(old.name, "Mochi")
+    }
+
+    func testCharacterRoundTrips() throws {
+        var p = PetProfile(name: "Woolly")
+        p.character = .sheep
+        let back = try JSONDecoder().decode(PetProfile.self, from: JSONEncoder().encode(p))
+        XCTAssertEqual(back.character, .sheep)
+        XCTAssertEqual(back, p)
+        let store = ProfileStore(directory: dir)
+        try store.save(p)
+        XCTAssertEqual(store.load(), p)
+    }
+
+    func testUnknownCharacterDecodesToCorgi() throws {
+        let p = try JSONDecoder().decode(PetProfile.self,
+            from: Data(#"{"name":"Pip","hat":"bow","character":"dragon"}"#.utf8))
+        XCTAssertEqual(p.character, .corgi)
+        XCTAssertEqual(p.name, "Pip")
+        XCTAssertEqual(p.hat, .bow)
     }
 
     func testNameTagSettingRoundTripsAndDefaultsOffForOldFiles() throws {
