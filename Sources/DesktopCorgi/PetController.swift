@@ -150,7 +150,12 @@ final class PetController {
     }
 
     func refreshWorld() {
-        if body.apply(world.refresh()) == .startedFalling { fell() }
+        let update = world.refresh()
+        if body.mode == .clinging {
+            if body.followCling(world) == .startedFalling { fell() }
+            return
+        }
+        if body.apply(update) == .startedFalling { fell() }
     }
 
     func screensChanged() {
@@ -171,6 +176,10 @@ final class PetController {
     }
 
     func beginBehavior(_ b: Behavior) {
+        if body.mode == .clinging && b != .cling && b != .dangle {
+            body.letGo()
+            animOverride = (.letGo, CACurrentMediaTime() + 0.5)
+        }
         corgiDebug("begin \(b.rawValue) mode=\(body.mode) pos=\(body.position) ball=\(ball != nil)")
         if b != .ballChase { endBall() }
         if chaseMe && b != .chaseMe && b != .dangle { chaseMe = false }
@@ -315,7 +324,8 @@ final class PetController {
 
     /// A nap or a doze over the book is already rest; idle sleep must not yawn over it.
     private var restBusy: Bool {
-        dragging || chaseMe || body.mode == .held || body.mode == .roaming || brain.current == .ballChase
+        dragging || chaseMe || body.mode == .held || body.mode == .roaming || body.mode == .clinging
+            || brain.current == .ballChase
             || brain.current == .sleep || brain.current == .readSleep
     }
 
@@ -351,7 +361,7 @@ final class PetController {
     }
 
     private func updateHover(dt: TimeInterval, cursor: CGPoint) {
-        let blocked = dragging || pressPoint != nil || body.mode != .grounded
+        let blocked = dragging || pressPoint != nil || (body.mode != .grounded && body.mode != .clinging)
             || brain.current.countsAsSleep || brain.current == .yawn
             || CACurrentMediaTime() - lastClickPet < hover.repeatEvery
         if hover.update(dt: dt, hovering: hitRect.contains(cursor), blocked: blocked) { hoverPet() }
@@ -422,7 +432,8 @@ final class PetController {
         body.clamp(to: world.screens)
 
         overlays.place(globalFeet: body.position)
-        backend.setFacing(right: body.facingRight)
+        // Cling sprites are drawn for their side already, so they are never mirrored.
+        backend.setFacing(right: body.mode == .clinging ? true : body.facingRight)
         updateAnimation(now)
         if brain.current.countsAsSleep && now - lastZzz > 2 {
             lastZzz = now
@@ -469,6 +480,7 @@ final class PetController {
     private func updateAnimation(_ now: CFTimeInterval) {
         if let o = animOverride, o.until <= now { animOverride = nil }
         let state = animOverride?.state
+            ?? body.cling?.animState
             ?? animState(for: brain.current, mode: body.mode, isMoving: body.isMoving,
                          isRunning: body.isRunning, carrying: executor.carryingBall)
         if state != currentAnim {
@@ -513,6 +525,12 @@ extension PetController: SceneInputHandler {
             if chaseMe {
                 brain.interrupt(with: .chaseMe, duration: .infinity)
                 beginBehavior(.chaseMe)
+            } else if let spot = ClingFinder.find(global, windows: world.windows),
+                      let contact = ClingFinder.contact(spot, windows: world.windows) {
+                // Dropped near a window edge: hold on to it until bored.
+                body.startClinging(spot, at: contact)
+                brain.interrupt(with: .cling, duration: Double.random(in: 180...360))
+                beginBehavior(.cling)
             } else {
                 // Stay where dropped. Home still pulls it back slowly via the brain's goHome weight.
                 brain.interrupt(with: .fall, duration: 5)

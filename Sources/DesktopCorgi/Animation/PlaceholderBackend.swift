@@ -1066,6 +1066,15 @@ final class PlaceholderBackend: AnimationBackend {
                                                .moveBy(x: -5, y: -4, duration: 0.3), .wait(forDuration: 0.17)])))
             tailWag.speed = 1.8
             eyeChoice = .sparkle
+        case .clingSit:
+            sitBody()
+            eyeChoice = .happy
+        case .clingHang, .clingLeft, .clingRight:
+            flyBody()
+            eyeChoice = .sparkle
+        case .letGo:
+            flyBody()
+            mouthStyle = .open
         }
         setEyes(eyeChoice)
         setMouth(mouthStyle)
