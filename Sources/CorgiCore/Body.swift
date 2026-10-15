@@ -17,7 +17,7 @@ public struct BodyConfig {
     public init() {}
 }
 
-public enum BodyMode: Equatable { case grounded, airborne, held, roaming }
+public enum BodyMode: Equatable { case grounded, airborne, held, roaming, clinging }
 
 public enum BodyEvent: Equatable { case landed, hitEdge, startedFalling }
 
@@ -28,6 +28,8 @@ public final class Body {
     public private(set) var mode: BodyMode = .airborne
     public private(set) var standingOn: FloorSegment?
     public private(set) var facingRight = true
+    /// Set while `mode == .clinging`.
+    public private(set) var cling: ClingSpot?
     private var walkVelocity: CGFloat = 0
 
     public init(position: CGPoint, config: BodyConfig = .init()) {
@@ -105,8 +107,40 @@ public final class Body {
         startFalling()
     }
 
+    /// Hold on to a window edge at `contact`. No gravity until `letGo()` or the window goes away.
+    public func startClinging(_ spot: ClingSpot, at contact: CGPoint) {
+        mode = .clinging
+        cling = spot
+        position = contact
+        velocity = .zero
+        walkVelocity = 0
+        standingOn = nil
+        if spot.edge == .left { facingRight = true }
+        if spot.edge == .right { facingRight = false }
+    }
+
+    /// Keep holding the same spot as the window moves; falls off if the window is gone.
+    @discardableResult
+    public func followCling(_ world: World) -> BodyEvent? {
+        guard mode == .clinging, let spot = cling else { return nil }
+        if let p = ClingFinder.contact(spot, windows: world.windows) {
+            position = p
+            return nil
+        }
+        cling = nil
+        return startFalling()
+    }
+
+    @discardableResult
+    public func letGo() -> BodyEvent? {
+        guard mode == .clinging else { return nil }
+        cling = nil
+        return startFalling()
+    }
+
     public func pickUp() {
         mode = .held
+        cling = nil
         standingOn = nil
         velocity = .zero
         walkVelocity = 0
@@ -140,6 +174,8 @@ public final class Body {
     public func step(dt: TimeInterval, world: World) -> BodyEvent? {
         let dt = CGFloat(dt)
         switch mode {
+        case .clinging:
+            return nil
         case .held:
             return nil
         case .grounded:
@@ -184,7 +220,7 @@ public final class Body {
 
     /// Pulls the body back onto the nearest screen if it ended up outside every screen.
     public func clamp(to screens: [CGRect]) {
-        guard !screens.isEmpty else { return }
+        guard !screens.isEmpty, mode != .clinging else { return }
         let p = position
         if screens.contains(where: { $0.minX <= p.x && p.x <= $0.maxX && $0.minY <= p.y && p.y <= $0.maxY }) {
             return

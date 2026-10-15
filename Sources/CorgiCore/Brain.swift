@@ -5,6 +5,7 @@ public enum Behavior: String, CaseIterable {
     case eat, fetch, bath, dangle, fall, greet
     case goHome, read, readSleep, music, watchTV, wave, turnAround, playBallHome
     case yawn, idleSleep, chaseMe, ballChase
+    case cling
 
     /// Behaviors the brain picks on its own. The rest only happen through `interrupt`.
     public static let autonomous: [Behavior] = [
@@ -22,6 +23,7 @@ public struct BrainConfig {
         .zoomies: 4...8, .chaseCursor: 5...5, .hopToWindow: 6...8, .beg: 6...10,
         .goHome: 30...30, .read: 20...60, .readSleep: 30...90, .music: 20...60, .watchTV: 30...90,
         .wave: 2...2, .turnAround: 3...5, .playBallHome: 8...15, .ballChase: 30...30,
+        .cling: 180...360,
     ]
     public var wakeEnergy = 95.0
     /// Seconds of reading before the one-time doze roll, and the chance it dozes off.
