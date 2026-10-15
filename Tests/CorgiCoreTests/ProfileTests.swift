@@ -21,13 +21,52 @@ final class ProfileTests: XCTestCase {
         XCTAssertFalse(p.askedForName)
         XCTAssertFalse(p.showNameTag)
         XCTAssertEqual(p.character, .corgi)
+        XCTAssertTrue(p.sheepCap)
         XCTAssertEqual(PetProfile.default, p)
     }
 
     func testCharacterCasesNamesAndPackFolders() {
         XCTAssertEqual(Character.allCases, [.corgi, .sheep])
         XCTAssertEqual(Character.allCases.map(\.displayName), ["Corgi", "Sheep"])
-        XCTAssertEqual(Character.allCases.map(\.packFolderName), ["CorgiPack", "SheepPack"])
+        XCTAssertEqual(Character.allCases.map { $0.packFolderName(sheepCap: true) }, ["CorgiPack", "SheepPack"])
+        XCTAssertEqual(Character.allCases.map { $0.packFolderName(sheepCap: false) }, ["CorgiPack", "SheepNoCapPack"])
+    }
+
+    func testProfilePackFolderFollowsCharacterAndCap() {
+        var p = PetProfile()
+        XCTAssertEqual(p.packFolderName, "CorgiPack")
+        p.sheepCap = false
+        XCTAssertEqual(p.packFolderName, "CorgiPack")
+        p.character = .sheep
+        XCTAssertEqual(p.packFolderName, "SheepNoCapPack")
+        p.sheepCap = true
+        XCTAssertEqual(p.packFolderName, "SheepPack")
+    }
+
+    func testMissingSheepCapKeyDecodesToTrue() throws {
+        let old = try JSONDecoder().decode(PetProfile.self,
+            from: Data(#"{"name":"Woolly","hat":"none","character":"sheep"}"#.utf8))
+        XCTAssertTrue(old.sheepCap)
+        XCTAssertEqual(old.packFolderName, "SheepPack")
+    }
+
+    func testSheepCapRoundTrips() throws {
+        var p = PetProfile(name: "Woolly", character: .sheep)
+        p.sheepCap = false
+        let back = try JSONDecoder().decode(PetProfile.self, from: JSONEncoder().encode(p))
+        XCTAssertFalse(back.sheepCap)
+        XCTAssertEqual(back, p)
+        let store = ProfileStore(directory: dir)
+        try store.save(p)
+        XCTAssertEqual(store.load(), p)
+        XCTAssertEqual(store.load().packFolderName, "SheepNoCapPack")
+    }
+
+    func testBadSheepCapValueDecodesToTrue() throws {
+        let p = try JSONDecoder().decode(PetProfile.self,
+            from: Data(#"{"name":"Pip","character":"sheep","sheepCap":"maybe"}"#.utf8))
+        XCTAssertTrue(p.sheepCap)
+        XCTAssertEqual(p.character, .sheep)
     }
 
     func testOldFilesDecodeToCorgi() throws {

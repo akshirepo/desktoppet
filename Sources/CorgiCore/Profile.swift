@@ -30,10 +30,10 @@ public enum Character: String, Codable, CaseIterable {
         }
     }
 
-    public var packFolderName: String {
+    public func packFolderName(sheepCap: Bool) -> String {
         switch self {
         case .corgi: return "CorgiPack"
-        case .sheep: return "SheepPack"
+        case .sheep: return sheepCap ? "SheepPack" : "SheepNoCapPack"
         }
     }
 
@@ -54,21 +54,23 @@ public struct PetProfile: Codable, Equatable {
     public var askedForName: Bool
     public var showNameTag: Bool
     public var character: Character
+    public var sheepCap: Bool
 
     public init(name: String = PetProfile.defaultName, hat: Hat = .none,
                 soundsOn: Bool = false, askedForName: Bool = false, showNameTag: Bool = false,
-                character: Character = .corgi) {
+                character: Character = .corgi, sheepCap: Bool = true) {
         self.name = name
         self.hat = hat
         self.soundsOn = soundsOn
         self.askedForName = askedForName
         self.showNameTag = showNameTag
         self.character = character
+        self.sheepCap = sheepCap
     }
 
     public static let `default` = PetProfile()
 
-    private enum CodingKeys: String, CodingKey { case name, hat, soundsOn, askedForName, showNameTag, character }
+    private enum CodingKeys: String, CodingKey { case name, hat, soundsOn, askedForName, showNameTag, character, sheepCap }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -79,7 +81,10 @@ public struct PetProfile: Codable, Equatable {
         askedForName = try c.decodeIfPresent(Bool.self, forKey: .askedForName) ?? d.askedForName
         showNameTag = try c.decodeIfPresent(Bool.self, forKey: .showNameTag) ?? d.showNameTag
         character = (try? c.decodeIfPresent(Character.self, forKey: .character)) ?? d.character
+        sheepCap = ((try? c.decodeIfPresent(Bool.self, forKey: .sheepCap)) ?? nil) ?? d.sheepCap
     }
+
+    public var packFolderName: String { character.packFolderName(sheepCap: sheepCap) }
 
     /// Trims whitespace and caps at 20 characters. Empty input keeps `old`.
     public static func sanitizedName(_ input: String, keeping old: String) -> String {
