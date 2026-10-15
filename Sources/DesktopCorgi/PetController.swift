@@ -348,7 +348,7 @@ final class PetController {
             if brain.current == .yawn || brain.current == .idleSleep {
                 brain.finishCurrent()
                 needs.setAsleep(false)
-                animOverride = (.wiggle, now + 0.8)
+                if body.mode != .clinging { animOverride = (.wiggle, now + 0.8) }  // keep its grip pose while hanging
             }
         case nil:
             // Still resting but something (a fall) took it out of idle sleep: settle back down.
@@ -372,7 +372,7 @@ final class PetController {
         if needs.pet() {
             sounds.play(.pop)
             Effects.floatDoodle("heart", fallback: "❤️", on: backend.node, height: backend.size.height, count: 2)
-            animOverride = (.happy, CACurrentMediaTime() + 0.8)
+            if body.mode != .clinging { animOverride = (.happy, CACurrentMediaTime() + 0.8) }  // keep its grip pose while hanging
         }
     }
 
@@ -553,7 +553,7 @@ extension PetController: SceneInputHandler {
             if needs.catchPet() {
                 sounds.play(.pop)
                 Effects.floatDoodle("heart", fallback: "❤️", on: backend.node, height: backend.size.height, count: 4)
-                animOverride = (.happy, CACurrentMediaTime() + 0.8)
+                if body.mode != .clinging { animOverride = (.happy, CACurrentMediaTime() + 0.8) }  // keep its grip pose while hanging
             }
             return
         }
@@ -564,7 +564,7 @@ extension PetController: SceneInputHandler {
         if needs.pet() {
             sounds.play(.pop)
             Effects.floatDoodle("heart", fallback: "❤️", on: backend.node, height: backend.size.height, count: 3)
-            animOverride = (.wiggle, CACurrentMediaTime() + 0.8)
+            if body.mode != .clinging { animOverride = (.wiggle, CACurrentMediaTime() + 0.8) }  // keep its grip pose while hanging
         }
     }
 }
