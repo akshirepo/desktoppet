@@ -7,6 +7,8 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/DesktopCorgi "$APP/Contents/MacOS/DesktopCorgi"
 cp -R Assets/Doodles "$APP/Contents/Resources/Doodles"
+mkdir -p "$APP/Contents/Resources/Packs"
+cp -R Assets/Packs/CorgiPack Assets/Packs/SheepPack "$APP/Contents/Resources/Packs/"
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

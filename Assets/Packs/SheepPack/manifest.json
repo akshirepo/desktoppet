@@ -1,0 +1,284 @@
+{
+  "scale": 0.2971,
+  "states": {
+    "idle": {
+      "folder": "idle",
+      "fps": 5.0,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "walk": {
+      "folder": "walk",
+      "fps": 7.692,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "run": {
+      "folder": "run",
+      "fps": 10.0,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "sit": {
+      "folder": "sit",
+      "fps": 5.556,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "sleep": {
+      "folder": "sleep",
+      "fps": 3.333,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "eat": {
+      "folder": "eat",
+      "fps": 9.091,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "beg": {
+      "folder": "beg",
+      "fps": 6.667,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "dangle": {
+      "folder": "dangle",
+      "fps": 6.667,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "fall": {
+      "folder": "fall",
+      "fps": 8.333,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "land": {
+      "folder": "land",
+      "fps": 6.667,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "wiggle": {
+      "folder": "wiggle",
+      "fps": 5.556,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "bath": {
+      "folder": "bath",
+      "fps": 7.143,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "fetch": {
+      "folder": "fetch",
+      "fps": 9.524,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "wave": {
+      "folder": "wave",
+      "fps": 5.556,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "back": {
+      "folder": "back",
+      "fps": 5.882,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "read": {
+      "folder": "read",
+      "fps": 6.667,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "readSleep": {
+      "folder": "readSleep",
+      "fps": 3.333,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "music": {
+      "folder": "music",
+      "fps": 9.091,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "watch": {
+      "folder": "watch",
+      "fps": 6.667,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "yawn": {
+      "folder": "yawn",
+      "fps": 5.556,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "scared": {
+      "folder": "scared",
+      "fps": 8.333,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "happy": {
+      "folder": "happy",
+      "fps": 7.692,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "holdBall": {
+      "folder": "holdBall",
+      "fps": 6.25,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "kick": {
+      "folder": "kick",
+      "fps": 9.524,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "roam": {
+      "folder": "roam",
+      "fps": 7.143,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "clingSit": {
+      "folder": "clingSit",
+      "fps": 13.333,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.2005
+      ]
+    },
+    "clingHang": {
+      "folder": "clingHang",
+      "fps": 13.333,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.5651
+      ]
+    },
+    "clingPeek": {
+      "folder": "clingPeek",
+      "fps": 13.333,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.362
+      ]
+    },
+    "clingLeft": {
+      "folder": "clingLeft",
+      "fps": 13.333,
+      "loop": true,
+      "anchor": [
+        0.737,
+        0.5
+      ]
+    },
+    "clingRight": {
+      "folder": "clingRight",
+      "fps": 13.333,
+      "loop": true,
+      "anchor": [
+        0.2578,
+        0.5
+      ]
+    },
+    "letGo": {
+      "folder": "fall",
+      "fps": 8.333,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    }
+  }
+}

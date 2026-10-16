@@ -61,15 +61,6 @@ final class FrameSequenceBackend: AnimationBackend {
         sprite.run(entry.spec.loop ? .repeatForever(animation) : animation)
     }
 
-    /// Temporary size trace for the "sometimes enlarged" investigation.
-    var sizeTrace: String {
-        let t = sprite.texture?.size() ?? .zero
-        return "sprite scale=(\(sprite.xScale),\(sprite.yScale)) size=\(sprite.size) frame=\(sprite.frame.size) tex=\(t) node=(\(node.xScale),\(node.yScale))"
-    }
-
-    /// Pack sprites already include their props (book, headphones, TV, ball).
-    var drawsProps: Bool { true }
-
     func setFacing(right: Bool) {
         facingRight = right
         sprite.xScale = right ? 1 : -1

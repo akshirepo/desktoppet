@@ -125,15 +125,6 @@ enum Effects {
         ]))
     }
 
-    /// Placeholder prop drawn next to the corgi (📖 🎧 📺 ⚽️) until the art pack has one.
-    static func makeProp(_ emoji: String) -> SKLabelNode {
-        let label = SKLabelNode(text: emoji)
-        label.fontSize = 22
-        label.verticalAlignmentMode = .baseline
-        label.zPosition = 5
-        return label
-    }
-
     static func makeBall() -> SKShapeNode {
         let ball = SKShapeNode(circleOfRadius: 7)
         ball.fillColor = .systemRed

@@ -30,19 +30,11 @@ struct PetMenuActions {
     var toggleLogin: () -> Void
     var loginOn: Bool
     var rename: () -> Void
-    var hat: Hat
-    var setHat: (Hat) -> Void
     var toggleSounds: () -> Void
     var soundsOn: Bool
-    var toggleNameTag: () -> Void
-    var nameTagOn: Bool
     var character: Character
     var characterAvailable: (Character) -> Bool
     var setCharacter: (Character) -> Void
-    var sheepCapOn: Bool
-    var sheepCapAvailable: Bool
-    var toggleSheepCap: () -> Void
-    var artPackInUse: Bool
 }
 
 enum PetMenu {
@@ -58,11 +50,6 @@ enum PetMenu {
         menu.addItem(.separator())
         menu.addItem(ClosureMenuItem("Stats…", icon: "settings", handler: a.stats))
         menu.addItem(ClosureMenuItem("Rename…", handler: a.rename))
-        if !a.artPackInUse {
-            let tag = ClosureMenuItem("Name Tag", handler: a.toggleNameTag)
-            tag.state = a.nameTagOn ? .on : .off
-            menu.addItem(tag)
-        }
         let chars = NSMenuItem(title: "Character", action: nil, keyEquivalent: "")
         let charMenu = NSMenu()
         charMenu.autoenablesItems = false
@@ -74,26 +61,6 @@ enum PetMenu {
         }
         chars.submenu = charMenu
         menu.addItem(chars)
-        if a.character == .sheep {
-            let cap = ClosureMenuItem("Cap", handler: a.toggleSheepCap)
-            cap.state = a.sheepCapOn ? .on : .off
-            if !a.sheepCapAvailable {
-                cap.action = nil
-                cap.target = nil
-            }
-            menu.addItem(cap)
-        }
-        if !a.artPackInUse {
-            let hats = NSMenuItem(title: "Hats", action: nil, keyEquivalent: "")
-            let hatMenu = NSMenu()
-            for hat in Hat.allCases {
-                let item = ClosureMenuItem(hat.displayName) { a.setHat(hat) }
-                item.state = hat == a.hat ? .on : .off
-                hatMenu.addItem(item)
-            }
-            hats.submenu = hatMenu
-            menu.addItem(hats)
-        }
         let sounds = ClosureMenuItem("Sounds", icon: a.soundsOn ? "sound-on" : "sound-off", handler: a.toggleSounds)
         sounds.state = a.soundsOn ? .on : .off
         menu.addItem(sounds)

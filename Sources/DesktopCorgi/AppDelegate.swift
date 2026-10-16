@@ -13,8 +13,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var awaySeconds: TimeInterval = 0
     private var saveTimer: Timer?
     private var popover: NSPopover?
-    /// True when sprites come from an art pack; hats and the name tag only draw on the built-in corgi.
-    private(set) var artPackInUse = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         var loaded: NeedsState?
@@ -65,33 +63,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                                          userInfo: nil, repeats: true)
     }
 
+    /// A pack in ~/Library/Application Support/DesktopCorgi overrides the art bundled in the app.
     static func packURL(for profile: PetProfile) -> URL {
-        StateStore.defaultDirectory.appendingPathComponent(profile.packFolderName)
+        let custom = StateStore.defaultDirectory.appendingPathComponent(profile.packFolderName)
+        if FileManager.default.fileExists(atPath: custom.appendingPathComponent("manifest.json").path) { return custom }
+        return Bundle.main.resourceURL?.appendingPathComponent("Packs/\(profile.packFolderName)") ?? custom
     }
 
     static func packExists(for profile: PetProfile) -> Bool {
         FileManager.default.fileExists(atPath: packURL(for: profile).appendingPathComponent("manifest.json").path)
     }
 
-    /// Corgi always works (built-in drawing); other choices need their pack installed.
-    static func canUse(_ profile: PetProfile) -> Bool {
-        profile.character == .corgi || packExists(for: profile)
-    }
+    static func canUse(_ profile: PetProfile) -> Bool { packExists(for: profile) }
 
+    /// The chosen pet's art, falling back to the bundled corgi if a custom pack is broken.
     func makeBackend() -> AnimationBackend {
-        let pack = Self.packURL(for: profile)
-        guard Self.packExists(for: profile) else {
-            if profile.character != .corgi { NSLog("DesktopCorgi: no \(pack.lastPathComponent), using placeholder") }
-            return PlaceholderBackend()
+        for candidate in [profile, PetProfile(character: .corgi)] {
+            do {
+                return try FrameSequenceBackend(packURL: Self.packURL(for: candidate))
+            } catch {
+                NSLog("DesktopCorgi: could not load \(candidate.packFolderName): \(error)")
+            }
         }
-        do {
-            let backend = try FrameSequenceBackend(packURL: pack)
-            artPackInUse = true
-            return backend
-        } catch {
-            NSLog("DesktopCorgi: could not load asset pack, using placeholder: \(error)")
-            return PlaceholderBackend()
-        }
+        fatalError("DesktopCorgi: no pet art found; build the app with scripts/bundle.sh so the packs are included")
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -115,15 +109,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         next.character = character
         guard character != profile.character, Self.canUse(next) else { return }
         updateProfile { $0.character = character }
-        relaunch()
-    }
-
-    /// Cap on or off swaps the sheep pack, which also needs a relaunch.
-    func toggleSheepCap() {
-        var next = profile
-        next.sheepCap.toggle()
-        guard profile.character == .sheep, Self.canUse(next) else { return }
-        updateProfile { $0.sheepCap.toggle() }
         relaunch()
     }
 
@@ -200,8 +185,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func makeMenuActions() -> PetMenuActions {
         let current = profile
-        var capFlipped = current
-        capFlipped.sheepCap.toggle()
         return PetMenuActions(
             feed: { [weak self] in self?.controller.feed() },
             play: { [weak self] in self?.controller.playBall() },
@@ -218,23 +201,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             toggleLogin: { LoginItem.setEnabled(!LoginItem.isEnabled) },
             loginOn: LoginItem.isEnabled,
             rename: { [weak self] in DispatchQueue.main.async { self?.promptRename(firstTime: false) } },
-            hat: profile.hat,
-            setHat: { [weak self] hat in self?.updateProfile { $0.hat = hat } },
             toggleSounds: { [weak self] in self?.updateProfile { $0.soundsOn.toggle() } },
             soundsOn: profile.soundsOn,
-            toggleNameTag: { [weak self] in self?.updateProfile { $0.showNameTag.toggle() } },
-            nameTagOn: profile.showNameTag,
             character: profile.character,
             characterAvailable: { c in
                 var p = current
                 p.character = c
                 return AppDelegate.canUse(p)
             },
-            setCharacter: { [weak self] c in DispatchQueue.main.async { self?.switchCharacter(to: c) } },
-            sheepCapOn: profile.sheepCap,
-            sheepCapAvailable: current.character == .sheep && AppDelegate.canUse(capFlipped),
-            toggleSheepCap: { [weak self] in DispatchQueue.main.async { self?.toggleSheepCap() } },
-            artPackInUse: artPackInUse
+            setCharacter: { [weak self] c in DispatchQueue.main.async { self?.switchCharacter(to: c) } }
         )
     }
 }

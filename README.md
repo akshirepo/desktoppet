@@ -1,64 +1,70 @@
-# Desktop Corgi
+# DesktopPet
 
-A cartoon corgi that lives on your Mac screen. It walks along the bottom, hops onto window title bars, and has needs (hunger, happiness, energy, cleanliness) you look after.
+A little pixel-art pet that lives on your Mac. Pick a corgi or a sheep. It wanders along the bottom of your screen, hops onto windows, hangs off their edges, and has needs you look after: hunger, happiness, energy and cleanliness.
 
-## Build and run
+## Requirements
 
-Needs macOS 14+ and Xcode.
+- macOS 14 or later
+- Swift 6 toolchain: Xcode, or just the Command Line Tools (`xcode-select --install`)
+
+## Install
 
 ```bash
-swift test                 # core logic tests
-./scripts/bundle.sh        # builds build/DesktopCorgi.app
-open build/DesktopCorgi.app
+git clone https://github.com/akshirepo/desktoppet.git
+cd desktoppet
+./scripts/bundle.sh
+cp -R build/DesktopCorgi.app /Applications/
+open /Applications/DesktopCorgi.app
 ```
 
-For launch at login, copy the app to `/Applications` first and turn it on from the 🐶 menu.
+The pet shows up in the bottom-right corner and its icon appears in the menu bar. There's no Dock icon.
+
+The app isn't signed with a developer certificate. You built it yourself, so macOS runs it, but if you send the built app to someone else they'll need to right-click it and choose **Open** the first time.
+
+To start it automatically, use **Launch at Login** in the menu. This only works once the app is in `/Applications`.
 
 ## Playing
 
-- Click: pet (hearts). Click a sleeping corgi to wake it.
-- Rest the cursor on it: it gets petted too (hearts every 1.5s).
-- Drag: pick it up (it gets scared), drop it anywhere. It runs home after landing.
-- Home is the bottom-right of the main screen. It hangs out there reading, listening to music, watching TV, and kicking a ball.
-- Leave the Mac alone for 90s, or go full screen: it yawns and naps until you're back.
-- Right-click it or click 🐶 in the menu bar: Feed, Play Ball, Chase Me, Bath, Nap, Stats, Debug Overlay.
-- Play Ball: a ball flies around the screen, the corgi chases it, carries it home, and plays with it. It also starts a game on its own when it's been bored for 10 minutes.
-- Chase Me: the corgi runs around the screen and dodges your cursor. Click it to catch it. Turn it off and it goes home.
-- Needs drop over time, also while the app is closed, but never below 15.
+- **Pet it:** click it, or rest your cursor on it. Hearts float up.
+- **Pick it up:** drag it anywhere. Drop it next to a window and it holds on:
+  - just above a window's top edge: sits on the edge with its legs dangling
+  - just below the top edge: peeks over it, body hidden behind the window
+  - under the bottom edge: hangs on with its front paws
+  - next to a side edge: clings to the side
 
-Save file: `~/Library/Application Support/DesktopCorgi/state.json`. Delete it to start over.
+  It rides along when you move the window and lets go after a few minutes, or when the window closes.
+- **Home:** the bottom-right corner of your desktop. It hangs out there reading, listening to music, watching TV and playing with its ball.
+- **Idle:** leave the Mac alone for 90 seconds, or watch something full screen, and it falls asleep.
+- **Needs:** they drop slowly, even while the app is closed. A thought bubble shows what it wants.
 
-## Using a bought art pack
+### Menu
 
-Put the pack in `~/Library/Application Support/DesktopCorgi/CorgiPack/`:
+Click the menu bar icon or right-click the pet:
 
+- **Feed, Play Ball, Chase Me, Bath, Nap**
+- **Stats:** need levels and how long you've been together
+- **Rename:** give it a name
+- **Character:** switch between the corgi and the sheep
+- **Sounds:** soft sound effects, off by default
+- **Launch at Login**
+
+## Custom art
+
+The corgi and sheep art is built into the app. To use your own, put a pack folder in `~/Library/Application Support/DesktopCorgi/` named `CorgiPack` or `SheepPack`. It overrides the built-in art for that character.
+
+A pack is one folder per animation state with numbered PNG frames, plus a `manifest.json`. See `Assets/Packs/CorgiPack/manifest.json` for the format and the full list of states. Frames should face right; the app mirrors them when the pet walks left. Missing states fall back to `idle`.
+
+## Development
+
+```bash
+swift build          # build
+swift test           # tests for the core logic (needs Xcode for XCTest on macOS)
 ```
-CorgiPack/
-  manifest.json
-  idle/0001.png 0002.png ...
-  walk/...
-```
 
-`manifest.json`:
-```json
-{
-  "scale": 0.5,
-  "states": {
-    "idle": { "folder": "idle", "fps": 8, "loop": true, "anchor": [0.5, 0.0] },
-    "walk": { "folder": "walk", "fps": 12, "loop": true, "anchor": [0.5, 0.0] }
-  }
-}
-```
+- `Sources/CorgiCore`: all the logic (needs, behavior, movement, window edges) with no UI. It also builds and tests on Linux.
+- `Sources/DesktopCorgi`: the macOS app (AppKit + SpriteKit).
+- `Assets/`: the pet art and the doodle icons.
 
-- States: idle (required), walk, run, sit, sleep, eat, beg, dangle, fall, land, wiggle, bath, fetch, wave, back, read, readSleep, music, watch, yawn, scared, happy, holdBall, kick, roam. Missing ones use idle.
-- What the newer states are for: `wave` greeting and fidget, `back` turned around, `read` reading a book, `readSleep` dozing over the book, `music` listening with headphones, `watch` watching TV, `yawn` before an idle nap, `scared` while held, `happy` when hover-petted or caught, `holdBall` flying with the ball in its mouth, `kick` playing with the ball at home, `roam` free flight in Chase Me and ball chase. The built-in placeholder draws 📖 🎧 📺 ⚽️ props next to the corgi for read, music, watch, and kick; a pack's frames should include the prop.
-- `anchor` is where the feet are, as a fraction of the frame: `[0.5, 0.0]` is bottom center.
-- `scale` shrinks or grows every frame.
-- Frames must face right. Mirror them if the pack faces left: `for f in */*.png; do sips -f horizontal "$f"; done`
-- Packs often come as GIFs or sprite sheets. Turn them into frames with:
-  - GIF: `ffmpeg -i walk.gif walk/%04d.png`
-  - Sprite sheet (for example 128x128 cells): `magick sheet.png -crop 128x128 +repage walk/%04d.png`
-  (`brew install ffmpeg imagemagick`)
+## License
 
-Restart the app after changing the pack. If the pack fails to load, the app logs why and uses the built-in placeholder corgi:
-`log show --last 5m --predicate 'process == "DesktopCorgi"'`
+The code is under the MIT License, see [LICENSE](LICENSE). The artwork in `Assets/` (corgi, sheep and doodle icons) is not covered by the MIT License and all rights are reserved, see [ASSETS-LICENSE](ASSETS-LICENSE).

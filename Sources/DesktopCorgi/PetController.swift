@@ -3,17 +3,6 @@ import AppKit
 import CorgiCore
 import SpriteKit
 
-/// Temporary debug trace for the Play Ball investigation.
-func corgiDebug(_ msg: String) {
-    let line = "\(Date()) \(msg)\n"
-    let url = URL(fileURLWithPath: "/tmp/corgi-debug.log")
-    if let h = try? FileHandle(forWritingTo: url) {
-        h.seekToEndOfFile(); h.write(Data(line.utf8)); try? h.close()
-    } else {
-        try? Data(line.utf8).write(to: url)
-    }
-}
-
 final class PetController {
     let needs: NeedsEngine
     let brain = Brain()
@@ -27,7 +16,6 @@ final class PetController {
     private var currentAnim: AnimState?
     private var timer: Timer?
     private var timerFPS = 0
-    private var lastSizeTrace: CFTimeInterval = 0
     private var worldTimer: Timer?
     private var lastTick = CACurrentMediaTime()
     var onRightClick: ((NSEvent, NSView) -> Void)?
@@ -46,15 +34,10 @@ final class PetController {
     let home = HomeTracker(clock: SystemClock())
     let rest = RestMonitor()
     let hover = HoverPet()
-    private var prop: SKLabelNode?
-    private var propEmoji: String?
     private var restPollElapsed: TimeInterval = 0
     private var lastClickPet: CFTimeInterval = 0
     let sounds = SoundPlayer()
     private var moodBubbles = MoodBubbles()
-    private static let props: [Behavior: String] = [
-        .read: "📖", .readSleep: "📖", .music: "🎧", .watchTV: "📺", .playBallHome: "⚽️",
-    ]
 
     init(needs: NeedsEngine, backend: AnimationBackend) {
         self.needs = needs
@@ -181,7 +164,6 @@ final class PetController {
             body.letGo()
             animOverride = (.letGo, CACurrentMediaTime() + 0.5)
         }
-        corgiDebug("begin \(b.rawValue) mode=\(body.mode) pos=\(body.position) ball=\(ball != nil)")
         if b != .ballChase { endBall() }
         if chaseMe && b != .chaseMe && b != .dangle { chaseMe = false }
         if b.countsAsSleep && !needs.state.isAsleep { sounds.play(.purr) }
@@ -194,7 +176,6 @@ final class PetController {
 
     /// The executor says the current behavior is done.
     func stepFinished() {
-        corgiDebug("stepFinished \(brain.current.rawValue) carrying=\(executor.carryingBall)")
         if brain.current == .ballChase && executor.carryingBall {
             brain.interrupt(with: .playBallHome, duration: Double.random(in: 8...15))
             beginBehavior(.playBallHome)
@@ -229,7 +210,6 @@ final class PetController {
 
     /// Throws a ball that flies around the screen. The corgi chases it, carries it home, and plays.
     func playBall() {
-        corgiDebug("playBall current=\(brain.current.rawValue)")
         wake()
         boredom.noteInteraction()
         brain.interrupt(with: .ballChase, duration: 30)
@@ -264,14 +244,12 @@ final class PetController {
         let node = Effects.makeBall()
         ballNode = node
         overlays.place(node, global: b.position)
-        corgiDebug("spawnBall at=\(b.position) screens=\(world.screens) scene=\(node.scene != nil) bodyMode=\(body.mode)")
         executor.ballPosition = b.position
         boredom.noteInteraction()
     }
 
     /// The executor reached the ball: +25 happiness and the ball moves to the corgi's mouth.
     private func ballCaught() {
-        corgiDebug("ballCaught")
         needs.play()
         boredom.noteInteraction()
         sounds.play(.tink)
@@ -295,7 +273,6 @@ final class PetController {
         guard let b = ball else { return }
         b.step(dt: dt)
         if b.popped {
-            corgiDebug("ball popped at=\(b.position) corgi=\(body.position)")
             if let node = ballNode, let scene = node.parent {
                 let pop: SKNode = Doodles.texture("starburst").map { SKSpriteNode(texture: $0, size: CGSize(width: 30, height: 30)) }
                     ?? { let l = SKLabelNode(text: "💥"); l.fontSize = 22; return l }()
@@ -311,7 +288,6 @@ final class PetController {
     }
 
     private func endBall() {
-        if ball != nil || ballNode != nil { corgiDebug("endBall current=\(brain.current.rawValue)") }
         ballNode?.removeFromParent()
         ballNode = nil
         ball = nil
@@ -377,29 +353,6 @@ final class PetController {
         }
     }
 
-    /// Emoji props for idle activities until the art pack has them.
-    private func updateProp() {
-        let want = body.mode == .grounded && !backend.drawsProps ? Self.props[brain.current] : nil
-        guard want != propEmoji else { return }
-        prop?.removeFromParent()
-        prop = nil
-        propEmoji = want
-        guard let want else { return }
-        let p = Effects.makeProp(want)
-        let side: CGFloat = body.facingRight ? 1 : -1
-        let w = backend.size.width, h = backend.size.height
-        switch brain.current {
-        case .music: p.position = CGPoint(x: side * w * 0.35, y: h * 0.7)
-        case .watchTV: p.position = CGPoint(x: side * (w / 2 + 26), y: 0)
-        case .playBallHome:
-            p.position = CGPoint(x: side * (w / 2 + 6), y: 0)
-            p.run(.repeatForever(.sequence([.moveBy(x: 0, y: 16, duration: 0.25), .moveBy(x: 0, y: -16, duration: 0.25)])))
-        default: p.position = CGPoint(x: side * (w / 2 + 2), y: 2)
-        }
-        backend.node.addChild(p)
-        prop = p
-    }
-
     func tick() {
         let now = CACurrentMediaTime()
         let dt = min(now - lastTick, 0.1)
@@ -417,8 +370,6 @@ final class PetController {
 
         let cursor = NSEvent.mouseLocation
         updateHover(dt: dt, cursor: cursor)
-        backend.setHovering(body.mode == .grounded && hitRect.contains(cursor))
-        backend.setHappy(needs.state.happiness > 70)
         updateMoodBubble(dt: dt)
         stepBall(dt: dt)
         if executor.step(brain.current, body: body, world: world, cursor: cursor) { stepFinished() }
@@ -446,13 +397,7 @@ final class PetController {
         }
         if executor.carryingBall, let n = ballNode, n.parent === backend.node {
             n.position = carryPoint
-            n.isHidden = backend.drawsProps   // the holdBall sprite already has the ball in its mouth
-        }
-        updateProp()
-        if now - lastSizeTrace > 3, let fb = backend as? FrameSequenceBackend {
-            lastSizeTrace = now
-            let sc = backend.node.scene
-            corgiDebug("size anim=\(currentAnim?.rawValue ?? "-") \(fb.sizeTrace) scene=\(sc?.size ?? .zero) view=\(sc?.view?.bounds.size ?? .zero) win=\(sc?.view?.window?.frame ?? .zero) mode=\(body.mode)")
+            n.isHidden = true   // the holdBall sprite already has the ball in its mouth
         }
         debug.update(world: world, hitRect: hitRect, behavior: brain.current, overlays: overlays)
         overlays.setClickThrough(!(body.mode == .held || hitRect.contains(cursor)))
@@ -475,11 +420,7 @@ final class PetController {
                         height: backend.bubbleHeight)
     }
 
-    /// The name tag and the hat, from the saved profile.
     func applyProfile(_ profile: PetProfile) {
-        backend.setName(profile.name)
-        backend.setNameTagVisible(profile.showNameTag)
-        backend.setHat(profile.hat)
         sounds.enabled = profile.soundsOn
     }
 
