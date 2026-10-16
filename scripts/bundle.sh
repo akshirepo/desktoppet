@@ -7,6 +7,7 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/DesktopCorgi "$APP/Contents/MacOS/DesktopCorgi"
 cp -R Assets/Doodles "$APP/Contents/Resources/Doodles"
+cp -R Assets/Sounds "$APP/Contents/Resources/Sounds"
 mkdir -p "$APP/Contents/Resources/Packs"
 cp -R Assets/Packs/CorgiPack Assets/Packs/SheepPack "$APP/Contents/Resources/Packs/"
 cat > "$APP/Contents/Info.plist" <<PLIST

@@ -49,4 +49,38 @@ final class StateStoreTests: XCTestCase {
         _ = try? store.load()
         XCTAssertEqual(try Data(contentsOf: store.backupURL), Data("bad2".utf8))
     }
+
+    func testEachCharacterHasItsOwnStateFile() throws {
+        XCTAssertEqual(StateStore.fileName(for: .corgi), "state-corgi.json")
+        XCTAssertEqual(StateStore.fileName(for: .sheep), "state-sheep.json")
+        let corgi = StateStore(directory: dir, character: .corgi)
+        let sheep = StateStore(directory: dir, character: .sheep)
+        var s = NeedsState.fresh(at: Date(timeIntervalSince1970: 100))
+        s.hunger = 12
+        try corgi.save(s)
+        XCTAssertEqual(try corgi.load()?.hunger, 12)
+        XCTAssertNil(try sheep.load())
+        XCTAssertEqual(sheep.backupURL.lastPathComponent, "state-sheep.corrupt.json")
+    }
+
+    func testLegacyStateMovesToTheCharacterItBelongedTo() throws {
+        let legacy = StateStore(directory: dir)
+        var s = NeedsState.fresh(at: Date(timeIntervalSince1970: 100))
+        s.careXP = 42
+        try legacy.save(s)
+        StateStore.migrateLegacy(in: dir, to: .corgi)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: legacy.fileURL.path))
+        XCTAssertEqual(try StateStore(directory: dir, character: .corgi).load()?.careXP, 42)
+        StateStore.migrateLegacy(in: dir, to: .sheep)              // nothing left to move
+        XCTAssertNil(try StateStore(directory: dir, character: .sheep).load())
+    }
+
+    func testLegacyMigrationNeverOverwritesExistingCharacterState() throws {
+        var mine = NeedsState.fresh(at: Date(timeIntervalSince1970: 100)); mine.careXP = 7
+        try StateStore(directory: dir, character: .corgi).save(mine)
+        var old = NeedsState.fresh(at: Date(timeIntervalSince1970: 100)); old.careXP = 99
+        try StateStore(directory: dir).save(old)
+        StateStore.migrateLegacy(in: dir, to: .corgi)
+        XCTAssertEqual(try StateStore(directory: dir, character: .corgi).load()?.careXP, 7)
+    }
 }

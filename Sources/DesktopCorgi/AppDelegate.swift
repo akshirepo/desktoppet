@@ -5,7 +5,8 @@ import SwiftUI
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var statusItem: NSStatusItem!
-    let store = StateStore(directory: StateStore.defaultDirectory)
+    /// The active pet's own save file (needs, level, together-since).
+    private(set) var store: StateStore!
     var needs: NeedsEngine!
     let profileStore = ProfileStore(directory: StateStore.defaultDirectory)
     var profile = PetProfile()
@@ -15,6 +16,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var popover: NSPopover?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        profile = profileStore.load()
+        StateStore.migrateLegacy(in: StateStore.defaultDirectory, to: profile.character)
+        store = StateStore(directory: StateStore.defaultDirectory, character: profile.character)
         var loaded: NeedsState?
         do {
             loaded = try store.load()
@@ -25,7 +29,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if loaded != nil { awaySeconds = needs.catchUpOffline() }
 
         installEditMenu()
-        profile = profileStore.load()
         controller = PetController(needs: needs, backend: makeBackend())
         controller.applyProfile(profile)
         controller.start()
@@ -159,7 +162,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             : "Pick a new name (up to \(PetProfile.maxNameLength) characters)."
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 220, height: 24))
         field.stringValue = profile.name
-        field.placeholderString = PetProfile.defaultName
+        field.placeholderString = profile.character.displayName
         alert.accessoryView = field
         alert.addButton(withTitle: "OK")
         alert.addButton(withTitle: "Later")

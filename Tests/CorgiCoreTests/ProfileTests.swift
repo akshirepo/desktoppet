@@ -42,6 +42,49 @@ final class ProfileTests: XCTestCase {
         XCTAssertEqual(unknown.character, .corgi)
     }
 
+    func testEachCharacterHasItsOwnName() {
+        var p = PetProfile()
+        p.rename(to: "Biscuit")
+        XCTAssertEqual(p.name, "Biscuit")
+        p.character = .sheep
+        XCTAssertEqual(p.name, "Sheep")              // its own default
+        p.rename(to: "Wooly")
+        p.character = .corgi
+        XCTAssertEqual(p.name, "Biscuit")
+        p.character = .sheep
+        XCTAssertEqual(p.name, "Wooly")
+    }
+
+    func testEachCharacterIsAskedForANameOnce() {
+        var p = PetProfile()
+        p.askedForName = true
+        p.character = .sheep
+        XCTAssertFalse(p.askedForName)
+        p.askedForName = true
+        p.character = .corgi
+        XCTAssertTrue(p.askedForName)
+    }
+
+    func testLegacySingleNameBelongsToTheSavedCharacter() throws {
+        let json = #"{"name":"corgbrulee","askedForName":true,"character":"corgi","soundsOn":true}"#
+        var p = try JSONDecoder().decode(PetProfile.self, from: Data(json.utf8))
+        XCTAssertEqual(p.name, "corgbrulee")
+        XCTAssertTrue(p.askedForName)
+        p.character = .sheep
+        XCTAssertEqual(p.name, "Sheep")
+        XCTAssertFalse(p.askedForName)
+    }
+
+    func testPerCharacterNamesRoundTrip() throws {
+        var p = PetProfile()
+        p.rename(to: "Biscuit"); p.askedForName = true
+        p.character = .sheep
+        p.rename(to: "Wooly")
+        let back = try JSONDecoder().decode(PetProfile.self, from: JSONEncoder().encode(p))
+        XCTAssertEqual(back, p)
+        XCTAssertEqual(back.name, "Wooly")
+    }
+
     func testMissingFileLoadsDefaults() {
         let store = ProfileStore(directory: dir)
         XCTAssertEqual(store.load(), PetProfile())

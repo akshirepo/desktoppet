@@ -6,16 +6,37 @@ public enum StateStoreError: Error, Equatable {
 
 public final class StateStore {
     public let directory: URL
-    public var fileURL: URL { directory.appendingPathComponent("state.json") }
-    public var backupURL: URL { directory.appendingPathComponent("state.corrupt.json") }
+    public let fileName: String
+    public var fileURL: URL { directory.appendingPathComponent(fileName) }
+    public var backupURL: URL {
+        directory.appendingPathComponent(fileName.replacingOccurrences(of: ".json", with: ".corrupt.json"))
+    }
+
+    /// Each pet keeps its own needs, level and together-since date.
+    public static func fileName(for character: Character) -> String { "state-\(character.rawValue).json" }
+
+    /// Older versions kept one shared state.json. It belongs to the pet that was active then.
+    /// Never overwrites a pet's own file.
+    public static func migrateLegacy(in directory: URL, to character: Character) {
+        let fm = FileManager.default
+        let legacy = directory.appendingPathComponent("state.json")
+        let target = directory.appendingPathComponent(fileName(for: character))
+        guard fm.fileExists(atPath: legacy.path), !fm.fileExists(atPath: target.path) else { return }
+        try? fm.moveItem(at: legacy, to: target)
+    }
 
     public static var defaultDirectory: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("DesktopCorgi")
     }
 
-    public init(directory: URL) {
+    public init(directory: URL, fileName: String = "state.json") {
         self.directory = directory
+        self.fileName = fileName
+    }
+
+    public convenience init(directory: URL, character: Character) {
+        self.init(directory: directory, fileName: StateStore.fileName(for: character))
     }
 
     public func load() throws -> NeedsState? {

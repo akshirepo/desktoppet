@@ -37,6 +37,10 @@ final class PetController {
     private var restPollElapsed: TimeInterval = 0
     private var lastClickPet: CFTimeInterval = 0
     let sounds = SoundPlayer()
+    private var petSound: SoundPlayer.Effect = .petCorgi
+    private var snoreTick = false
+    private var stepElapsed: TimeInterval = 0
+    private var wasGrounded = true
     private var moodBubbles = MoodBubbles()
 
     init(needs: NeedsEngine, backend: AnimationBackend) {
@@ -96,6 +100,7 @@ final class PetController {
     /// Wave and say hi on every launch; a second bubble if away more than an hour.
     func greet(awaySeconds: TimeInterval) {
         wake()
+        sounds.play(.happy)
         let lines = Greeting.lines(awaySeconds: awaySeconds)
         brain.interrupt(with: .greet, duration: lines.count > 1 ? 5.5 : 3)
         beginBehavior(.greet)
@@ -162,13 +167,16 @@ final class PetController {
     func beginBehavior(_ b: Behavior) {
         if body.mode == .clinging && b != .cling && b != .dangle {
             body.letGo()
+            sounds.play(.letGo)
             animOverride = (.letGo, CACurrentMediaTime() + 0.5)
         }
         if b != .ballChase { endBall() }
         if chaseMe && b != .chaseMe && b != .dangle { chaseMe = false }
-        if b.countsAsSleep && !needs.state.isAsleep { sounds.play(.purr) }
+        if b.countsAsSleep && !needs.state.isAsleep { sounds.play(.snore) }
+        if b == .yawn { sounds.play(.yawn) }
         if needs.state.isAsleep != b.countsAsSleep { needs.setAsleep(b.countsAsSleep) }
-        if b == .eat { sounds.play(.bottle) }
+        if b == .eat { sounds.play(.eat) }
+        if b == .bath { sounds.play(.bath) }
         executor.speedScale = needs.isLow(.happiness) ? 0.6 : 1
         executor.begin(b, body: body, world: world, cursor: NSEvent.mouseLocation)
         if b == .ballChase { spawnBall() }
@@ -241,6 +249,7 @@ final class PetController {
         endBall()
         let b = Ball(start: CGPoint(x: body.position.x, y: body.position.y + 60), screens: world.screens)
         ball = b
+        sounds.play(.ballBounce)
         let node = Effects.makeBall()
         ballNode = node
         overlays.place(node, global: b.position)
@@ -252,7 +261,7 @@ final class PetController {
     private func ballCaught() {
         needs.play()
         boredom.noteInteraction()
-        sounds.play(.tink)
+        sounds.play(.ballCatch)
         Effects.floatDoodle("heart", fallback: "❤️", on: backend.node, height: backend.size.height, count: 3)
         ball = nil
         executor.ballPosition = nil
@@ -273,6 +282,7 @@ final class PetController {
         guard let b = ball else { return }
         b.step(dt: dt)
         if b.popped {
+            sounds.play(.ballPop)
             if let node = ballNode, let scene = node.parent {
                 let pop: SKNode = Doodles.texture("starburst").map { SKSpriteNode(texture: $0, size: CGSize(width: 30, height: 30)) }
                     ?? { let l = SKLabelNode(text: "💥"); l.fontSize = 22; return l }()
@@ -347,7 +357,7 @@ final class PetController {
     private func hoverPet() {
         boredom.noteInteraction()
         if needs.pet() {
-            sounds.play(.pop)
+            sounds.play(petSound)
             Effects.floatDoodle("heart", fallback: "❤️", on: backend.node, height: backend.size.height, count: 2)
             if body.mode != .clinging { animOverride = (.happy, CACurrentMediaTime() + 0.8) }  // keep its grip pose while hanging
         }
@@ -376,12 +386,14 @@ final class PetController {
         if let event = body.step(dt: dt, world: world) {
             if executor.handle(event, behavior: brain.current, body: body) { stepFinished() }
             if event == .landed {
+                sounds.play(.land)
                 animOverride = (.land, now + 0.25)
                 if brain.current == .fall { brain.finishCurrent() }
             }
             if event == .startedFalling { fell() }
         }
         body.clamp(to: world.screens)
+        updateMovementSounds(dt: dt)
 
         overlays.place(globalFeet: body.position)
         // Cling sprites are drawn for their side already, so they are never mirrored.
@@ -389,6 +401,8 @@ final class PetController {
         updateAnimation(now)
         if brain.current.countsAsSleep && now - lastZzz > 2 {
             lastZzz = now
+            snoreTick.toggle()
+            if snoreTick { sounds.play(.snore) }   // every other Zzz, about every 4s
             Effects.floatDoodle("zzz", fallback: "💤", on: backend.node, height: backend.size.height * 0.8)
         }
         if body.mode == .held && now - lastSweat > 0.6 {
@@ -420,8 +434,22 @@ final class PetController {
                         height: backend.bubbleHeight)
     }
 
+    /// Paw patter while walking or running, and a boing when it jumps.
+    private func updateMovementSounds(dt: TimeInterval) {
+        let grounded = body.mode == .grounded
+        if wasGrounded && body.mode == .airborne && body.velocity.dy > 0 { sounds.play(.hop) }
+        wasGrounded = grounded
+        guard grounded && body.isMoving else { stepElapsed = 0; return }
+        stepElapsed += dt
+        if stepElapsed >= (body.isRunning ? 0.16 : 0.3) {
+            stepElapsed = 0
+            sounds.play(.step)
+        }
+    }
+
     func applyProfile(_ profile: PetProfile) {
         sounds.enabled = profile.soundsOn
+        petSound = profile.character == .sheep ? .petSheep : .petCorgi
     }
 
     private func updateAnimation(_ now: CFTimeInterval) {
@@ -454,6 +482,7 @@ extension PetController: SceneInputHandler {
             dragging = true
             boredom.noteInteraction()
             body.pickUp()
+            sounds.play(.pickup)
             brain.interrupt(with: .dangle, duration: .infinity)
             beginBehavior(.dangle)
         }
@@ -498,7 +527,7 @@ extension PetController: SceneInputHandler {
         lastClickPet = CACurrentMediaTime()
         if chaseMe {
             if needs.catchPet() {
-                sounds.play(.pop)
+                sounds.play(petSound)
                 Effects.floatDoodle("heart", fallback: "❤️", on: backend.node, height: backend.size.height, count: 4)
                 if body.mode != .clinging { animOverride = (.happy, CACurrentMediaTime() + 0.8) }  // keep its grip pose while hanging
             }
@@ -509,7 +538,7 @@ extension PetController: SceneInputHandler {
             needs.setAsleep(false)
         }
         if needs.pet() {
-            sounds.play(.pop)
+            sounds.play(petSound)
             Effects.floatDoodle("heart", fallback: "❤️", on: backend.node, height: backend.size.height, count: 3)
             if body.mode != .clinging { animOverride = (.wiggle, CACurrentMediaTime() + 0.8) }  // keep its grip pose while hanging
         }

@@ -27,30 +27,60 @@ public struct PetProfile: Codable, Equatable {
     public static let defaultName = "Corgi"
     public static let maxNameLength = 20
 
-    public var name: String
+    /// Each pet's own name, keyed by character. Missing means its default (the character's display name).
+    public private(set) var names: [String: String] = [:]
+    /// Pets that have already been asked for a name.
+    public private(set) var askedNames: Set<String> = []
     public var soundsOn: Bool
-    public var askedForName: Bool
     public var character: Character
 
-    public init(name: String = PetProfile.defaultName, soundsOn: Bool = false, askedForName: Bool = false,
+    public init(name: String? = nil, soundsOn: Bool = false, askedForName: Bool = false,
                 character: Character = .corgi) {
-        self.name = name
         self.soundsOn = soundsOn
-        self.askedForName = askedForName
         self.character = character
+        if let name { names[character.rawValue] = name }
+        if askedForName { askedNames.insert(character.rawValue) }
     }
 
     public static let `default` = PetProfile()
 
-    private enum CodingKeys: String, CodingKey { case name, soundsOn, askedForName, character }
+    /// The current pet's name.
+    public var name: String {
+        get { names[character.rawValue] ?? character.displayName }
+        set { names[character.rawValue] = newValue }
+    }
+
+    /// Whether the current pet has been asked for a name yet.
+    public var askedForName: Bool {
+        get { askedNames.contains(character.rawValue) }
+        set { if newValue { askedNames.insert(character.rawValue) } else { askedNames.remove(character.rawValue) } }
+    }
+
+    private enum CodingKeys: String, CodingKey { case names, askedNames, soundsOn, character, name, askedForName }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        let d = PetProfile()
-        name = PetProfile.sanitizedName(try c.decodeIfPresent(String.self, forKey: .name) ?? d.name, keeping: d.name)
-        soundsOn = try c.decodeIfPresent(Bool.self, forKey: .soundsOn) ?? d.soundsOn
-        askedForName = try c.decodeIfPresent(Bool.self, forKey: .askedForName) ?? d.askedForName
-        character = (try? c.decodeIfPresent(Character.self, forKey: .character)) ?? d.character
+        soundsOn = try c.decodeIfPresent(Bool.self, forKey: .soundsOn) ?? false
+        character = (try? c.decodeIfPresent(Character.self, forKey: .character)) ?? .corgi
+        let stored = (try? c.decodeIfPresent([String: String].self, forKey: .names)) ?? [:]
+        for (key, value) in stored {
+            guard let pet = Character(rawValue: key) else { continue }
+            names[key] = PetProfile.sanitizedName(value, keeping: pet.displayName)
+        }
+        askedNames = Set((try? c.decodeIfPresent([String].self, forKey: .askedNames)) ?? [])
+        // Older versions had one name and one prompt flag; they belong to the pet that was active then.
+        if let legacy = try c.decodeIfPresent(String.self, forKey: .name), names[character.rawValue] == nil {
+            names[character.rawValue] = PetProfile.sanitizedName(legacy, keeping: character.displayName)
+        }
+        if (try c.decodeIfPresent(Bool.self, forKey: .askedForName)) == true { askedNames.insert(character.rawValue) }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(names, forKey: .names)
+        try c.encode(askedNames.sorted(), forKey: .askedNames)
+        try c.encode(soundsOn, forKey: .soundsOn)
+        try c.encode(character, forKey: .character)
     }
 
     public var packFolderName: String { character.packFolderName }

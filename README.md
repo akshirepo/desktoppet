@@ -43,9 +43,9 @@ Click the menu bar icon or right-click the pet:
 
 - **Feed, Play Ball, Chase Me, Bath, Nap**
 - **Stats:** need levels and how long you've been together
-- **Rename:** give it a name
-- **Character:** switch between the corgi and the sheep
-- **Sounds:** soft sound effects, off by default
+- **Rename:** give the current pet a name
+- **Character:** switch between the corgi and the sheep. Each pet has its own name and stats.
+- **Sounds:** cartoony sound effects for petting, eating, baths, snoring, footsteps, hops and the ball. Off by default.
 - **Launch at Login**
 
 ## Custom art
@@ -63,8 +63,9 @@ swift test           # tests for the core logic (needs Xcode for XCTest on macOS
 
 - `Sources/CorgiCore`: all the logic (needs, behavior, movement, window edges) with no UI. It also builds and tests on Linux.
 - `Sources/DesktopCorgi`: the macOS app (AppKit + SpriteKit).
-- `Assets/`: the pet art and the doodle icons.
+- `Assets/`: the pet art, the doodle icons and the sound effects.
+- `scripts/sounds/`: the scripts that synthesize the sound effects from scratch.
 
 ## License
 
-The code is under the MIT License, see [LICENSE](LICENSE). The artwork in `Assets/` (corgi, sheep and doodle icons) is not covered by the MIT License and all rights are reserved, see [ASSETS-LICENSE](ASSETS-LICENSE).
+The code is under the MIT License, see [LICENSE](LICENSE). The artwork and sounds in `Assets/` (corgi, sheep, doodle icons and sound effects) are not covered by the MIT License and all rights are reserved, see [ASSETS-LICENSE](ASSETS-LICENSE).
