@@ -39,7 +39,6 @@ final class FrameSequenceBackend: AnimationBackend {
         scale = CGFloat(manifest.scale ?? 1)
         let frameSize = idle.frames[0].size()
         size = CGSize(width: frameSize.width * scale, height: frameSize.height * scale)
-        sprite.setScale(scale)
         node.addChild(sprite)
         play(.idle)
     }
@@ -51,12 +50,21 @@ final class FrameSequenceBackend: AnimationBackend {
             sprite.anchorPoint = CGPoint(x: entry.spec.anchor[0], y: entry.spec.anchor[1])
         }
         sprite.texture = entry.frames[0]
-        sprite.size = entry.frames[0].size()
-        sprite.setScale(scale)
-        setFacing(right: facingRight)
+        // SKSpriteNode.size is the on-screen size (it already includes xScale/yScale), so the pack scale is
+        // applied here once and the node scale only carries the left/right flip. Frames in a state share one size.
+        let t = entry.frames[0].size()
+        sprite.yScale = 1
+        sprite.xScale = facingRight ? 1 : -1
+        sprite.size = CGSize(width: t.width * scale, height: t.height * scale)
         let animation = SKAction.animate(with: entry.frames, timePerFrame: 1 / max(entry.spec.fps, 1),
-                                         resize: true, restore: false)
+                                         resize: false, restore: false)
         sprite.run(entry.spec.loop ? .repeatForever(animation) : animation)
+    }
+
+    /// Temporary size trace for the "sometimes enlarged" investigation.
+    var sizeTrace: String {
+        let t = sprite.texture?.size() ?? .zero
+        return "sprite scale=(\(sprite.xScale),\(sprite.yScale)) size=\(sprite.size) frame=\(sprite.frame.size) tex=\(t) node=(\(node.xScale),\(node.yScale))"
     }
 
     /// Pack sprites already include their props (book, headphones, TV, ball).
@@ -64,7 +72,7 @@ final class FrameSequenceBackend: AnimationBackend {
 
     func setFacing(right: Bool) {
         facingRight = right
-        sprite.xScale = (right ? 1 : -1) * scale
+        sprite.xScale = right ? 1 : -1
     }
 }
 #endif

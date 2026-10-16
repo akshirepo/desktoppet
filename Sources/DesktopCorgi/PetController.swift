@@ -27,6 +27,7 @@ final class PetController {
     private var currentAnim: AnimState?
     private var timer: Timer?
     private var timerFPS = 0
+    private var lastSizeTrace: CFTimeInterval = 0
     private var worldTimer: Timer?
     private var lastTick = CACurrentMediaTime()
     var onRightClick: ((NSEvent, NSView) -> Void)?
@@ -448,6 +449,11 @@ final class PetController {
             n.isHidden = backend.drawsProps   // the holdBall sprite already has the ball in its mouth
         }
         updateProp()
+        if now - lastSizeTrace > 3, let fb = backend as? FrameSequenceBackend {
+            lastSizeTrace = now
+            let sc = backend.node.scene
+            corgiDebug("size anim=\(currentAnim?.rawValue ?? "-") \(fb.sizeTrace) scene=\(sc?.size ?? .zero) view=\(sc?.view?.bounds.size ?? .zero) win=\(sc?.view?.window?.frame ?? .zero) mode=\(body.mode)")
+        }
         debug.update(world: world, hitRect: hitRect, behavior: brain.current, overlays: overlays)
         overlays.setClickThrough(!(body.mode == .held || hitRect.contains(cursor)))
         setRate(body.isMoving || body.mode == .held || animOverride != nil || ball != nil ? 30 : 15)
