@@ -101,6 +101,12 @@ public final class Body {
         if abs(dx) > 1 { facingRight = dx > 0 }
     }
 
+    /// Holds still in the air while roaming.
+    public func hover() {
+        guard mode == .roaming else { return }
+        velocity = .zero
+    }
+
     /// Ends roaming. The body falls to whatever floor is below.
     public func stopRoaming() {
         guard mode == .roaming else { return }

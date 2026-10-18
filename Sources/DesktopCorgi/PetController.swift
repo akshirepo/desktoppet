@@ -224,7 +224,7 @@ final class PetController {
         beginBehavior(.ballChase)
     }
 
-    /// Menu toggle. On: roam freely and dodge the cursor. Off: fall to the floor and go home.
+    /// Menu toggle. On: fly after the cursor and wait beside it. Off: fall to the floor and go home.
     func setChaseMe(_ on: Bool) {
         guard on != chaseMe else { return }
         boredom.noteInteraction()

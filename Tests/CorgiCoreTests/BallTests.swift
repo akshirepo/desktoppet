@@ -56,30 +56,51 @@ final class RoamSteeringTests: XCTestCase {
         return false
     }
 
-    func testChaseMeWandersInsideTheScreens() {
-        let ex = BehaviorExecutor(rng: SeededRandom(seed: 4))
-        let body = Body(position: CGPoint(x: 700, y: 300))
-        ex.begin(.chaseMe, body: body, world: world, cursor: .zero)
-        XCTAssertEqual(body.mode, .roaming)
-        let area = insetRects(world.screens, side: 20, top: body.config.roamHeadroom)
-        var xs = Set<Int>()
-        for _ in 0..<Int(10 / dt) {
-            XCTAssertFalse(tick(ex, .chaseMe, body, cursor: CGPoint(x: -500, y: -500)))
-            XCTAssertTrue(rects(area, contain: body.position))
-            xs.insert(Int(body.position.x / 100))
-        }
-        XCTAssertEqual(body.mode, .roaming)
-        XCTAssertGreaterThan(xs.count, 3)
-    }
-
-    func testChaseMeDodgesANearbyCursor() {
+    func testChaseMeFollowsTheCursorAndWaitsBesideIt() {
         let ex = BehaviorExecutor(rng: SeededRandom(seed: 4))
         let body = Body(position: CGPoint(x: 700, y: 400))
         ex.begin(.chaseMe, body: body, world: world, cursor: .zero)
-        let cursor = CGPoint(x: 600, y: 400)
-        for _ in 0..<Int(0.5 / dt) { _ = tick(ex, .chaseMe, body, cursor: cursor) }
-        XCTAssertGreaterThan(body.position.x, 780)
+        XCTAssertEqual(body.mode, .roaming)
+        let cursor = CGPoint(x: 300, y: 400)
+        for _ in 0..<Int(3 / dt) {
+            XCTAssertFalse(tick(ex, .chaseMe, body, cursor: cursor))
+            XCTAssertGreaterThan(body.position.x, cursor.x)   // never runs past it
+        }
+        XCTAssertLessThan(hypot(body.position.x - cursor.x, body.position.y - cursor.y), ex.followDistance)
+        XCTAssertGreaterThan(body.position.x, cursor.x + 100)
+        XCTAssertFalse(body.facingRight)
+        let waiting = body.position
+        for _ in 0..<Int(1 / dt) { _ = tick(ex, .chaseMe, body, cursor: cursor) }
+        XCTAssertEqual(body.position, waiting)
+        XCTAssertEqual(body.mode, .roaming)
+    }
+
+    func testChaseMeTurnsToFaceTheCursorWhileWaiting() {
+        let ex = BehaviorExecutor(rng: SeededRandom(seed: 4))
+        let body = Body(position: CGPoint(x: 700, y: 400))
+        ex.begin(.chaseMe, body: body, world: world, cursor: .zero)
+        body.face(right: false)
+        for _ in 0..<5 { _ = tick(ex, .chaseMe, body, cursor: CGPoint(x: 750, y: 400)) }
+        XCTAssertEqual(body.position, CGPoint(x: 700, y: 400))
         XCTAssertTrue(body.facingRight)
+        for _ in 0..<5 { _ = tick(ex, .chaseMe, body, cursor: CGPoint(x: 650, y: 400)) }
+        XCTAssertEqual(body.position, CGPoint(x: 700, y: 400))
+        XCTAssertFalse(body.facingRight)
+    }
+
+    func testChaseMeStaysInsideTheScreensWhenTheCursorIsOff() {
+        let ex = BehaviorExecutor(rng: SeededRandom(seed: 4))
+        let body = Body(position: CGPoint(x: 700, y: 300))
+        ex.begin(.chaseMe, body: body, world: world, cursor: .zero)
+        let area = insetRects(world.screens, side: 20, top: body.config.roamHeadroom)
+        let cursor = CGPoint(x: -500, y: -500)
+        for _ in 0..<Int(10 / dt) {
+            XCTAssertFalse(tick(ex, .chaseMe, body, cursor: cursor))
+            XCTAssertTrue(rects(area, contain: body.position))
+        }
+        let corner = nearestPoint(to: cursor, in: area)
+        XCTAssertLessThan(hypot(body.position.x - corner.x, body.position.y - corner.y), ex.followDistance)
+        XCTAssertEqual(body.mode, .roaming)
     }
 
     func testBallChaseCatchesCarriesHomeAndDrops() {
