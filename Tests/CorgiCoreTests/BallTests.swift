@@ -75,6 +75,19 @@ final class RoamSteeringTests: XCTestCase {
         XCTAssertEqual(body.mode, .roaming)
     }
 
+    func testAskingForCareComesToTheCursorAndWaitsBesideIt() {
+        let ex = BehaviorExecutor(rng: SeededRandom(seed: 4))
+        let body = Body(position: CGPoint(x: 700, y: 400))
+        ex.begin(.askCare, body: body, world: world, cursor: .zero)
+        XCTAssertEqual(body.mode, .roaming)
+        let cursor = CGPoint(x: 300, y: 400)
+        for _ in 0..<Int(3 / dt) { XCTAssertFalse(tick(ex, .askCare, body, cursor: cursor)) }
+        XCTAssertLessThan(hypot(body.position.x - cursor.x, body.position.y - cursor.y), ex.followDistance)
+        XCTAssertGreaterThan(body.position.x, cursor.x + 100)
+        ex.begin(.idle, body: body, world: world, cursor: cursor)
+        XCTAssertNotEqual(body.mode, .roaming)   // leaving the request drops it back to the floor
+    }
+
     func testChaseMeTurnsToFaceTheCursorWhileWaiting() {
         let ex = BehaviorExecutor(rng: SeededRandom(seed: 4))
         let body = Body(position: CGPoint(x: 700, y: 400))

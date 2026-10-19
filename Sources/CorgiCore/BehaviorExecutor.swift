@@ -42,7 +42,7 @@ public final class BehaviorExecutor {
         homeLeapDirection = nil
         carryingBall = false
         ballPhase = .chasing
-        if body.mode == .roaming && b != .chaseMe && b != .ballChase { body.stopRoaming() }
+        if body.mode == .roaming && b != .chaseMe && b != .ballChase && b != .askCare { body.stopRoaming() }
         body.stop()
         let segment = body.standingOn ?? world.segment(under: body.position)
         switch b {
@@ -55,7 +55,7 @@ public final class BehaviorExecutor {
             body.face(right: cursor.x >= body.position.x)
         case .zoomies:
             zoomDirection = random() < 0.5 ? -1 : 1
-        case .chaseMe, .ballChase:
+        case .chaseMe, .ballChase, .askCare:
             body.startRoaming()
         case .hopToWindow:
             let options = world.reachableSegments(from: body.position,
@@ -84,7 +84,7 @@ public final class BehaviorExecutor {
     }
 
     public func step(_ b: Behavior, body: Body, world: World, cursor: CGPoint) -> Bool {
-        if b == .chaseMe {
+        if b == .chaseMe || b == .askCare {
             stepChaseMe(body: body, world: world, cursor: cursor)
             return false
         }

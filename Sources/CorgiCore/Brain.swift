@@ -5,6 +5,8 @@ public enum Behavior: String, CaseIterable {
     case eat, fetch, bath, dangle, fall, greet
     case goHome, read, readSleep, music, watchTV, wave, turnAround, playBallHome
     case yawn, idleSleep, chaseMe, ballChase
+    /// Came to the cursor to ask for something it needs (food, a bath, play or a nap).
+    case askCare
     case cling
 
     /// Behaviors the brain picks on its own. The rest only happen through `interrupt`.

@@ -35,6 +35,8 @@ public struct PetProfile: Codable, Equatable {
     public var character: Character
     /// Start the app when you log in. Re-applied on every launch so rebuilt or moved apps stay registered.
     public var launchAtLogin = false
+    /// Now and then, come to the cursor and ask for food, a bath, play or a nap when a need is low.
+    public var askForCare = true
 
     public init(name: String? = nil, soundsOn: Bool = false, askedForName: Bool = false,
                 character: Character = .corgi) {
@@ -58,13 +60,14 @@ public struct PetProfile: Codable, Equatable {
         set { if newValue { askedNames.insert(character.rawValue) } else { askedNames.remove(character.rawValue) } }
     }
 
-    private enum CodingKeys: String, CodingKey { case names, askedNames, soundsOn, character, launchAtLogin, name, askedForName }
+    private enum CodingKeys: String, CodingKey { case names, askedNames, soundsOn, character, launchAtLogin, askForCare, name, askedForName }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         soundsOn = try c.decodeIfPresent(Bool.self, forKey: .soundsOn) ?? false
         character = (try? c.decodeIfPresent(Character.self, forKey: .character)) ?? .corgi
         launchAtLogin = (try? c.decodeIfPresent(Bool.self, forKey: .launchAtLogin)) ?? false
+        askForCare = (try? c.decodeIfPresent(Bool.self, forKey: .askForCare)) ?? true
         let stored = (try? c.decodeIfPresent([String: String].self, forKey: .names)) ?? [:]
         for (key, value) in stored {
             guard let pet = Character(rawValue: key) else { continue }
@@ -85,6 +88,7 @@ public struct PetProfile: Codable, Equatable {
         try c.encode(soundsOn, forKey: .soundsOn)
         try c.encode(character, forKey: .character)
         try c.encode(launchAtLogin, forKey: .launchAtLogin)
+        try c.encode(askForCare, forKey: .askForCare)
     }
 
     public var packFolderName: String { character.packFolderName }

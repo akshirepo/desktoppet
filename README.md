@@ -36,6 +36,7 @@ To start it automatically, turn on **Launch at Login** in the menu. This only wo
 - **Home:** the bottom-right corner of your desktop. It hangs out there reading, listening to music, watching TV and playing with its ball.
 - **Idle:** leave the Mac alone for 90 seconds, or watch something full screen, and it falls asleep.
 - **Needs:** they drop slowly, even while the app is closed. A thought bubble shows what it wants.
+- **Asking for help:** when a need gets low, now and then it comes over to your cursor and begs, with a bubble showing what it wants (food, a bath, play or a nap). Click it to give it that. Ignore it and it goes back to what it was doing and asks again later. Each need asks at most every 30 minutes, and never while you're away, in full screen, or busy with it. Turn it off with **Ask for Care** in the menu.
 
 ### Menu
 
@@ -45,6 +46,7 @@ Click the menu bar icon or right-click the pet:
 - **Stats:** need levels and how long you've been together
 - **Rename:** give the current pet a name
 - **Character:** switch between the corgi and the sheep. Each pet has its own name and stats.
+- **Ask for Care:** let it come to your cursor when it needs something. On by default.
 - **Sounds:** cartoony sound effects for petting, eating, baths, snoring, footsteps, hops and the ball. Off by default.
 - **Launch at Login**
 

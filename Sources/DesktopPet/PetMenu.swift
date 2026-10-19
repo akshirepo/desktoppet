@@ -32,6 +32,8 @@ struct PetMenuActions {
     var rename: () -> Void
     var toggleSounds: () -> Void
     var soundsOn: Bool
+    var toggleAskForCare: () -> Void
+    var askForCareOn: Bool
     var character: Character
     var characterAvailable: (Character) -> Bool
     var setCharacter: (Character) -> Void
@@ -64,6 +66,9 @@ enum PetMenu {
         let sounds = ClosureMenuItem("Sounds", icon: a.soundsOn ? "sound-on" : "sound-off", handler: a.toggleSounds)
         sounds.state = a.soundsOn ? .on : .off
         menu.addItem(sounds)
+        let care = ClosureMenuItem("Ask for Care", icon: "help", handler: a.toggleAskForCare)
+        care.state = a.askForCareOn ? .on : .off
+        menu.addItem(care)
         let debug = ClosureMenuItem("Debug Overlay", handler: a.toggleDebug)
         debug.state = a.debugOn ? .on : .off
         menu.addItem(debug)

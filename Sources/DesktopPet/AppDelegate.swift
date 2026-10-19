@@ -216,6 +216,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             rename: { [weak self] in DispatchQueue.main.async { self?.promptRename(firstTime: false) } },
             toggleSounds: { [weak self] in self?.updateProfile { $0.soundsOn.toggle() } },
             soundsOn: profile.soundsOn,
+            toggleAskForCare: { [weak self] in self?.updateProfile { $0.askForCare.toggle() } },
+            askForCareOn: profile.askForCare,
             character: profile.character,
             characterAvailable: { c in
                 var p = current

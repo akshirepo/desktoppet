@@ -42,6 +42,12 @@ final class PetController {
     private var stepElapsed: TimeInterval = 0
     private var wasGrounded = true
     private var moodBubbles = MoodBubbles()
+    private var careAsker = CareAsker()
+    /// What it came over to ask for, while `brain.current == .askCare`.
+    private(set) var askingFor: Need?
+    var askForCare = true
+    private var careCheckElapsed: TimeInterval = 0
+    private var lastCareBubble: CFTimeInterval = 0
 
     init(needs: NeedsEngine, backend: AnimationBackend) {
         self.needs = needs
@@ -165,6 +171,11 @@ final class PetController {
     }
 
     func beginBehavior(_ b: Behavior) {
+        if b != .askCare, askingFor != nil {
+            // Ignored: a little tear, then back to what it was doing. It asks again later.
+            askingFor = nil
+            Effects.floatDoodle("teardrop", fallback: "💧", on: backend.node, height: backend.size.height)
+        }
         if body.mode == .clinging && b != .cling && b != .dangle {
             body.letGo()
             sounds.play(.letGo)
@@ -381,6 +392,7 @@ final class PetController {
         let cursor = NSEvent.mouseLocation
         updateHover(dt: dt, cursor: cursor)
         updateMoodBubble(dt: dt)
+        updateCareRequest(dt: dt, now: now)
         stepBall(dt: dt)
         if executor.step(brain.current, body: body, world: world, cursor: cursor) { stepFinished() }
         if let event = body.step(dt: dt, world: world) {
@@ -423,15 +435,53 @@ final class PetController {
         let blocked = needs.state.isAsleep || brain.current.countsAsSleep
             || body.mode == .held || body.mode == .roaming
         guard let need = moodBubbles.update(dt: dt, needs: needs.state, blocked: blocked) else { return }
-        let icon: String
-        switch need {
-        case .hunger: icon = "menu:feed"
-        case .happiness: icon = "heart"
-        case .energy: icon = "moon"
-        case .cleanliness: icon = "sparkles"
-        }
-        Effects.thought(icon: icon, fallback: MoodBubbles.bubbleText(for: need), on: backend.node,
+        Effects.thought(icon: Self.icon(for: need), fallback: MoodBubbles.bubbleText(for: need), on: backend.node,
                         height: backend.bubbleHeight)
+    }
+
+    private static func icon(for need: Need) -> String {
+        switch need {
+        case .hunger: return "menu:feed"
+        case .happiness: return "heart"
+        case .energy: return "moon"
+        case .cleanliness: return "sparkles"
+        }
+    }
+
+    /// Now and then a low need sends it to your cursor to ask for help; click it to give it what it wants.
+    private func updateCareRequest(dt: TimeInterval, now: CFTimeInterval) {
+        if brain.current == .askCare, let need = askingFor {
+            if !body.isMoving && now - lastCareBubble > 3 {
+                if lastCareBubble == 0 { sounds.play(petSound) }
+                lastCareBubble = now
+                Effects.thought(icon: Self.icon(for: need), fallback: MoodBubbles.bubbleText(for: need),
+                                on: backend.node, height: backend.bubbleHeight)
+            }
+            return
+        }
+        careCheckElapsed += dt
+        guard careCheckElapsed >= 2 else { return }
+        careCheckElapsed = 0
+        let busy: Set<Behavior> = [.eat, .bath, .fetch, .ballChase, .greet, .yawn, .dangle, .fall, .cling, .chaseMe, .askCare]
+        let fullScreen = isFullScreen(frontWindow: world.windows.first?.frame,
+                                      screenFrames: NSScreen.screens.map(\.frame))
+        let blocked = !askForCare || chaseMe || dragging || body.mode != .grounded || brain.current.countsAsSleep
+            || busy.contains(brain.current) || ball != nil || fullScreen || userIdleSeconds > 60
+        guard let need = careAsker.next(needs: needs.state, now: Date(), blocked: blocked) else { return }
+        careAsker.markAsked(need, at: Date())
+        askingFor = need
+        lastCareBubble = 0
+        brain.interrupt(with: .askCare, duration: 14)
+        beginBehavior(.askCare)
+    }
+
+    private func fulfill(_ need: Need) {
+        switch need {
+        case .hunger: feed()
+        case .cleanliness: bath()
+        case .happiness: playBall()
+        case .energy: nap()
+        }
     }
 
     /// Paw patter while walking or running, and a boing when it jumps.
@@ -448,16 +498,18 @@ final class PetController {
     }
 
     func applyProfile(_ profile: PetProfile) {
+        askForCare = profile.askForCare
         sounds.enabled = profile.soundsOn
         petSound = profile.character == .sheep ? .petSheep : .petCorgi
     }
 
     private func updateAnimation(_ now: CFTimeInterval) {
         if let o = animOverride, o.until <= now { animOverride = nil }
-        let state = animOverride?.state
+        var state = animOverride?.state
             ?? body.cling?.animState
             ?? animState(for: brain.current, mode: body.mode, isMoving: body.isMoving,
                          isRunning: body.isRunning, carrying: executor.carryingBall)
+        if animOverride == nil && brain.current == .askCare && !body.isMoving { state = .beg }   // asking nicely
         if state != currentAnim {
             currentAnim = state
             backend.play(state)
@@ -525,6 +577,11 @@ extension PetController: SceneInputHandler {
     func pet() {
         boredom.noteInteraction()
         lastClickPet = CACurrentMediaTime()
+        if brain.current == .askCare, let need = askingFor {
+            askingFor = nil
+            fulfill(need)
+            return
+        }
         if chaseMe {
             if needs.catchPet() {
                 sounds.play(petSound)
