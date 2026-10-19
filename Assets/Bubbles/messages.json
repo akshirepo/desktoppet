@@ -1,0 +1,185 @@
+{
+  "version": 1,
+  "locale": "en",
+  "categories": [
+    {
+      "id": "hungry",
+      "label": "A little hungry",
+      "icon": "star",
+      "pose": "beg",
+      "bubble": {
+        "corgi": "speech",
+        "sheep": "speech"
+      },
+      "corgi": [
+        "Snack break?",
+        "A little treat?",
+        "Any crumbs for me?",
+        "Nibble time?",
+        "Something crunchy?"
+      ],
+      "sheep": [
+        "A little nibble?",
+        "A small snack?",
+        "Nibble break?",
+        "Something tasty?",
+        "A bite, please?"
+      ]
+    },
+    {
+      "id": "affection",
+      "label": "Wants a little love",
+      "icon": "heart",
+      "pose": "sit",
+      "bubble": {
+        "corgi": "speech",
+        "sheep": "speech"
+      },
+      "corgi": [
+        "Head pats?",
+        "Scritch behind my ears?",
+        "One tiny cuddle?",
+        "Pats, please?",
+        "A little ear scratch?"
+      ],
+      "sheep": [
+        "A tiny cuddle?",
+        "Gentle scratch?",
+        "Hugs, please?",
+        "Soft pats?",
+        "A little snuggle?"
+      ]
+    },
+    {
+      "id": "bored",
+      "label": "Ready to play",
+      "icon": "star",
+      "pose": "idle",
+      "bubble": {
+        "corgi": "speech",
+        "sheep": "thought"
+      },
+      "corgi": [
+        "Shall we play?",
+        "Ball time?",
+        "Tiny adventure?",
+        "One little game?",
+        "Got a minute?"
+      ],
+      "sheep": [
+        "Any fun ideas?",
+        "Counting screens…",
+        "A gentle little game?",
+        "Shall we wander?",
+        "A tiny break together?"
+      ]
+    },
+    {
+      "id": "sleepy",
+      "label": "Getting sleepy",
+      "icon": "moon-small",
+      "pose": "yawn",
+      "bubble": {
+        "corgi": "thought",
+        "sheep": "thought"
+      },
+      "corgi": [
+        "Nap beside you?",
+        "My paws need a break.",
+        "Getting a little sleepy…",
+        "One cozy nap?",
+        "Time to curl up."
+      ],
+      "sheep": [
+        "Sleepy time…",
+        "Getting a little sleepy…",
+        "Counting cozy thoughts…",
+        "Just resting my eyes.",
+        "Dreaming of soft clouds."
+      ]
+    },
+    {
+      "id": "company",
+      "label": "Keeping you company",
+      "icon": "paw-prints",
+      "pose": "sit",
+      "bubble": {
+        "corgi": "speech",
+        "sheep": "speech"
+      },
+      "corgi": [
+        "Can I sit here?",
+        "Just keeping you company.",
+        "Your little desk buddy.",
+        "Room for one corgi?",
+        "I’ll be right here."
+      ],
+      "sheep": [
+        "Can I sit here?",
+        "Keeping you quiet company.",
+        "May I stay nearby?",
+        "A cozy spot together?",
+        "Your woolly work buddy."
+      ]
+    },
+    {
+      "id": "happy",
+      "label": "Feeling loved",
+      "icon": "hearts",
+      "pose": "happy",
+      "bubble": {
+        "corgi": "speech",
+        "sheep": "thought"
+      },
+      "corgi": [
+        "That’s the spot!",
+        "Much better ♡",
+        "Best scritches ever.",
+        "Happy paws!",
+        "That made my day."
+      ],
+      "sheep": [
+        "So comfy.",
+        "Much better ♡",
+        "Lovely little scritches.",
+        "That feels nice.",
+        "A very happy sheep."
+      ]
+    },
+    {
+      "id": "dirty",
+      "label": "Could use a bath",
+      "icon": "star",
+      "pose": "beg",
+      "bubble": {
+        "corgi": "speech",
+        "sheep": "thought"
+      },
+      "corgi": [
+        "Bath time?",
+        "I'm a bit muddy.",
+        "Bubbles, please?",
+        "Splash time?",
+        "Need a scrub?"
+      ],
+      "sheep": [
+        "My wool is fuzzy…",
+        "A soft wash?",
+        "Bubble bath?",
+        "Fluff me up?",
+        "Feeling a bit dusty…"
+      ]
+    }
+  ],
+  "presentation": {
+    "fontSizePx": 17,
+    "lineHeightPx": 22,
+    "maxLines": 2,
+    "preferredHoldMs": 4200,
+    "appearMs": 220,
+    "fadeMs": 320,
+    "minimumRepeatDelayMs": 60000,
+    "textColor": "#52372e",
+    "paperColor": "#fff3d8"
+  }
+}

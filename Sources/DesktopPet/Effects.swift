@@ -42,6 +42,83 @@ enum Effects {
         }
     }
 
+    // MARK: - Bubble artwork with live text (Assets/Bubbles)
+
+    private struct BubbleGeometry: Decodable {
+        struct Rect: Decodable { let x, y, width, height: CGFloat }
+        struct Point: Decodable { let x, y: CGFloat }
+        let width, height: CGFloat
+        let textBox: Rect
+        let tailTip: Point
+    }
+
+    private static let bubbleRoot = Bundle.main.resourceURL?.appendingPathComponent("Bubbles")
+    private static let bubbleGeometry: [String: BubbleGeometry] = {
+        guard let url = bubbleRoot?.appendingPathComponent("bubbles.json"), let data = try? Data(contentsOf: url) else { return [:] }
+        return (try? JSONDecoder().decode([String: BubbleGeometry].self, from: data)) ?? [:]
+    }()
+    private static var bubbleTextures: [String: SKTexture] = [:]
+
+    private static func bubbleTexture(_ path: String) -> SKTexture? {
+        if let t = bubbleTextures[path] { return t }
+        guard let url = bubbleRoot?.appendingPathComponent(path), let img = NSImage(contentsOf: url) else { return nil }
+        let t = SKTexture(image: img)
+        t.filteringMode = .nearest   // pixel art
+        bubbleTextures[path] = t
+        return t
+    }
+
+    /// A speech or thought bubble with live text above the pet, its tail pointing at the pet.
+    /// `tailRight` puts the tail on the right so the bubble opens to the left (for a pet near the right edge).
+    /// Returns false when the artwork isn't bundled, so callers can fall back.
+    @discardableResult
+    static func say(_ text: String, bubble: SpeechLibrary.Bubble, icon: String?, tailRight: Bool,
+                    on node: SKNode, height: CGFloat, delay: TimeInterval = 0) -> Bool {
+        let name = "\(bubble.rawValue)-\(tailRight ? "right" : "left")"
+        guard let geo = bubbleGeometry[name], let tex = bubbleTexture("bubbles/\(name).png") else { return false }
+        let s: CGFloat = 0.6
+        let w = geo.width * s, h = geo.height * s
+        let container = SKNode()
+        container.addChild(SKSpriteNode(texture: tex, size: CGSize(width: w, height: h)))
+
+        let label = SKLabelNode(text: text)
+        label.fontName = NSFont(name: "Avenir Next Medium", size: 11) != nil ? "Avenir Next Medium" : NSFont.systemFont(ofSize: 11).fontName
+        label.fontSize = 11
+        label.fontColor = NSColor(srgbRed: 0x52 / 255, green: 0x37 / 255, blue: 0x2e / 255, alpha: 1)
+        label.numberOfLines = 2
+        label.preferredMaxLayoutWidth = geo.textBox.width * s
+        label.lineBreakMode = .byWordWrapping
+        label.horizontalAlignmentMode = .center
+        label.verticalAlignmentMode = .center
+        label.position = CGPoint(x: (geo.textBox.x + geo.textBox.width / 2) * s - w / 2,
+                                 y: h / 2 - (geo.textBox.y + geo.textBox.height / 2) * s)
+        label.zPosition = 1
+        container.addChild(label)
+
+        if let icon, let accent = bubbleTexture("accents/\(icon).png") {
+            let a = SKSpriteNode(texture: accent, size: CGSize(width: 18, height: 18))
+            a.position = CGPoint(x: tailRight ? -w / 2 + 6 : w / 2 - 6, y: h / 2 - 4)
+            a.zPosition = 2
+            container.addChild(a)
+        }
+
+        // Put the tail tip just above the pet's head.
+        let tip = CGPoint(x: geo.tailTip.x * s - w / 2, y: h / 2 - geo.tailTip.y * s)
+        container.position = CGPoint(x: -tip.x, y: height + 2 - tip.y)
+        container.zPosition = 50
+        container.alpha = 0
+        container.setScale(0.85)
+        node.addChild(container)
+        container.run(.sequence([
+            .wait(forDuration: delay),
+            .group([.fadeIn(withDuration: 0.22), .scale(to: 1, duration: 0.22)]),
+            .wait(forDuration: 4.2),
+            .fadeOut(withDuration: 0.32),
+            .removeFromParent(),
+        ]))
+        return true
+    }
+
     /// Doodle thought bubble with an icon inside (mood bubbles). Falls back to the text bubble.
     static func thought(icon: String, fallback: String, on node: SKNode, height: CGFloat) {
         guard let cloud = Doodles.texture("thought"), let inner = Doodles.texture(icon) else {

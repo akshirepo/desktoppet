@@ -36,6 +36,7 @@ To start it automatically, turn on **Launch at Login** in the menu. This only wo
 - **Home:** the bottom-right corner of your desktop. It hangs out there reading, listening to music, watching TV and playing with its ball.
 - **Idle:** leave the Mac alone for 90 seconds, or watch something full screen, and it falls asleep.
 - **Needs:** they drop slowly, even while the app is closed. A thought bubble shows what it wants.
+- **Little things to say:** speech and thought bubbles in each pet's own voice, like "Snack break?" when hungry or "My wool is fuzzy…" when the sheep wants a bath. It also says hi, thanks you after you help, and sometimes just keeps you company. The lines live in `Assets/Bubbles/messages.json` if you want to change them.
 - **Asking for help:** when a need gets low, now and then it comes over to your cursor and begs, with a bubble showing what it wants (food, a bath, play or a nap). Click it to give it that. Ignore it and it goes back to what it was doing and asks again later. Each need asks at most every 30 minutes, and never while you're away, in full screen, or busy with it. Turn it off with **Ask for Care** in the menu.
 
 ### Menu

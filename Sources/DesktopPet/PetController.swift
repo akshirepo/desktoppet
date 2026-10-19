@@ -43,6 +43,15 @@ final class PetController {
     private var wasGrounded = true
     private var moodBubbles = MoodBubbles()
     private var careAsker = CareAsker()
+    private var speech: SpeechLibrary? = Bundle.main.resourceURL
+        .flatMap { try? Data(contentsOf: $0.appendingPathComponent("Bubbles/messages.json")) }
+        .flatMap { try? SpeechLibrary(data: $0) }
+    private var character: Character = .corgi
+    private var careLine: SpeechLibrary.Line?
+    private var sadVariant = 0
+    /// Spontaneous lines (mood, company, happy) stay at least a minute apart.
+    private var lastAutoLine: CFTimeInterval = -100
+    private var nextCompany = CACurrentMediaTime() + Double.random(in: 20 * 60...40 * 60)
     /// What it came over to ask for, while `brain.current == .askCare`.
     private(set) var askingFor: Need?
     var askForCare = true
@@ -108,10 +117,12 @@ final class PetController {
         wake()
         sounds.play(.happy)
         let lines = Greeting.lines(awaySeconds: awaySeconds)
-        brain.interrupt(with: .greet, duration: lines.count > 1 ? 5.5 : 3)
+        brain.interrupt(with: .greet, duration: lines.count > 1 ? 9 : 4.5)
         beginBehavior(.greet)
         for (i, line) in lines.enumerated() {
-            Effects.speech(line, on: backend.node, height: backend.bubbleHeight, delay: Double(i) * 2.6)
+            let shown = say(SpeechLibrary.Line(text: line, bubble: .speech, icon: i == 0 ? "hearts" : "heart"),
+                            delay: Double(i) * 4.6)
+            if !shown { Effects.speech(line, on: backend.node, height: backend.bubbleHeight, delay: Double(i) * 2.6) }
         }
     }
 
@@ -393,6 +404,7 @@ final class PetController {
         updateHover(dt: dt, cursor: cursor)
         updateMoodBubble(dt: dt)
         updateCareRequest(dt: dt, now: now)
+        updateCompany(now: now)
         stepBall(dt: dt)
         if executor.step(brain.current, body: body, world: world, cursor: cursor) { stepFinished() }
         if let event = body.step(dt: dt, world: world) {
@@ -435,6 +447,11 @@ final class PetController {
         let blocked = needs.state.isAsleep || brain.current.countsAsSleep
             || body.mode == .held || body.mode == .roaming
         guard let need = moodBubbles.update(dt: dt, needs: needs.state, blocked: blocked) else { return }
+        sadVariant += 1
+        if say(mood: SpeechLibrary.category(for: need, variant: sadVariant)) {
+            lastAutoLine = CACurrentMediaTime()
+            return
+        }
         Effects.thought(icon: Self.icon(for: need), fallback: MoodBubbles.bubbleText(for: need), on: backend.node,
                         height: backend.bubbleHeight)
     }
@@ -451,11 +468,17 @@ final class PetController {
     /// Now and then a low need sends it to your cursor to ask for help; click it to give it what it wants.
     private func updateCareRequest(dt: TimeInterval, now: CFTimeInterval) {
         if brain.current == .askCare, let need = askingFor {
-            if !body.isMoving && now - lastCareBubble > 3 {
-                if lastCareBubble == 0 { sounds.play(petSound) }
+            if !body.isMoving && now - lastCareBubble > 4.8 {
+                if lastCareBubble == 0 {
+                    sounds.play(petSound)
+                    sadVariant += 1
+                    careLine = speech?.line(for: SpeechLibrary.category(for: need, variant: sadVariant), pet: character)
+                }
                 lastCareBubble = now
-                Effects.thought(icon: Self.icon(for: need), fallback: MoodBubbles.bubbleText(for: need),
-                                on: backend.node, height: backend.bubbleHeight)
+                if !(careLine.map { say($0) } ?? false) {
+                    Effects.thought(icon: Self.icon(for: need), fallback: MoodBubbles.bubbleText(for: need),
+                                    on: backend.node, height: backend.bubbleHeight)
+                }
             }
             return
         }
@@ -497,7 +520,42 @@ final class PetController {
         }
     }
 
+    /// The bubble opens toward the middle of the screen, with its tail pointing back at the pet.
+    private var tailRight: Bool {
+        guard let i = world.screenIndex(containing: body.position) else { return false }
+        return body.position.x > world.screens[i].midX
+    }
+
+    @discardableResult
+    private func say(_ line: SpeechLibrary.Line, delay: TimeInterval = 0) -> Bool {
+        Effects.say(line.text, bubble: line.bubble, icon: line.icon, tailRight: tailRight,
+                    on: backend.node, height: backend.bubbleHeight, delay: delay)
+    }
+
+    /// A line from the given mood, if the bundled messages have one.
+    @discardableResult
+    private func say(mood: String, delay: TimeInterval = 0) -> Bool {
+        guard let line = speech?.line(for: mood, pet: character) else { return false }
+        return say(line, delay: delay)
+    }
+
+    private func sayNow(mood: String, now: CFTimeInterval) {
+        guard now - lastAutoLine >= 60 else { return }
+        if say(mood: mood) { lastAutoLine = now }
+    }
+
+    /// Every 20 to 40 minutes, while you're working and it's content, it says something friendly.
+    private func updateCompany(now: CFTimeInterval) {
+        guard now >= nextCompany else { return }
+        let content = Need.allCases.allSatisfy { needs.state[$0] >= needs.config.lowThreshold }
+        let calm: Set<Behavior> = [.idle, .sit, .read, .music, .watchTV, .walk]
+        guard content, body.mode == .grounded, calm.contains(brain.current), userIdleSeconds < 60 else { return }
+        nextCompany = now + Double.random(in: 20 * 60...40 * 60)
+        sayNow(mood: "company", now: now)
+    }
+
     func applyProfile(_ profile: PetProfile) {
+        character = profile.character
         askForCare = profile.askForCare
         sounds.enabled = profile.soundsOn
         petSound = profile.character == .sheep ? .petSheep : .petCorgi
@@ -580,6 +638,8 @@ extension PetController: SceneInputHandler {
         if brain.current == .askCare, let need = askingFor {
             askingFor = nil
             fulfill(need)
+            say(mood: "happy", delay: 1.2)
+            lastAutoLine = CACurrentMediaTime()
             return
         }
         if chaseMe {
@@ -598,6 +658,7 @@ extension PetController: SceneInputHandler {
             sounds.play(petSound)
             Effects.floatDoodle("heart", fallback: "❤️", on: backend.node, height: backend.size.height, count: 3)
             if body.mode != .clinging { animOverride = (.wiggle, CACurrentMediaTime() + 0.8) }  // keep its grip pose while hanging
+            if Int.random(in: 0..<4) == 0 { sayNow(mood: "happy", now: CACurrentMediaTime()) }
         }
     }
 }
