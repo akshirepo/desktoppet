@@ -70,12 +70,15 @@ final class AnimationManifestTests: XCTestCase {
     }
 
     func testNewStatesFallBackToIdleInOldPacks() throws {
-        XCTAssertEqual(AnimState.allCases.count, 31)
+        XCTAssertEqual(AnimState.allCases.count, 34)
         let m = try AnimationManifest.load(from: write(sample))
         for s in [AnimState.wave, .back, .read, .readSleep, .music, .watch, .yawn, .scared, .happy, .holdBall, .kick, .roam,
                   .clingSit, .clingHang, .clingPeek, .clingLeft, .clingRight, .letGo] {
             XCTAssertEqual(m.resolve(s)?.state, .idle, "\(s)")
             XCTAssertTrue(m.missingStates.contains(s), "\(s)")
+        }
+        for (s, alt) in [(AnimState.drink, AnimState.eat), (.thirsty, .beg), (.refreshed, .happy)] {
+            XCTAssertEqual(m.resolve(s)?.state, m.states[alt.rawValue] == nil ? .idle : alt, "\(s)")
         }
     }
 }

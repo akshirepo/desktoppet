@@ -1,6 +1,6 @@
 # DesktopPet
 
-A little pixel-art pet that lives on your Mac. Pick a corgi or a sheep. It wanders along the bottom of your screen, hops onto windows, hangs off their edges, and has needs you look after: hunger, happiness, energy and cleanliness.
+A little pixel-art pet that lives on your Mac. Pick a corgi or a sheep. It wanders along the bottom of your screen, hops onto windows, hangs off their edges, and has needs you look after: hunger, thirst, happiness, energy and cleanliness.
 
 ## Requirements
 
@@ -43,7 +43,7 @@ To start it automatically, turn on **Launch at Login** in the menu. This only wo
 
 Click the menu bar icon or right-click the pet:
 
-- **Feed, Play Ball, Chase Me, Bath, Nap**
+- **Feed, Water, Play Ball, Chase Me, Bath, Nap**
 - **Stats:** need levels and how long you've been together
 - **Rename:** give the current pet a name
 - **Character:** switch between the corgi and the sheep. Each pet has its own name and stats.

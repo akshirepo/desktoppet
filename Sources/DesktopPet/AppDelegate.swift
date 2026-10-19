@@ -195,6 +195,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let current = profile
         return PetMenuActions(
             feed: { [weak self] in self?.controller.feed() },
+            water: { [weak self] in self?.controller.drink() },
             play: { [weak self] in self?.controller.playBall() },
             toggleChaseMe: { [weak self] in
                 guard let c = self?.controller else { return }

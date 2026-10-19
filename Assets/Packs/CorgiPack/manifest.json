@@ -279,6 +279,33 @@
         0.5,
         0.1
       ]
+    },
+    "thirsty": {
+      "folder": "thirsty",
+      "fps": 12,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "drink": {
+      "folder": "drink",
+      "fps": 12,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "refreshed": {
+      "folder": "refreshed",
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ]
     }
   }
 }

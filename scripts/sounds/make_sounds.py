@@ -105,3 +105,11 @@ save("pickup", np.sin(sweep(500, 1800, 0.18, 1.6) + 2 * np.sin(2 * np.pi * 30 * 
 save("letgo", np.sin(sweep(1600, 350, 0.6, 0.8) + 3 * np.sin(2 * np.pi * 7 * t(0.6))) * env(int(SR * 0.6), 0.02, 0.15), 0.5)
 
 print(sorted(p.name for p in OUT.glob("*.wav")))
+
+# Drinking: three soft laps (a wet flick with a little upward chirp)
+def lap(f):
+    x = t(0.09)
+    wet = lowpass(noise(0.09), 5) * env(len(x), 0.002, 0.06)
+    chirp = np.sin(sweep(f, f * 1.7, 0.09, 0.5)) * env(len(x), 0.004, 0.06)
+    return 0.6 * wet + chirp
+save("drink", np.concatenate([lap(500), silence(0.12), lap(560), silence(0.12), lap(520)]), 0.55)

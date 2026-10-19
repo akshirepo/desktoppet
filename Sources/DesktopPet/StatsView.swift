@@ -10,6 +10,7 @@ struct StatsView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title).font(.headline)
             bar("feed", "🍖", "Hunger", state.hunger)
+            bar("hydration", "💧", "Thirst", state.thirst)
             bar("affection", "❤️", "Happiness", state.happiness)
             bar("sleep", "⚡️", "Energy", state.energy)
             bar("play", "🫧", "Cleanliness", state.cleanliness)

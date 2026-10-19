@@ -49,6 +49,7 @@ public struct MoodBubbles {
         switch need {
         case .hunger: return "🍖"
         case .cleanliness: return "🛁"
+        case .thirst: return "💧"
         case .energy: return "💤"
         case .happiness: return "🎾"
         }

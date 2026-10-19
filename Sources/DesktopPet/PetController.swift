@@ -13,6 +13,8 @@ final class PetController {
     let overlays: OverlayManager
 
     var animOverride: (state: AnimState, until: CFTimeInterval)?
+    private var drinking = false
+    private var drinkingUntil: CFTimeInterval = 0
     private var currentAnim: AnimState?
     private var timer: Timer?
     private var timerFPS = 0
@@ -197,7 +199,7 @@ final class PetController {
         if b.countsAsSleep && !needs.state.isAsleep { sounds.play(.snore) }
         if b == .yawn { sounds.play(.yawn) }
         if needs.state.isAsleep != b.countsAsSleep { needs.setAsleep(b.countsAsSleep) }
-        if b == .eat { sounds.play(.eat) }
+        if b == .eat { sounds.play(drinking ? .drink : .eat) }
         if b == .bath { sounds.play(.bath) }
         executor.speedScale = needs.isLow(.happiness) ? 0.6 : 1
         executor.begin(b, body: body, world: world, cursor: NSEvent.mouseLocation)
@@ -221,6 +223,21 @@ final class PetController {
         beginBehavior(.eat)
         needs.feed()
         Effects.floatDoodle("menu:feed", fallback: "🍖", on: backend.node, height: backend.size.height)
+    }
+
+    /// A few laps from the water bowl, then a happy "ahh".
+    func drink() {
+        wake()
+        boredom.noteInteraction()
+        drinking = true
+        brain.interrupt(with: .eat, duration: 6)
+        beginBehavior(.eat)
+        drinking = false
+        let now = CACurrentMediaTime()
+        animOverride = (.drink, now + 4)
+        drinkingUntil = now + 4
+        needs.drink()
+        Effects.floatDoodle("water-droplet", fallback: "💧", on: backend.node, height: backend.size.height, count: 3)
     }
 
     func bath() {
@@ -462,6 +479,7 @@ final class PetController {
         case .happiness: return "heart"
         case .energy: return "moon"
         case .cleanliness: return "sparkles"
+        case .thirst: return "water-droplet"
         }
     }
 
@@ -504,6 +522,7 @@ final class PetController {
         case .cleanliness: bath()
         case .happiness: playBall()
         case .energy: nap()
+        case .thirst: drink()
         }
     }
 
@@ -562,12 +581,18 @@ final class PetController {
     }
 
     private func updateAnimation(_ now: CFTimeInterval) {
-        if let o = animOverride, o.until <= now { animOverride = nil }
+        if let o = animOverride, o.until <= now {
+            animOverride = nil
+            if o.state == .drink, o.until == drinkingUntil, brain.current == .eat {
+                animOverride = (.refreshed, now + 2)
+                say(mood: "refreshed")
+            }
+        }
         var state = animOverride?.state
             ?? body.cling?.animState
             ?? animState(for: brain.current, mode: body.mode, isMoving: body.isMoving,
                          isRunning: body.isRunning, carrying: executor.carryingBall)
-        if animOverride == nil && brain.current == .askCare && !body.isMoving { state = .beg }   // asking nicely
+        if animOverride == nil && brain.current == .askCare && !body.isMoving { state = askingFor == .thirst ? .thirsty : .beg }   // asking nicely
         if state != currentAnim {
             currentAnim = state
             backend.play(state)

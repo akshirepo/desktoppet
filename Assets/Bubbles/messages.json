@@ -169,6 +169,54 @@
         "Fluff me up?",
         "Feeling a bit dusty…"
       ]
+    },
+    {
+      "id": "thirsty",
+      "label": "A little thirsty",
+      "icon": "water-droplet",
+      "pose": "thirsty",
+      "bubble": {
+        "corgi": "speech",
+        "sheep": "thought"
+      },
+      "corgi": [
+        "Water break?",
+        "A little sip?",
+        "Got any water?",
+        "Time for a drink?",
+        "A splash for me?"
+      ],
+      "sheep": [
+        "A sip, please?",
+        "Time for a drink?",
+        "A little water?",
+        "Water sounds lovely.",
+        "Just a small sip."
+      ]
+    },
+    {
+      "id": "refreshed",
+      "label": "Refreshed",
+      "icon": "refreshed-sparkle",
+      "pose": "refreshed",
+      "bubble": {
+        "corgi": "speech",
+        "sheep": "speech"
+      },
+      "corgi": [
+        "Much better!",
+        "Ready to play!",
+        "All topped up!",
+        "One happy pup.",
+        "That hit the spot!"
+      ],
+      "sheep": [
+        "Lovely and refreshed.",
+        "That was lovely.",
+        "Feeling fresh.",
+        "All cozy again.",
+        "Fresh as a daisy."
+      ]
     }
   ],
   "presentation": {

@@ -52,7 +52,7 @@ final class SpeechLibraryTests: XCTestCase {
         let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .appendingPathComponent("../../Assets/Bubbles/messages.json")
         var lib = try SpeechLibrary(data: Data(contentsOf: url), rng: SeededRandom(seed: 1))
-        for mood in ["hungry", "affection", "bored", "sleepy", "company", "happy", "dirty"] {
+        for mood in ["hungry", "affection", "bored", "sleepy", "company", "happy", "dirty", "thirsty", "refreshed"] {
             for pet in Character.allCases {
                 let line = try XCTUnwrap(lib.line(for: mood, pet: pet), "\(mood) \(pet)")
                 XCTAssertFalse(line.text.isEmpty)

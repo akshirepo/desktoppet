@@ -19,6 +19,7 @@ final class ClosureMenuItem: NSMenuItem {
 
 struct PetMenuActions {
     var feed: () -> Void
+    var water: () -> Void
     var play: () -> Void
     var toggleChaseMe: () -> Void
     var chaseMeOn: Bool
@@ -43,6 +44,7 @@ enum PetMenu {
     static func populate(_ menu: NSMenu, _ a: PetMenuActions) {
         menu.removeAllItems()
         menu.addItem(ClosureMenuItem("Feed", icon: "feed", handler: a.feed))
+        menu.addItem(ClosureMenuItem("Water", icon: "water", handler: a.water))
         menu.addItem(ClosureMenuItem("Play Ball", icon: "play", handler: a.play))
         let chase = ClosureMenuItem("Chase Me", icon: "resume", handler: a.toggleChaseMe)
         chase.state = a.chaseMeOn ? .on : .off

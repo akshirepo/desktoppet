@@ -1,7 +1,7 @@
 import Foundation
 
 public enum Need: String, Codable, CaseIterable {
-    case hunger, happiness, energy, cleanliness
+    case hunger, happiness, energy, cleanliness, thirst
 }
 
 public struct NeedsConfig: Codable, Equatable {
@@ -10,6 +10,7 @@ public struct NeedsConfig: Codable, Equatable {
     public var energyAwakePerHour = -6.0
     public var energyAsleepPerHour = 20.0
     public var cleanlinessPerHour = -3.0
+    public var thirstPerHour = -10.0
     public var lowThreshold = 30.0
     public var offlineFloor = 15.0
     public var feedAmount = 40.0
@@ -17,6 +18,7 @@ public struct NeedsConfig: Codable, Equatable {
     public var petsPerMinute = 10
     public var playAmount = 25.0
     public var bathAmount = 60.0
+    public var drinkAmount = 50.0
     public var catchAmount = 10.0
 
     public init() {}
@@ -28,14 +30,46 @@ public struct NeedsState: Codable, Equatable {
     public var happiness: Double
     public var energy: Double
     public var cleanliness: Double
+    public var thirst: Double
     public var isAsleep: Bool
     public var careXP: Int
     public var lastSaved: Date
     public var firstMet: Date
 
     public static func fresh(at date: Date) -> NeedsState {
-        NeedsState(hunger: 70, happiness: 70, energy: 70, cleanliness: 70,
+        NeedsState(hunger: 70, happiness: 70, energy: 70, cleanliness: 70, thirst: 70,
                    isAsleep: false, careXP: 0, lastSaved: date, firstMet: date)
+    }
+
+    public init(hunger: Double, happiness: Double, energy: Double, cleanliness: Double, thirst: Double = 70,
+                isAsleep: Bool, careXP: Int, lastSaved: Date, firstMet: Date) {
+        self.hunger = hunger
+        self.happiness = happiness
+        self.energy = energy
+        self.cleanliness = cleanliness
+        self.thirst = thirst
+        self.isAsleep = isAsleep
+        self.careXP = careXP
+        self.lastSaved = lastSaved
+        self.firstMet = firstMet
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case hunger, happiness, energy, cleanliness, thirst, isAsleep, careXP, lastSaved, firstMet
+    }
+
+    /// Saves from before thirst existed load with thirst at 70.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        hunger = try c.decode(Double.self, forKey: .hunger)
+        happiness = try c.decode(Double.self, forKey: .happiness)
+        energy = try c.decode(Double.self, forKey: .energy)
+        cleanliness = try c.decode(Double.self, forKey: .cleanliness)
+        thirst = try c.decodeIfPresent(Double.self, forKey: .thirst) ?? 70
+        isAsleep = try c.decode(Bool.self, forKey: .isAsleep)
+        careXP = try c.decode(Int.self, forKey: .careXP)
+        lastSaved = try c.decode(Date.self, forKey: .lastSaved)
+        firstMet = try c.decode(Date.self, forKey: .firstMet)
     }
 
     public subscript(need: Need) -> Double {
@@ -45,6 +79,7 @@ public struct NeedsState: Codable, Equatable {
             case .happiness: return happiness
             case .energy: return energy
             case .cleanliness: return cleanliness
+            case .thirst: return thirst
             }
         }
         set {
@@ -53,6 +88,7 @@ public struct NeedsState: Codable, Equatable {
             case .happiness: happiness = newValue
             case .energy: energy = newValue
             case .cleanliness: cleanliness = newValue
+            case .thirst: thirst = newValue
             }
         }
     }
@@ -77,6 +113,7 @@ public final class NeedsEngine {
         case .happiness: return config.happinessPerHour
         case .energy: return asleep ? config.energyAsleepPerHour : config.energyAwakePerHour
         case .cleanliness: return config.cleanlinessPerHour
+        case .thirst: return config.thirstPerHour
         }
     }
 
@@ -122,6 +159,7 @@ public final class NeedsEngine {
     public func feed() { restore(.hunger, by: config.feedAmount) }
     public func play() { restore(.happiness, by: config.playAmount) }
     public func bath() { restore(.cleanliness, by: config.bathAmount) }
+    public func drink() { restore(.thirst, by: config.drinkAmount) }
 
     /// Returns false when the per-minute pet limit is reached.
     @discardableResult

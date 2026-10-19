@@ -5,7 +5,7 @@ import AppKit
 final class SoundPlayer {
     enum Effect: String {
         case petCorgi = "pet_corgi", petSheep = "pet_sheep", happy, eat, bath, snore, yawn, step, hop, land
-        case ballBounce = "ball_bounce", ballCatch = "ball_catch", ballPop = "ball_pop", pickup, letGo = "letgo"
+        case ballBounce = "ball_bounce", ballCatch = "ball_catch", ballPop = "ball_pop", pickup, letGo = "letgo", drink
 
         /// Quiet for the repeating ones so they stay in the background.
         var volume: Float {

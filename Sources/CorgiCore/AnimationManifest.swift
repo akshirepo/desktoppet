@@ -3,7 +3,7 @@ import Foundation
 public enum AnimState: String, CaseIterable, Codable {
     case idle, walk, run, sit, sleep, eat, beg, dangle, fall, land, wiggle, bath, fetch
     case wave, back, read, readSleep, music, watch, yawn, scared, happy, holdBall, kick, roam
-    case clingSit, clingHang, clingPeek, clingLeft, clingRight, letGo
+    case clingSit, clingHang, clingPeek, clingLeft, clingRight, letGo, drink, thirsty, refreshed
 }
 
 public struct AnimationSpec: Codable, Equatable {
@@ -36,6 +36,9 @@ public struct AnimationManifest: Codable, Equatable {
 
     public func resolve(_ state: AnimState) -> (state: AnimState, spec: AnimationSpec)? {
         if let spec = states[state.rawValue] { return (state, spec) }
+        // Packs without the hydration art borrow the closest older pose.
+        let stand: [AnimState: AnimState] = [.drink: .eat, .thirsty: .beg, .refreshed: .happy]
+        if let alt = stand[state], let spec = states[alt.rawValue] { return (alt, spec) }
         if let idle = states[AnimState.idle.rawValue] { return (.idle, idle) }
         return nil
     }

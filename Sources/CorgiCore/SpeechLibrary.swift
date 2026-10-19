@@ -53,6 +53,7 @@ public struct SpeechLibrary {
         switch need {
         case .hunger: return "hungry"
         case .cleanliness: return "dirty"
+        case .thirst: return "thirsty"
         case .energy: return "sleepy"
         case .happiness: return variant % 2 == 0 ? "affection" : "bored"
         }
