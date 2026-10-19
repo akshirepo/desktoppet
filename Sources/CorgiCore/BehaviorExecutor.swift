@@ -13,11 +13,12 @@ public final class BehaviorExecutor {
     /// Called once when the corgi reaches the ball.
     public var onBallCaught: (() -> Void)?
     public private(set) var carryingBall = false
-    public var dodgeRadius: CGFloat = 150
+    /// How close `chaseMe` gets to the cursor before it waits. Must exceed the sprite's reach from its feet
+    /// (about 113pt at the default scale) so a waiting corgi never sits under the cursor and takes its clicks.
+    public var followDistance: CGFloat = 120
     public var catchRadius: CGFloat = 30
     private enum BallPhase { case chasing, carrying, dropping }
     private var ballPhase: BallPhase = .chasing
-    private var waypoint: CGPoint?
     private var rng: any RandomNumberGenerator
     private var zoomDirection: CGFloat = 1
     private var hopStarted = false
@@ -41,7 +42,6 @@ public final class BehaviorExecutor {
         homeLeapDirection = nil
         carryingBall = false
         ballPhase = .chasing
-        waypoint = nil
         if body.mode == .roaming && b != .chaseMe && b != .ballChase { body.stopRoaming() }
         body.stop()
         let segment = body.standingOn ?? world.segment(under: body.position)
@@ -140,9 +140,6 @@ public final class BehaviorExecutor {
             return true
         case (.hopToWindow, .landed):
             return true
-        case (.chaseMe, .hitEdge):
-            waypoint = nil
-            return false
         case (.ballChase, .landed):
             return ballPhase == .dropping
         case (.goHome, .landed):
@@ -213,25 +210,17 @@ public final class BehaviorExecutor {
         return false
     }
 
-    private func randomPoint(in area: [CGRect]) -> CGPoint? {
-        guard !area.isEmpty else { return nil }
-        let r = area[Int(random() * CGFloat(area.count)) % area.count]
-        return CGPoint(x: r.minX + random() * r.width, y: r.minY + random() * r.height)
-    }
-
-    /// Runs between random waypoints; inside `dodgeRadius` of the cursor it heads straight away from it.
+    /// Runs after the cursor (clamped to the screens) and waits facing it once within `followDistance`.
     private func stepChaseMe(body: Body, world: World, cursor: CGPoint) {
         guard body.mode == .roaming else { return }
         let area = insetRects(world.screens, side: 20, top: body.config.roamHeadroom)
-        let ax = body.position.x - cursor.x, ay = body.position.y - cursor.y
-        let d = hypot(ax, ay)
-        if d < dodgeRadius {
-            let ux = d > 0.1 ? ax / d : (random() < 0.5 ? -1 : 1), uy = d > 0.1 ? ay / d : 0
-            waypoint = nearestPoint(to: CGPoint(x: body.position.x + ux * 300, y: body.position.y + uy * 300), in: area)
-        } else if waypoint.map({ hypot($0.x - body.position.x, $0.y - body.position.y) < 10 }) ?? true {
-            waypoint = randomPoint(in: area)
+        let target = nearestPoint(to: cursor, in: area)
+        if hypot(target.x - body.position.x, target.y - body.position.y) < followDistance {
+            body.hover()
+            body.face(right: cursor.x >= body.position.x)
+        } else {
+            body.roam(toward: target, speed: body.config.runSpeed)
         }
-        if let w = waypoint { body.roam(toward: w, speed: body.config.runSpeed) }
     }
 
     /// Chase the ball (mouth 30pt above the feet), carry it above home, then drop to the floor.
