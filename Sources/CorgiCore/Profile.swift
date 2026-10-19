@@ -33,6 +33,8 @@ public struct PetProfile: Codable, Equatable {
     public private(set) var askedNames: Set<String> = []
     public var soundsOn: Bool
     public var character: Character
+    /// Start the app when you log in. Re-applied on every launch so rebuilt or moved apps stay registered.
+    public var launchAtLogin = false
 
     public init(name: String? = nil, soundsOn: Bool = false, askedForName: Bool = false,
                 character: Character = .corgi) {
@@ -56,12 +58,13 @@ public struct PetProfile: Codable, Equatable {
         set { if newValue { askedNames.insert(character.rawValue) } else { askedNames.remove(character.rawValue) } }
     }
 
-    private enum CodingKeys: String, CodingKey { case names, askedNames, soundsOn, character, name, askedForName }
+    private enum CodingKeys: String, CodingKey { case names, askedNames, soundsOn, character, launchAtLogin, name, askedForName }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         soundsOn = try c.decodeIfPresent(Bool.self, forKey: .soundsOn) ?? false
         character = (try? c.decodeIfPresent(Character.self, forKey: .character)) ?? .corgi
+        launchAtLogin = (try? c.decodeIfPresent(Bool.self, forKey: .launchAtLogin)) ?? false
         let stored = (try? c.decodeIfPresent([String: String].self, forKey: .names)) ?? [:]
         for (key, value) in stored {
             guard let pet = Character(rawValue: key) else { continue }
@@ -81,6 +84,7 @@ public struct PetProfile: Codable, Equatable {
         try c.encode(askedNames.sorted(), forKey: .askedNames)
         try c.encode(soundsOn, forKey: .soundsOn)
         try c.encode(character, forKey: .character)
+        try c.encode(launchAtLogin, forKey: .launchAtLogin)
     }
 
     public var packFolderName: String { character.packFolderName }

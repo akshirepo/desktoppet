@@ -32,6 +32,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         controller = PetController(needs: needs, backend: makeBackend())
         controller.applyProfile(profile)
         controller.start()
+        if profile.launchAtLogin {
+            LoginItem.apply(true)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 6) { LoginItem.askForApprovalIfNeeded() }
+        }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
             guard let self else { return }
             self.controller.greet(awaySeconds: self.awaySeconds)
@@ -201,8 +205,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             stats: { [weak self] in DispatchQueue.main.async { self?.showStats() } },
             toggleDebug: { [weak self] in self?.controller.debug.enabled.toggle() },
             debugOn: controller.debug.enabled,
-            toggleLogin: { LoginItem.setEnabled(!LoginItem.isEnabled) },
-            loginOn: LoginItem.isEnabled,
+            toggleLogin: { [weak self] in
+                guard let self else { return }
+                self.updateProfile { $0.launchAtLogin.toggle() }
+                LoginItem.apply(self.profile.launchAtLogin)
+                if self.profile.launchAtLogin { DispatchQueue.main.async { LoginItem.askForApprovalIfNeeded() } }
+            },
+            loginOn: profile.launchAtLogin,
             rename: { [weak self] in DispatchQueue.main.async { self?.promptRename(firstTime: false) } },
             toggleSounds: { [weak self] in self?.updateProfile { $0.soundsOn.toggle() } },
             soundsOn: profile.soundsOn,

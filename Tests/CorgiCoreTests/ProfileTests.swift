@@ -85,6 +85,15 @@ final class ProfileTests: XCTestCase {
         XCTAssertEqual(back.name, "Wooly")
     }
 
+    func testLaunchAtLoginIsRememberedAndOffByDefault() throws {
+        XCTAssertFalse(PetProfile().launchAtLogin)
+        let old = try JSONDecoder().decode(PetProfile.self, from: Data(#"{"character":"corgi"}"#.utf8))
+        XCTAssertFalse(old.launchAtLogin)
+        var p = PetProfile()
+        p.launchAtLogin = true
+        XCTAssertTrue(try JSONDecoder().decode(PetProfile.self, from: JSONEncoder().encode(p)).launchAtLogin)
+    }
+
     func testMissingFileLoadsDefaults() {
         let store = ProfileStore(directory: dir)
         XCTAssertEqual(store.load(), PetProfile())

@@ -21,7 +21,7 @@ The pet shows up in the bottom-right corner and its icon appears in the menu bar
 
 The app isn't signed with a developer certificate. You built it yourself, so macOS runs it, but if you send the built app to someone else they'll need to right-click it and choose **Open** the first time.
 
-To start it automatically, use **Launch at Login** in the menu. This only works once the app is in `/Applications`.
+To start it automatically, turn on **Launch at Login** in the menu. This only works once the app is in `/Applications`. If macOS asks, allow DesktopCorgi under System Settings > General > Login Items.
 
 ## Playing
 
