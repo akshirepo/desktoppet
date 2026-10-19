@@ -1,5 +1,6 @@
 #if canImport(AppKit)
 import AppKit
+import CorgiCore
 import SpriteKit
 
 enum Effects {
@@ -58,6 +59,8 @@ enum Effects {
         return (try? JSONDecoder().decode([String: BubbleGeometry].self, from: data)) ?? [:]
     }()
     private static var bubbleTextures: [String: SKTexture] = [:]
+    /// #52372e, the bubble artwork's ink color.
+    private static let bubbleInk = NSColor(srgbRed: 82.0 / 255.0, green: 55.0 / 255.0, blue: 46.0 / 255.0, alpha: 1.0)
 
     private static func bubbleTexture(_ path: String) -> SKTexture? {
         if let t = bubbleTextures[path] { return t }
@@ -84,7 +87,7 @@ enum Effects {
         let label = SKLabelNode(text: text)
         label.fontName = NSFont(name: "Avenir Next Medium", size: 11) != nil ? "Avenir Next Medium" : NSFont.systemFont(ofSize: 11).fontName
         label.fontSize = 11
-        label.fontColor = NSColor(srgbRed: 0x52 / 255, green: 0x37 / 255, blue: 0x2e / 255, alpha: 1)
+        label.fontColor = bubbleInk
         label.numberOfLines = 2
         label.preferredMaxLayoutWidth = geo.textBox.width * s
         label.lineBreakMode = .byWordWrapping

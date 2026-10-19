@@ -9,6 +9,12 @@ public struct SpeechLibrary {
         public let text: String
         public let bubble: Bubble
         public let icon: String?
+
+        public init(text: String, bubble: Bubble, icon: String?) {
+            self.text = text
+            self.bubble = bubble
+            self.icon = icon
+        }
     }
 
     private struct Category: Decodable {
