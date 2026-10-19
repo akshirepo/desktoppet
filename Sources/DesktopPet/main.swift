@@ -7,5 +7,5 @@ app.delegate = delegate
 app.setActivationPolicy(.accessory)
 app.run()
 #else
-print("DesktopCorgi needs macOS")
+print("DesktopPet needs macOS")
 #endif

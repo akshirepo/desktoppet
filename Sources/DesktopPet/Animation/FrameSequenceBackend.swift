@@ -16,7 +16,7 @@ final class FrameSequenceBackend: AnimationBackend {
         var animations: [AnimState: (spec: AnimationSpec, frames: [SKTexture])] = [:]
         for (key, spec) in manifest.states {
             guard let state = AnimState(rawValue: key) else {
-                NSLog("DesktopCorgi: manifest has unknown state '\(key)', skipping")
+                NSLog("DesktopPet: manifest has unknown state '\(key)', skipping")
                 continue
             }
             let dir = packURL.appendingPathComponent(spec.folder)
@@ -25,7 +25,7 @@ final class FrameSequenceBackend: AnimationBackend {
                 .sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
             let frames = files.compactMap { NSImage(contentsOf: $0) }.map { SKTexture(image: $0) }
             guard !frames.isEmpty else {
-                NSLog("DesktopCorgi: no PNG frames in \(dir.path), '\(key)' will use idle")
+                NSLog("DesktopPet: no PNG frames in \(dir.path), '\(key)' will use idle")
                 continue
             }
             animations[state] = (spec, frames)
@@ -33,7 +33,7 @@ final class FrameSequenceBackend: AnimationBackend {
         guard let idle = animations[.idle] else { throw AnimationManifestError.missingIdle }
         let missing = AnimState.allCases.filter { animations[$0] == nil }
         if !missing.isEmpty {
-            NSLog("DesktopCorgi: pack has no \(missing.map(\.rawValue).joined(separator: ", ")); using idle for those")
+            NSLog("DesktopPet: pack has no \(missing.map(\.rawValue).joined(separator: ", ")); using idle for those")
         }
         self.animations = animations
         scale = CGFloat(manifest.scale ?? 1)

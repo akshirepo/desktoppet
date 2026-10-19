@@ -13,7 +13,7 @@ enum LoginItem {
         do {
             if on { try SMAppService.mainApp.register() } else if status != .notRegistered { try SMAppService.mainApp.unregister() }
         } catch {
-            NSLog("DesktopCorgi: login item change failed: \(error)")
+            NSLog("DesktopPet: login item change failed: \(error)")
         }
         return status
     }
@@ -23,7 +23,7 @@ enum LoginItem {
         guard status == .requiresApproval else { return }
         let alert = NSAlert()
         alert.messageText = "Allow DesktopPet to open at login"
-        alert.informativeText = "macOS needs your OK. Turn on DesktopCorgi under Login Items in System Settings."
+        alert.informativeText = "macOS needs your OK. Turn on DesktopPet under Login Items in System Settings."
         alert.addButton(withTitle: "Open System Settings")
         alert.addButton(withTitle: "Later")
         NSApp.activate()

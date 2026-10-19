@@ -13,15 +13,15 @@ A little pixel-art pet that lives on your Mac. Pick a corgi or a sheep. It wande
 git clone https://github.com/akshirepo/desktoppet.git
 cd desktoppet
 ./scripts/bundle.sh
-cp -R build/DesktopCorgi.app /Applications/
-open /Applications/DesktopCorgi.app
+cp -R build/DesktopPet.app /Applications/
+open /Applications/DesktopPet.app
 ```
 
 The pet shows up in the bottom-right corner and its icon appears in the menu bar. There's no Dock icon.
 
 The app isn't signed with a developer certificate. You built it yourself, so macOS runs it, but if you send the built app to someone else they'll need to right-click it and choose **Open** the first time.
 
-To start it automatically, turn on **Launch at Login** in the menu. This only works once the app is in `/Applications`. If macOS asks, allow DesktopCorgi under System Settings > General > Login Items.
+To start it automatically, turn on **Launch at Login** in the menu. This only works once the app is in `/Applications`. If macOS asks, allow DesktopPet under System Settings > General > Login Items.
 
 ## Playing
 
@@ -50,7 +50,7 @@ Click the menu bar icon or right-click the pet:
 
 ## Custom art
 
-The corgi and sheep art is built into the app. To use your own, put a pack folder in `~/Library/Application Support/DesktopCorgi/` named `CorgiPack` or `SheepPack`. It overrides the built-in art for that character.
+The corgi and sheep art is built into the app. To use your own, put a pack folder in `~/Library/Application Support/DesktopPet/` named `CorgiPack` or `SheepPack`. It overrides the built-in art for that character.
 
 A pack is one folder per animation state with numbered PNG frames, plus a `manifest.json`. See `Assets/Packs/CorgiPack/manifest.json` for the format and the full list of states. Frames should face right; the app mirrors them when the pet walks left. Missing states fall back to `idle`.
 
@@ -62,7 +62,7 @@ swift test           # tests for the core logic (needs Xcode for XCTest on macOS
 ```
 
 - `Sources/CorgiCore`: all the logic (needs, behavior, movement, window edges) with no UI. It also builds and tests on Linux.
-- `Sources/DesktopCorgi`: the macOS app (AppKit + SpriteKit).
+- `Sources/DesktopPet`: the macOS app (AppKit + SpriteKit).
 - `Assets/`: the pet art, the doodle icons and the sound effects.
 - `scripts/sounds/`: the scripts that synthesize the sound effects from scratch.
 

@@ -34,7 +34,7 @@ final class SoundPlayer {
     private func load(_ effect: Effect) -> NSSound? {
         guard let url = folder?.appendingPathComponent("\(effect.rawValue).wav"),
               let sound = NSSound(contentsOf: url, byReference: true) else {
-            NSLog("DesktopCorgi: missing sound \(effect.rawValue).wav")
+            NSLog("DesktopPet: missing sound \(effect.rawValue).wav")
             return nil
         }
         return sound

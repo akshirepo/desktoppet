@@ -16,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var popover: NSPopover?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        StateStore.migrateAppFolder()          // settings from when the app was called DesktopCorgi
         profile = profileStore.load()
         StateStore.migrateLegacy(in: StateStore.defaultDirectory, to: profile.character)
         store = StateStore(directory: StateStore.defaultDirectory, character: profile.character)
@@ -23,7 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         do {
             loaded = try store.load()
         } catch {
-            NSLog("DesktopCorgi: state file was corrupt, starting fresh: \(error)")
+            NSLog("DesktopPet: state file was corrupt, starting fresh: \(error)")
         }
         needs = NeedsEngine(state: loaded ?? .fresh(at: Date()), clock: SystemClock())
         if loaded != nil { awaySeconds = needs.catchUpOffline() }
@@ -70,7 +71,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                                          userInfo: nil, repeats: true)
     }
 
-    /// A pack in ~/Library/Application Support/DesktopCorgi overrides the art bundled in the app.
+    /// A pack in ~/Library/Application Support/DesktopPet overrides the art bundled in the app.
     static func packURL(for profile: PetProfile) -> URL {
         let custom = StateStore.defaultDirectory.appendingPathComponent(profile.packFolderName)
         if FileManager.default.fileExists(atPath: custom.appendingPathComponent("manifest.json").path) { return custom }
@@ -89,10 +90,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             do {
                 return try FrameSequenceBackend(packURL: Self.packURL(for: candidate))
             } catch {
-                NSLog("DesktopCorgi: could not load \(candidate.packFolderName): \(error)")
+                NSLog("DesktopPet: could not load \(candidate.packFolderName): \(error)")
             }
         }
-        fatalError("DesktopCorgi: no pet art found; build the app with scripts/bundle.sh so the packs are included")
+        fatalError("DesktopPet: no pet art found; build the app with scripts/bundle.sh so the packs are included")
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -103,11 +104,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func save() {
         needs.markSaved()
-        do { try store.save(needs.state) } catch { NSLog("DesktopCorgi: save failed: \(error)") }
+        do { try store.save(needs.state) } catch { NSLog("DesktopPet: save failed: \(error)") }
     }
 
     func saveProfile() {
-        do { try profileStore.save(profile) } catch { NSLog("DesktopCorgi: profile save failed: \(error)") }
+        do { try profileStore.save(profile) } catch { NSLog("DesktopPet: profile save failed: \(error)") }
     }
 
     /// The backend is fixed for the life of the controller, so a new character saves and relaunches the app.
@@ -126,7 +127,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: config) { _, error in
             DispatchQueue.main.async {
                 if let error {
-                    NSLog("DesktopCorgi: relaunch failed, new character applies on next launch: \(error)")
+                    NSLog("DesktopPet: relaunch failed, new character applies on next launch: \(error)")
                 } else {
                     NSApp.terminate(nil)
                 }

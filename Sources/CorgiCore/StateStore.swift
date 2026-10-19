@@ -12,6 +12,19 @@ public final class StateStore {
         directory.appendingPathComponent(fileName.replacingOccurrences(of: ".json", with: ".corrupt.json"))
     }
 
+    public static let appFolderName = "DesktopPet"
+
+    /// The app used to be called DesktopCorgi. Moves its settings folder (in `base`, normally
+    /// ~/Library/Application Support) to the new name, unless a new folder already exists.
+    @discardableResult
+    public static func migrateAppFolder(in base: URL = FileManager.default.urls(for: .applicationSupportDirectory,
+                                                                                in: .userDomainMask)[0]) -> URL {
+        let fm = FileManager.default
+        let old = base.appendingPathComponent("DesktopCorgi"), new = base.appendingPathComponent(appFolderName)
+        if fm.fileExists(atPath: old.path) && !fm.fileExists(atPath: new.path) { try? fm.moveItem(at: old, to: new) }
+        return new
+    }
+
     /// Each pet keeps its own needs, level and together-since date.
     public static func fileName(for character: Character) -> String { "state-\(character.rawValue).json" }
 
@@ -27,7 +40,7 @@ public final class StateStore {
 
     public static var defaultDirectory: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("DesktopCorgi")
+            .appendingPathComponent(appFolderName)
     }
 
     public init(directory: URL, fileName: String = "state.json") {

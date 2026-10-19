@@ -83,4 +83,25 @@ final class StateStoreTests: XCTestCase {
         StateStore.migrateLegacy(in: dir, to: .corgi)
         XCTAssertEqual(try StateStore(directory: dir, character: .corgi).load()?.careXP, 7)
     }
+
+    func testOldAppFolderMovesToTheNewName() throws {
+        let base = dir!
+        let old = base.appendingPathComponent("DesktopCorgi")
+        try FileManager.default.createDirectory(at: old, withIntermediateDirectories: true)
+        try Data("{}".utf8).write(to: old.appendingPathComponent("profile.json"))
+        let moved = StateStore.migrateAppFolder(in: base)
+        XCTAssertEqual(moved.lastPathComponent, "DesktopPet")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: moved.appendingPathComponent("profile.json").path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: old.path))
+    }
+
+    func testAppFolderMigrationLeavesAnExistingNewFolderAlone() throws {
+        let base = dir!
+        let old = base.appendingPathComponent("DesktopCorgi"), new = base.appendingPathComponent("DesktopPet")
+        try FileManager.default.createDirectory(at: old, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: new, withIntermediateDirectories: true)
+        StateStore.migrateAppFolder(in: base)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: old.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: new.path))
+    }
 }

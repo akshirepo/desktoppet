@@ -2,11 +2,11 @@
 import PackageDescription
 
 let package = Package(
-    name: "DesktopCorgi",
+    name: "DesktopPet",
     platforms: [.macOS(.v14)],
     targets: [
         .target(name: "CorgiCore"),
-        .executableTarget(name: "DesktopCorgi", dependencies: ["CorgiCore"]),
+        .executableTarget(name: "DesktopPet", dependencies: ["CorgiCore"]),
         .testTarget(name: "CorgiCoreTests", dependencies: ["CorgiCore"]),
     ]
 )
