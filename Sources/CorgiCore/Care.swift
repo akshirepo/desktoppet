@@ -8,8 +8,13 @@ public struct CareAsker {
     public var lowThreshold: Double = NeedsConfig.default.lowThreshold
     /// Right after exercise it asks for water or food sooner, below this instead of `lowThreshold`.
     public var afterExerciseThreshold = 60.0
+    /// With you at the computer but no pets or play for this long, it comes over for attention.
+    public var lonelyAfter: TimeInterval = 15 * 60
+    /// And tries again this often while you keep ignoring it.
+    public var lonelyEvery: TimeInterval = 20 * 60
     private var lastAsked: [Need: Date] = [:]
     private var lastAny: Date?
+    private var lastLonely: Date?
 
     public init() {}
 
@@ -24,6 +29,19 @@ public struct CareAsker {
             return now.timeIntervalSince(last) >= cooldown
         }
         return candidates.min { needs[$0] < needs[$1] }
+    }
+
+    /// True when it should come to the cursor just because nobody has played with it in a while.
+    public func wantsAttention(secondsSinceInteraction: TimeInterval, now: Date, blocked: Bool) -> Bool {
+        guard !blocked, secondsSinceInteraction >= lonelyAfter else { return false }
+        if let any = lastAny, now.timeIntervalSince(any) < 60 { return false }
+        guard let last = lastLonely else { return true }
+        return now.timeIntervalSince(last) >= lonelyEvery
+    }
+
+    public mutating func markSoughtAttention(at time: Date) {
+        lastLonely = time
+        lastAny = time
     }
 
     public mutating func markAsked(_ need: Need, at time: Date) {

@@ -525,9 +525,19 @@ final class PetController {
                                       screenFrames: NSScreen.screens.map(\.frame))
         let blocked = !askForCare || chaseMe || dragging || body.mode != .grounded || brain.current.countsAsSleep
             || busy.contains(brain.current) || ball != nil || fullScreen || userIdleSeconds > 60
-        guard let need = careAsker.next(needs: needs.state, now: Date(), blocked: blocked,
-                                        afterExercise: now - lastHardExercise < 120) else { return }
-        careAsker.markAsked(need, at: Date())
+        let need: Need
+        if let n = careAsker.next(needs: needs.state, now: Date(), blocked: blocked,
+                                  afterExercise: now - lastHardExercise < 120) {
+            need = n
+            careAsker.markAsked(n, at: Date())
+        } else if careAsker.wantsAttention(secondsSinceInteraction: boredom.secondsSinceInteraction, now: Date(),
+                                           blocked: blocked) {
+            // Nobody's played with it in a while: come over and ask for a game.
+            need = .happiness
+            careAsker.markSoughtAttention(at: Date())
+        } else {
+            return
+        }
         askingFor = need
         lastCareBubble = 0
         brain.interrupt(with: .askCare, duration: 14)

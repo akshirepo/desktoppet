@@ -53,4 +53,23 @@ final class CareAskerTests: XCTestCase {
         p.askForCare = false
         XCTAssertFalse(try JSONDecoder().decode(PetProfile.self, from: JSONEncoder().encode(p)).askForCare)
     }
+
+    func testComesForAttentionAfterFifteenQuietMinutesThenEveryTwenty() {
+        var a = CareAsker()
+        let t0 = Date(timeIntervalSince1970: 1_000_000)
+        XCTAssertFalse(a.wantsAttention(secondsSinceInteraction: 14 * 60, now: t0, blocked: false))
+        XCTAssertFalse(a.wantsAttention(secondsSinceInteraction: 15 * 60, now: t0, blocked: true))
+        XCTAssertTrue(a.wantsAttention(secondsSinceInteraction: 15 * 60, now: t0, blocked: false))
+        a.markSoughtAttention(at: t0)
+        XCTAssertFalse(a.wantsAttention(secondsSinceInteraction: 30 * 60, now: t0.addingTimeInterval(19 * 60), blocked: false))
+        XCTAssertTrue(a.wantsAttention(secondsSinceInteraction: 35 * 60, now: t0.addingTimeInterval(20 * 60), blocked: false))
+    }
+
+    func testDoesNotSeekAttentionRightAfterACareRequest() {
+        var a = CareAsker()
+        let t0 = Date(timeIntervalSince1970: 1_000_000)
+        a.markAsked(.hunger, at: t0)
+        XCTAssertFalse(a.wantsAttention(secondsSinceInteraction: 20 * 60, now: t0.addingTimeInterval(30), blocked: false))
+        XCTAssertTrue(a.wantsAttention(secondsSinceInteraction: 20 * 60, now: t0.addingTimeInterval(61), blocked: false))
+    }
 }
