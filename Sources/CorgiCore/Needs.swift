@@ -20,6 +20,12 @@ public struct NeedsConfig: Codable, Equatable {
     public var bathAmount = 60.0
     public var drinkAmount = 50.0
     public var catchAmount = 10.0
+    /// Extra cost per minute of running hard (zoomies, Chase Me, ball chases) and of walking about.
+    public var hardThirstPerMinute = 5.0
+    public var hardHungerPerMinute = 1.5
+    public var hardEnergyPerMinute = 2.0
+    public var lightThirstPerMinute = 0.3
+    public var lightHungerPerMinute = 0.1
 
     public init() {}
     public static let `default` = NeedsConfig()
@@ -160,6 +166,22 @@ public final class NeedsEngine {
     public func play() { restore(.happiness, by: config.playAmount) }
     public func bath() { restore(.cleanliness, by: config.bathAmount) }
     public func drink() { restore(.thirst, by: config.drinkAmount) }
+
+    /// Running around makes it thirsty first, then hungry and tired.
+    public func exert(_ e: Exertion, seconds: TimeInterval) {
+        let minutes = max(0, seconds) / 60
+        func drain(_ need: Need, _ perMinute: Double) { state[need] = max(0, state[need] - perMinute * minutes) }
+        switch e {
+        case .rest: return
+        case .light:
+            drain(.thirst, config.lightThirstPerMinute)
+            drain(.hunger, config.lightHungerPerMinute)
+        case .hard:
+            drain(.thirst, config.hardThirstPerMinute)
+            drain(.hunger, config.hardHungerPerMinute)
+            drain(.energy, config.hardEnergyPerMinute)
+        }
+    }
 
     /// Returns false when the per-minute pet limit is reached.
     @discardableResult

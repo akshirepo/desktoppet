@@ -106,6 +106,7 @@ final class BrainTests: XCTestCase {
         c.atHome = atHome
         c.secondsAwayFromHome = away
         c.bored = bored
+        c.secondsSinceInteraction = 300   // between "just interacted" and "left alone"
         return c
     }
 

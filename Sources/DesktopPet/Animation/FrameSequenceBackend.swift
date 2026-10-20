@@ -59,6 +59,11 @@ final class FrameSequenceBackend: AnimationBackend {
         let animation = SKAction.animate(with: entry.frames, timePerFrame: 1 / max(entry.spec.fps, 1),
                                          resize: false, restore: false)
         sprite.run(entry.spec.loop ? .repeatForever(animation) : animation)
+        if state == .drink {
+            // Lapping head-bob: the drinking frames only move the tongue and ripples.
+            let lap = SKAction.sequence([.scaleY(to: 0.95, duration: 0.12), .scaleY(to: 1, duration: 0.14), .wait(forDuration: 0.12)])
+            sprite.run(.repeatForever(lap))
+        }
     }
 
     func setFacing(right: Bool) {

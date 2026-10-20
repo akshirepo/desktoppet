@@ -32,6 +32,8 @@ final class PetController {
     private var screenLocked = false
     private var screensAsleep = false
     private var lastZzz: CFTimeInterval = 0
+    /// When it last ran hard, so it asks for water or food sooner right after.
+    private var lastHardExercise: CFTimeInterval = -.infinity
     private var lastSweat: CFTimeInterval = 0
     let home = HomeTracker(clock: SystemClock())
     let rest = RestMonitor()
@@ -201,6 +203,9 @@ final class PetController {
         if needs.state.isAsleep != b.countsAsSleep { needs.setAsleep(b.countsAsSleep) }
         if b == .eat { sounds.play(drinking ? .drink : .eat) }
         if b == .bath { sounds.play(.bath) }
+        if b == .sit && brain.catchingBreath {
+            Effects.floatDoodle("sweat-drops", fallback: "💦", on: backend.node, height: backend.size.height * 0.9)
+        }
         executor.speedScale = needs.isLow(.happiness) ? 0.6 : 1
         executor.begin(b, body: body, world: world, cursor: NSEvent.mouseLocation)
         if b == .ballChase { spawnBall() }
@@ -237,6 +242,13 @@ final class PetController {
         animOverride = (.drink, now + 4)
         drinkingUntil = now + 4
         needs.drink()
+        // The drinking frames are subtle at desktop size, so keep the laps audible the whole time.
+        for k in 1...2 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.3 * Double(k)) { [weak self] in
+                guard let self, self.animOverride?.state == .drink else { return }
+                self.sounds.play(.drink)
+            }
+        }
         Effects.floatDoodle("water-droplet", fallback: "💧", on: backend.node, height: backend.size.height, count: 3)
     }
 
@@ -414,7 +426,8 @@ final class PetController {
                                               maxJumpAcross: body.config.maxJumpAcross).isEmpty
         let ctx = BrainContext(needs: needs.state, lowThreshold: needs.config.lowThreshold, canHop: canHop,
                                atHome: home.isHome(body.position), secondsAwayFromHome: home.secondsAway,
-                               bored: boredom.isBored(needs.state))
+                               bored: boredom.isBored(needs.state),
+                               secondsSinceInteraction: boredom.secondsSinceInteraction)
         if let next = brain.update(dt: dt, ctx) { beginBehavior(next) }
 
         let cursor = NSEvent.mouseLocation
@@ -435,6 +448,10 @@ final class PetController {
         }
         body.clamp(to: world.screens)
         updateMovementSounds(dt: dt)
+        let effort: Exertion = body.isRunning || (body.isMoving && brain.current.exertion == .hard) ? .hard
+            : body.isMoving ? .light : .rest
+        needs.exert(effort, seconds: dt)
+        if effort == .hard { lastHardExercise = now }
 
         overlays.place(globalFeet: body.position)
         // Cling sprites are drawn for their side already, so they are never mirrored.
@@ -508,7 +525,8 @@ final class PetController {
                                       screenFrames: NSScreen.screens.map(\.frame))
         let blocked = !askForCare || chaseMe || dragging || body.mode != .grounded || brain.current.countsAsSleep
             || busy.contains(brain.current) || ball != nil || fullScreen || userIdleSeconds > 60
-        guard let need = careAsker.next(needs: needs.state, now: Date(), blocked: blocked) else { return }
+        guard let need = careAsker.next(needs: needs.state, now: Date(), blocked: blocked,
+                                        afterExercise: now - lastHardExercise < 120) else { return }
         careAsker.markAsked(need, at: Date())
         askingFor = need
         lastCareBubble = 0
@@ -593,6 +611,7 @@ final class PetController {
             ?? animState(for: brain.current, mode: body.mode, isMoving: body.isMoving,
                          isRunning: body.isRunning, carrying: executor.carryingBall)
         if animOverride == nil && brain.current == .askCare && !body.isMoving { state = askingFor == .thirst ? .thirsty : .beg }   // asking nicely
+        if animOverride == nil && brain.current == .beg && needs.state.thirst < needs.state.hunger { state = .thirsty }
         if state != currentAnim {
             currentAnim = state
             backend.play(state)
