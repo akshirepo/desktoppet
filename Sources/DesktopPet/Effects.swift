@@ -71,6 +71,21 @@ enum Effects {
         return t
     }
 
+    private static let bubbleName = "bubble"
+
+    /// One bubble at a time: when a new one appears, whatever is showing fades out quickly.
+    /// Bubbles still waiting on their delay are left alone.
+    private static func replaceOtherBubbles(_ bubble: SKNode, on node: SKNode) -> SKAction {
+        .run { [weak bubble, weak node] in
+            guard let bubble, let node else { return }
+            for other in node.children where other.name == bubbleName && other !== bubble && other.alpha > 0 {
+                other.name = nil
+                other.removeAllActions()
+                other.run(.sequence([.fadeOut(withDuration: 0.12), .removeFromParent()]))
+            }
+        }
+    }
+
     /// A speech or thought bubble with live text above the pet, its tail pointing at the pet.
     /// `tailRight` puts the tail on the right so the bubble opens to the left (for a pet near the right edge).
     /// Returns false when the artwork isn't bundled, so callers can fall back.
@@ -112,8 +127,10 @@ enum Effects {
         container.alpha = 0
         container.setScale(0.85)
         node.addChild(container)
+        container.name = bubbleName
         container.run(.sequence([
             .wait(forDuration: delay),
+            replaceOtherBubbles(container, on: node),
             .group([.fadeIn(withDuration: 0.22), .scale(to: 1, duration: 0.22)]),
             .wait(forDuration: 4.2),
             .fadeOut(withDuration: 0.32),
@@ -140,9 +157,11 @@ enum Effects {
         bubble.position = position
         bubble.zPosition = 50
         bubble.alpha = 0
+        bubble.name = bubbleName
         node.addChild(bubble)
         bubble.run(.sequence([
             .wait(forDuration: delay),
+            replaceOtherBubbles(bubble, on: node),
             .fadeIn(withDuration: 0.15),
             .wait(forDuration: 2.2),
             .fadeOut(withDuration: 0.15),
@@ -195,9 +214,11 @@ enum Effects {
         bubble.position = CGPoint(x: 0, y: height + 22)
         bubble.zPosition = 50
         bubble.alpha = 0
+        bubble.name = bubbleName
         node.addChild(bubble)
         bubble.run(.sequence([
             .wait(forDuration: delay),
+            replaceOtherBubbles(bubble, on: node),
             .fadeIn(withDuration: 0.15),
             .wait(forDuration: 2.2),
             .fadeOut(withDuration: 0.15),
