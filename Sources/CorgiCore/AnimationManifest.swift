@@ -68,6 +68,7 @@ public func animState(for behavior: Behavior, mode: BodyMode, isMoving: Bool,
     case .sleep, .idleSleep: return .sleep
     case .beg: return .beg
     case .eat: return .eat
+    case .drink: return .drink
     case .bath: return .bath
     case .fetch: return .fetch
     case .greet, .wave: return .wave

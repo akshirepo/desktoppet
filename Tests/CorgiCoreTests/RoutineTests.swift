@@ -110,4 +110,13 @@ final class RoutineTests: XCTestCase {
         s.cleanliness = 50
         XCTAssertNil(asker.next(needs: s, now: Date(), blocked: false, afterExercise: true))
     }
+
+    func testDrinkingIsItsOwnBehaviorAndShowsTheWaterBowl() {
+        XCTAssertEqual(animState(for: .drink, mode: .grounded, isMoving: false), .drink)
+        XCTAssertEqual(animState(for: .drink, mode: .airborne, isMoving: false), .fall)
+        let b = brain()
+        b.interrupt(with: .drink, duration: 1)
+        XCTAssertEqual(b.update(dt: 2, ctx()), .sit)
+        XCTAssertFalse(Behavior.autonomous.contains(.drink))
+    }
 }

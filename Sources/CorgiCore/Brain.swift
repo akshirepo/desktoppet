@@ -2,7 +2,7 @@ import Foundation
 
 public enum Behavior: String, CaseIterable {
     case idle, walk, sit, sleep, zoomies, chaseCursor, hopToWindow, beg
-    case eat, fetch, bath, dangle, fall, greet
+    case eat, drink, fetch, bath, dangle, fall, greet
     case goHome, read, readSleep, music, watchTV, wave, turnAround, playBallHome
     case yawn, idleSleep, chaseMe, ballChase
     /// Came to the cursor to ask for something it needs (food, a bath, play or a nap).
@@ -201,7 +201,7 @@ public final class Brain {
     func followUp(after b: Behavior, _ ctx: BrainContext) -> Behavior? {
         let n = ctx.needs
         if b.exertion == .hard { return .sit }
-        if b == .eat { return .sit }
+        if b == .eat || b == .drink { return .sit }
         if b == .yawn { return n.energy < 40 ? .sleep : nil }
         if b == .sleep { return .yawn }
         if n.energy < config.bedtimeEnergy && !b.countsAsSleep { return .yawn }

@@ -13,8 +13,7 @@ final class PetController {
     let overlays: OverlayManager
 
     var animOverride: (state: AnimState, until: CFTimeInterval)?
-    private var drinking = false
-    private var drinkingUntil: CFTimeInterval = 0
+    private var saidRefreshed = false
     private var currentAnim: AnimState?
     private var timer: Timer?
     private var timerFPS = 0
@@ -201,7 +200,11 @@ final class PetController {
         if b.countsAsSleep && !needs.state.isAsleep { sounds.play(.snore) }
         if b == .yawn { sounds.play(.yawn) }
         if needs.state.isAsleep != b.countsAsSleep { needs.setAsleep(b.countsAsSleep) }
-        if b == .eat { sounds.play(drinking ? .drink : .eat) }
+        if b == .eat { sounds.play(.eat) }
+        if b == .drink {
+            sounds.play(.drink)
+            saidRefreshed = false
+        }
         if b == .bath { sounds.play(.bath) }
         if b == .sit && brain.catchingBreath {
             Effects.floatDoodle("sweat-drops", fallback: "💦", on: backend.node, height: backend.size.height * 0.9)
@@ -234,18 +237,13 @@ final class PetController {
     func drink() {
         wake()
         boredom.noteInteraction()
-        drinking = true
-        brain.interrupt(with: .eat, duration: 6)
-        beginBehavior(.eat)
-        drinking = false
-        let now = CACurrentMediaTime()
-        animOverride = (.drink, now + 4)
-        drinkingUntil = now + 4
+        brain.interrupt(with: .drink, duration: 6)
+        beginBehavior(.drink)
         needs.drink()
         // The drinking frames are subtle at desktop size, so keep the laps audible the whole time.
         for k in 1...2 {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.3 * Double(k)) { [weak self] in
-                guard let self, self.animOverride?.state == .drink else { return }
+                guard let self, self.brain.current == .drink else { return }
                 self.sounds.play(.drink)
             }
         }
@@ -520,7 +518,7 @@ final class PetController {
         careCheckElapsed += dt
         guard careCheckElapsed >= 2 else { return }
         careCheckElapsed = 0
-        let busy: Set<Behavior> = [.eat, .bath, .fetch, .ballChase, .greet, .yawn, .dangle, .fall, .cling, .chaseMe, .askCare]
+        let busy: Set<Behavior> = [.eat, .drink, .bath, .fetch, .ballChase, .greet, .yawn, .dangle, .fall, .cling, .chaseMe, .askCare]
         let fullScreen = isFullScreen(frontWindow: world.windows.first?.frame,
                                       screenFrames: NSScreen.screens.map(\.frame))
         let blocked = !askForCare || chaseMe || dragging || body.mode != .grounded || brain.current.countsAsSleep
@@ -609,19 +607,21 @@ final class PetController {
     }
 
     private func updateAnimation(_ now: CFTimeInterval) {
-        if let o = animOverride, o.until <= now {
-            animOverride = nil
-            if o.state == .drink, o.until == drinkingUntil, brain.current == .eat {
-                animOverride = (.refreshed, now + 2)
-                say(mood: "refreshed")
-            }
-        }
+        if let o = animOverride, o.until <= now { animOverride = nil }
         var state = animOverride?.state
             ?? body.cling?.animState
             ?? animState(for: brain.current, mode: body.mode, isMoving: body.isMoving,
                          isRunning: body.isRunning, carrying: executor.carryingBall)
         if animOverride == nil && brain.current == .askCare && !body.isMoving { state = askingFor == .thirst ? .thirsty : .beg }   // asking nicely
         if animOverride == nil && brain.current == .beg && needs.state.thirst < needs.state.hunger { state = .thirsty }
+        // The last two seconds of a drink are the happy "ahh".
+        if state == .drink && brain.remaining < 2 {
+            state = .refreshed
+            if !saidRefreshed {
+                saidRefreshed = true
+                say(mood: "refreshed")
+            }
+        }
         if state != currentAnim {
             currentAnim = state
             backend.play(state)
