@@ -1,3 +1,4 @@
+#if canImport(AppKit)
 import XCTest
 import AppKit
 import SpriteKit
@@ -259,3 +260,4 @@ final class ScreenBoundaryTests: XCTestCase {
         }
     }
 }
+#endif
