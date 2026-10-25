@@ -24,10 +24,14 @@ public final class Ball {
     }
 
     /// Visible frames minus side and top margins, lifted 30pt off the floor.
-    public static func area(for screens: [CGRect]) -> [CGRect] {
-        insetRects(screens, side: 20, top: 40).map {
+    public static func area(for screens: [CGRect], reachableFrom feetAreas: [CGRect]? = nil) -> [CGRect] {
+        let areas = insetRects(screens, side: 20, top: 40).map {
             CGRect(x: $0.minX, y: $0.minY + 30, width: $0.width, height: max(0, $0.height - 30))
         }
+        guard let feetAreas else { return areas }
+        // Ball chase targets the mouth, 30pt above the feet. Preserve the ball's existing margins.
+        return zip(areas, feetAreas).map { $0.intersection($1.offsetBy(dx: 0, dy: 30)) }
+            .filter { !$0.isNull }
     }
 
     public var popped: Bool { age >= lifetime }
@@ -46,7 +50,11 @@ public final class Ball {
 
     /// Monitors changed: pull the ball and its waypoint back inside what is left.
     public func setScreens(_ screens: [CGRect]) {
-        area = Ball.area(for: screens)
+        setArea(Ball.area(for: screens))
+    }
+
+    public func setArea(_ area: [CGRect]) {
+        self.area = area
         position = nearestPoint(to: position, in: area)
         if !rects(area, contain: waypoint) { pickWaypoint() }
     }

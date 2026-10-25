@@ -41,7 +41,7 @@ enum Doodles {
 
     /// Menu bar icon for the current character.
     static func statusIcon(sheep: Bool) -> NSImage? {
-        template(image(sheep ? "menu/black/48/sheep.png" : "status/black/44/corgi.png"), size: 18)
+        template(image(sheep ? "status/black/44/sheep.png" : "status/black/44/corgi.png"), size: 18)
     }
 
     private static func sized(_ img: NSImage?, size: CGFloat) -> NSImage? {

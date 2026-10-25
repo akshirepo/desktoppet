@@ -2,11 +2,17 @@
 import CorgiCore
 import SpriteKit
 
-protocol AnimationBackend: AnyObject {
+protocol AnimationBackend: AnimationPlaybackBackend {
     /// Root node. Its origin is the corgi's feet.
     var node: SKNode { get }
-    /// Size in points, used for the hit box.
+    /// Idle canvas size in points, used to position effects.
     var size: CGSize { get }
+    /// Current sprite only, relative to the feet, including its anchor and facing.
+    var spriteBounds: CGRect { get }
+    /// Stable envelope for normal movement, excluding window grips and transient effects.
+    var movementBounds: CGRect { get }
+    /// Unmirrored canvas for a resolved pose, used to validate a window grip.
+    func bounds(for state: AnimState) -> CGRect
     func play(_ state: AnimState)
     func setFacing(right: Bool)
     /// Where a carried ball sits, facing right, relative to the feet.

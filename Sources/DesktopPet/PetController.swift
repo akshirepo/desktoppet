@@ -12,9 +12,8 @@ final class PetController {
     let backend: AnimationBackend
     let overlays: OverlayManager
 
-    var animOverride: (state: AnimState, until: CFTimeInterval)?
+    private let playback: AnimationPlayback
     private var saidRefreshed = false
-    private var currentAnim: AnimState?
     private var timer: Timer?
     private var timerFPS = 0
     private var worldTimer: Timer?
@@ -64,11 +63,13 @@ final class PetController {
     init(needs: NeedsEngine, backend: AnimationBackend) {
         self.needs = needs
         self.backend = backend
+        playback = AnimationPlayback(backend: backend)
         overlays = OverlayManager(corgiNode: backend.node)
-        world = World(provider: CGWindowListProvider(), screens: NSScreen.screens.map(\.visibleFrame))
         let frames = NSScreen.screens.map(\.visibleFrame)
+        world = World(provider: CGWindowListProvider(), screens: frames, bodyBounds: backend.movementBounds)
         let vf = HomeTracker.cornerScreenIndex(frames).map { frames[$0] } ?? .zero
-        body = Body(position: CGPoint(x: vf.maxX - 80, y: vf.maxY - 100))
+        let initial = CGPoint(x: vf.maxX - 80, y: vf.maxY - 100)
+        body = Body(position: nearestPoint(to: initial, in: world.movementScreens))
         overlays.input = self
         updateHome()
         executor.onBallCaught = { [weak self] in self?.ballCaught() }
@@ -76,13 +77,13 @@ final class PetController {
 
     /// Home is on the primary screen (the one with the menu bar), index 0 in `world.screens`.
     private func updateHome() {
-        home.setScreens(world.screens, mainIndex: HomeTracker.cornerScreenIndex(world.screens) ?? 0)
+        home.setScreens(world.screens, mainIndex: HomeTracker.cornerScreenIndex(world.screens) ?? 0,
+                        bodyBounds: world.bodyBounds)
         executor.home = home.spot
     }
 
     var hitRect: CGRect {
-        CGRect(x: body.position.x - backend.size.width / 2, y: body.position.y,
-               width: backend.size.width, height: backend.size.height)
+        backend.spriteBounds.offsetBy(dx: body.position.x, dy: body.position.y)
     }
 
     func start() {
@@ -158,23 +159,44 @@ final class PetController {
         overlays.setFPS(fps)
     }
 
+    /// The Dock can change the visible area without changing a screen's physical frame.
+    private func refreshScreenBounds() {
+        let frames = NSScreen.screens.map(\.visibleFrame)
+        guard frames != world.screens else { return }
+        world.setScreens(frames)
+        updateHome()
+        ball?.setArea(ballArea)
+    }
+
+    private func clampBody() {
+        let areas = body.cling.map { placementRects(world.screens, bounds: backend.bounds(for: $0.animState)) }
+            ?? world.movementScreens
+        if body.clamp(to: areas) == .startedFalling {
+            body.clamp(to: world.movementScreens)
+            fell()
+        }
+    }
+
     func refreshWorld() {
+        refreshScreenBounds()
         let update = world.refresh()
         if body.mode == .clinging {
             if body.followCling(world) == .startedFalling { fell() }
-            return
+        } else if body.apply(update) == .startedFalling {
+            fell()
         }
-        if body.apply(update) == .startedFalling { fell() }
+        clampBody()
     }
 
     func screensChanged() {
-        world.setScreens(NSScreen.screens.map(\.visibleFrame))
-        overlays.rebuild()
-        overlays.setPaused(paused)
-        if timerFPS > 0 { overlays.setFPS(timerFPS) }
-        body.clamp(to: world.screens)
-        updateHome()
-        ball?.setScreens(world.screens)
+        if overlays.overlays.map(\.frame) != NSScreen.screens.map(\.frame) {
+            overlays.rebuild()
+            overlays.setPaused(paused)
+            if timerFPS > 0 { overlays.setFPS(timerFPS) }
+        }
+        refreshScreenBounds()
+        clampBody()
+        overlays.place(globalFeet: body.position)
     }
 
     /// Called when the floor disappears under the corgi.
@@ -185,6 +207,7 @@ final class PetController {
     }
 
     func beginBehavior(_ b: Behavior) {
+        playback.cancelReaction()
         if b != .askCare, askingFor != nil {
             // Ignored: a little tear, then back to what it was doing. It asks again later.
             askingFor = nil
@@ -193,7 +216,7 @@ final class PetController {
         if body.mode == .clinging && b != .cling && b != .dangle {
             body.letGo()
             sounds.play(.letGo)
-            animOverride = (.letGo, CACurrentMediaTime() + 0.5)
+            playback.requestReaction(.letGo, mode: body.mode)
         }
         if b != .ballChase { endBall() }
         if chaseMe && b != .chaseMe && b != .dangle { chaseMe = false }
@@ -294,9 +317,14 @@ final class PetController {
         if needs.state.isAsleep { needs.setAsleep(false) }
     }
 
+    private var ballArea: [CGRect] {
+        Ball.area(for: world.screens, reachableFrom: world.roamingScreens(headroom: body.config.roamHeadroom))
+    }
+
     private func spawnBall() {
         endBall()
         let b = Ball(start: CGPoint(x: body.position.x, y: body.position.y + 60), screens: world.screens)
+        b.setArea(ballArea)
         ball = b
         sounds.play(.ballBounce)
         let node = Effects.makeBall()
@@ -384,7 +412,7 @@ final class PetController {
             if brain.current == .yawn || brain.current == .idleSleep {
                 brain.finishCurrent()
                 needs.setAsleep(false)
-                if body.mode != .clinging { animOverride = (.wiggle, now + 0.8) }  // keep its grip pose while hanging
+                playback.requestReaction(.wiggle, mode: body.mode)
             }
         case nil:
             // Still resting but something (a fall) took it out of idle sleep: settle back down.
@@ -408,7 +436,7 @@ final class PetController {
         if needs.pet() {
             sounds.play(petSound)
             Effects.floatDoodle("heart", fallback: "❤️", on: backend.node, height: backend.size.height, count: 2)
-            if body.mode != .clinging { animOverride = (.happy, CACurrentMediaTime() + 0.8) }  // keep its grip pose while hanging
+            playback.requestReaction(.happy, mode: body.mode)
         }
     }
 
@@ -416,6 +444,9 @@ final class PetController {
         let now = CACurrentMediaTime()
         let dt = min(now - lastTick, 0.1)
         lastTick = now
+        refreshScreenBounds()
+        clampBody()
+        playback.advance(dt: dt, mode: body.mode)
         needs.tick()
         updateRest(dt: dt, now: now)
 
@@ -426,7 +457,10 @@ final class PetController {
                                atHome: home.isHome(body.position), secondsAwayFromHome: home.secondsAway,
                                bored: boredom.isBored(needs.state),
                                secondsSinceInteraction: boredom.secondsSinceInteraction)
-        if let next = brain.update(dt: dt, ctx) { beginBehavior(next) }
+        // Do not call update with dt=0: the brain can still change behaviors at zero elapsed time.
+        if !playback.holdsGroundedMotion(in: body.mode), let next = brain.update(dt: dt, ctx) {
+            beginBehavior(next)
+        }
 
         let cursor = NSEvent.mouseLocation
         updateHover(dt: dt, cursor: cursor)
@@ -434,17 +468,22 @@ final class PetController {
         updateCareRequest(dt: dt, now: now)
         updateCompany(now: now)
         stepBall(dt: dt)
-        if executor.step(brain.current, body: body, world: world, cursor: cursor) { stepFinished() }
+        if playback.holdsGroundedMotion(in: body.mode) {
+            body.stop()
+        } else if executor.step(brain.current, body: body, world: world, cursor: cursor) {
+            stepFinished()
+        }
+        // Even a planted reaction must notice a vanished floor and start falling immediately.
         if let event = body.step(dt: dt, world: world) {
             if executor.handle(event, behavior: brain.current, body: body) { stepFinished() }
             if event == .landed {
                 sounds.play(.land)
-                animOverride = (.land, now + 0.25)
+                playback.requestReaction(.land, mode: body.mode)
                 if brain.current == .fall { brain.finishCurrent() }
             }
             if event == .startedFalling { fell() }
         }
-        body.clamp(to: world.screens)
+        clampBody()
         updateMovementSounds(dt: dt)
         let effort: Exertion = body.isRunning || (body.isMoving && brain.current.exertion == .hard) ? .hard
             : body.isMoving ? .light : .rest
@@ -454,7 +493,7 @@ final class PetController {
         overlays.place(globalFeet: body.position)
         // Cling sprites are drawn for their side already, so they are never mirrored.
         backend.setFacing(right: body.mode == .clinging ? true : body.facingRight)
-        updateAnimation(now)
+        updateAnimation()
         if brain.current.countsAsSleep && now - lastZzz > 2 {
             lastZzz = now
             snoreTick.toggle()
@@ -471,7 +510,7 @@ final class PetController {
         }
         debug.update(world: world, hitRect: hitRect, behavior: brain.current, overlays: overlays)
         overlays.setClickThrough(!(body.mode == .held || hitRect.contains(cursor)))
-        setRate(body.isMoving || body.mode == .held || animOverride != nil || ball != nil ? 30 : 15)
+        setRate(body.isMoving || body.mode == .held || playback.reactionState != nil || ball != nil ? 30 : 15)
     }
 
     /// A thought bubble for the lowest low need, about once a minute.
@@ -606,14 +645,14 @@ final class PetController {
         petSound = profile.character == .sheep ? .petSheep : .petCorgi
     }
 
-    private func updateAnimation(_ now: CFTimeInterval) {
-        if let o = animOverride, o.until <= now { animOverride = nil }
-        var state = animOverride?.state
-            ?? body.cling?.animState
+    private func updateAnimation() {
+        var state = body.cling?.animState
             ?? animState(for: brain.current, mode: body.mode, isMoving: body.isMoving,
                          isRunning: body.isRunning, carrying: executor.carryingBall)
-        if animOverride == nil && brain.current == .askCare && !body.isMoving { state = askingFor == .thirst ? .thirsty : .beg }   // asking nicely
-        if animOverride == nil && brain.current == .beg && needs.state.thirst < needs.state.hunger { state = .thirsty }
+        if (body.mode == .grounded || body.mode == .roaming), brain.current == .askCare && !body.isMoving {
+            state = askingFor == .thirst ? .thirsty : .beg   // asking nicely
+        }
+        if body.mode == .grounded && brain.current == .beg && needs.state.thirst < needs.state.hunger { state = .thirsty }
         // The last two seconds of a drink are the happy "ahh".
         if state == .drink && brain.remaining < 2 {
             state = .refreshed
@@ -622,11 +661,9 @@ final class PetController {
                 say(mood: "refreshed")
             }
         }
-        if state != currentAnim {
-            currentAnim = state
-            backend.play(state)
-        }
+        playback.update(state, mode: body.mode)
     }
+
 }
 
 extension PetController: SceneInputHandler {
@@ -652,6 +689,8 @@ extension PetController: SceneInputHandler {
         }
         if dragging {
             body.moveHeld(to: CGPoint(x: global.x, y: global.y - backend.size.height * 0.8))
+            refreshScreenBounds()
+            clampBody()
         }
     }
 
@@ -667,7 +706,8 @@ extension PetController: SceneInputHandler {
                 beginBehavior(.chaseMe)
             } else if let spot = ClingFinder.find(body.position, windows: world.windows)    // where its feet are
                         ?? ClingFinder.find(global, windows: world.windows),               // or where you let go
-                      let contact = ClingFinder.contact(spot, windows: world.windows) {
+                      let contact = ClingFinder.contact(spot, windows: world.windows),
+                      rects(placementRects(world.screens, bounds: backend.bounds(for: spot.animState)), contain: contact) {
                 // Dropped near a window edge: hold on to it until bored.
                 body.startClinging(spot, at: contact)
                 brain.interrupt(with: .cling, duration: Double.random(in: 180...360))
@@ -700,7 +740,7 @@ extension PetController: SceneInputHandler {
             if needs.catchPet() {
                 sounds.play(petSound)
                 Effects.floatDoodle("heart", fallback: "❤️", on: backend.node, height: backend.size.height, count: 4)
-                if body.mode != .clinging { animOverride = (.happy, CACurrentMediaTime() + 0.8) }  // keep its grip pose while hanging
+                playback.requestReaction(.happy, mode: body.mode)
             }
             return
         }
@@ -711,7 +751,7 @@ extension PetController: SceneInputHandler {
         if needs.pet() {
             sounds.play(petSound)
             Effects.floatDoodle("heart", fallback: "❤️", on: backend.node, height: backend.size.height, count: 3)
-            if body.mode != .clinging { animOverride = (.wiggle, CACurrentMediaTime() + 0.8) }  // keep its grip pose while hanging
+            playback.requestReaction(.wiggle, mode: body.mode)
             if Int.random(in: 0..<4) == 0 { sayNow(mood: "happy", now: CACurrentMediaTime()) }
         }
     }

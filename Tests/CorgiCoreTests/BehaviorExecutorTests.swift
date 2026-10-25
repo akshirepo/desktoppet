@@ -86,17 +86,32 @@ final class BehaviorExecutorTests: XCTestCase {
     }
 
     func testZoomiesBounceBetweenEdges() {
-        let ex = BehaviorExecutor(rng: SeededRandom(seed: 1))
-        let body = groundedBody(x: 800, y: 300)
-        ex.begin(.zoomies, body: body, world: world, cursor: .zero)
-        var facings = Set<Bool>()
-        for _ in 0..<Int(6 / dt) {
-            _ = ex.step(.zoomies, body: body, world: world, cursor: .zero)
-            if let e = body.step(dt: dt, world: world) { _ = ex.handle(e, behavior: .zoomies, body: body) }
-            facings.insert(body.facingRight)
-            XCTAssertTrue((600...1000).contains(body.position.x))
+        for tick in [1.0 / 30, 1.0 / 60] {
+            let ex = BehaviorExecutor(rng: SeededRandom(seed: 1))
+            let body = groundedBody(x: 800, y: 300)
+            ex.begin(.zoomies, body: body, world: world, cursor: .zero)
+            var facings = Set<Bool>()
+            var edgeCount = 0
+            for _ in 0..<Int(6 / tick) {
+                _ = ex.step(.zoomies, body: body, world: world, cursor: .zero)
+                if let event = body.step(dt: tick, world: world) {
+                    let previousFacing = body.facingRight
+                    _ = ex.handle(event, behavior: .zoomies, body: body)
+                    if event == .hitEdge {
+                        edgeCount += 1
+                        XCTAssertTrue(body.isMoving, "The edge-event tick must keep running at dt=\(tick)")
+                        XCTAssertTrue(body.isRunning)
+                        XCTAssertNotEqual(body.facingRight, previousFacing)
+                        XCTAssertEqual(animState(for: .zoomies, mode: body.mode, isMoving: body.isMoving,
+                                                 isRunning: body.isRunning), .run)
+                    }
+                }
+                facings.insert(body.facingRight)
+                XCTAssertTrue((600...1000).contains(body.position.x))
+            }
+            XCTAssertGreaterThan(edgeCount, 2)
+            XCTAssertEqual(facings, [true, false])
         }
-        XCTAssertEqual(facings, [true, false])
     }
 
     func testFetchWalksToCallerTarget() {

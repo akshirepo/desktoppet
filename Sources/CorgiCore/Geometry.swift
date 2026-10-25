@@ -78,3 +78,15 @@ public func nearestPoint(to p: CGPoint, in rects: [CGRect]) -> CGPoint {
     rects.map { CGPoint(x: min(max(p.x, $0.minX), $0.maxX), y: min(max(p.y, $0.minY), $0.maxY)) }
         .min { hypot($0.x - p.x, $0.y - p.y) < hypot($1.x - p.x, $1.y - p.y) } ?? p
 }
+
+/// Legal positions for an origin whose local `bounds` must fit inside one screen.
+/// A screen smaller than the sprite keeps it centered on that axis.
+public func placementRects(_ screens: [CGRect], bounds: CGRect) -> [CGRect] {
+    screens.map { screen in
+        let width = max(0, screen.width - bounds.width)
+        let height = max(0, screen.height - bounds.height)
+        return CGRect(x: screen.width >= bounds.width ? screen.minX - bounds.minX : screen.midX - bounds.midX,
+                      y: screen.height >= bounds.height ? screen.minY - bounds.minY : screen.midY - bounds.midY,
+                      width: width, height: height)
+    }
+}

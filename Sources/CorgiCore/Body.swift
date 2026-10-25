@@ -197,7 +197,7 @@ public final class Body {
             walkVelocity = 0
             return .hitEdge
         case .roaming:
-            let area = insetRects(world.screens, side: 20, top: config.roamHeadroom)
+            let area = world.roamingScreens(headroom: config.roamHeadroom)
             let next = CGPoint(x: position.x + velocity.dx * dt, y: position.y + velocity.dy * dt)
             if area.isEmpty || rects(area, contain: next) {
                 position = next
@@ -224,20 +224,19 @@ public final class Body {
         }
     }
 
-    /// Pulls the body back onto the nearest screen if it ended up outside every screen.
-    public func clamp(to screens: [CGRect]) {
-        guard !screens.isEmpty, mode != .clinging else { return }
-        let p = position
-        if screens.contains(where: { $0.minX <= p.x && p.x <= $0.maxX && $0.minY <= p.y && p.y <= $0.maxY }) {
-            return
+    /// Pulls the feet into the nearest legal placement area. An unsafe grip is released first.
+    @discardableResult
+    public func clamp(to areas: [CGRect]) -> BodyEvent? {
+        guard !areas.isEmpty, !rects(areas, contain: position) else { return nil }
+        position = nearestPoint(to: position, in: areas)
+        switch mode {
+        case .grounded, .airborne, .clinging:
+            cling = nil
+            return startFalling()
+        case .held, .roaming:
+            velocity = .zero
+            return nil
         }
-        let screen = screens.first { $0.minX <= p.x && p.x <= $0.maxX }
-            ?? screens.min { abs($0.midX - p.x) < abs($1.midX - p.x) }!
-        let clamped = CGPoint(x: min(max(position.x, screen.minX + 20), screen.maxX - 20),
-                              y: min(max(position.y, screen.minY), screen.maxY - 10))
-        guard clamped != position else { return }
-        position = clamped
-        if mode == .grounded || mode == .airborne { startFalling() }
     }
 
     @discardableResult

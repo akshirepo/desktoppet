@@ -26,13 +26,14 @@ public final class HomeTracker {
 
     /// `visibleFrames` in the same order as `World.screens`; `mainIndex` is the main screen.
     /// Falls back to the first screen when the main one is gone.
-    public func setScreens(_ visibleFrames: [CGRect], mainIndex: Int) {
+    public func setScreens(_ visibleFrames: [CGRect], mainIndex: Int, bodyBounds: CGRect = .zero) {
         guard !visibleFrames.isEmpty else {
             spot = nil
             return
         }
         let vf = visibleFrames.indices.contains(mainIndex) ? visibleFrames[mainIndex] : visibleFrames[0]
-        spot = CGPoint(x: vf.maxX - config.insetFromRight, y: vf.minY)
+        let desired = CGPoint(x: vf.maxX - config.insetFromRight, y: vf.minY)
+        spot = nearestPoint(to: desired, in: placementRects([vf], bounds: bodyBounds))
     }
 
     /// The screen whose right edge is furthest right: the bottom-right corner of the whole desktop.

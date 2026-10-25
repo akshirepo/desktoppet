@@ -8,5 +8,6 @@ let package = Package(
         .target(name: "CorgiCore"),
         .executableTarget(name: "DesktopPet", dependencies: ["CorgiCore"]),
         .testTarget(name: "CorgiCoreTests", dependencies: ["CorgiCore"]),
+        .testTarget(name: "DesktopPetTests", dependencies: ["DesktopPet", "CorgiCore"]),
     ]
 )

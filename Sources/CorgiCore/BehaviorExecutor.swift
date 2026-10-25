@@ -88,7 +88,7 @@ public final class BehaviorExecutor {
             stepChaseMe(body: body, world: world, cursor: cursor)
             return false
         }
-        if b == .ballChase { return stepBallChase(body: body) }
+        if b == .ballChase { return stepBallChase(body: body, world: world) }
         if b == .hopToWindow {
             guard hopStarted else { return true }
             if let dir = hopDownDirection, body.mode == .grounded, let target = targetX {
@@ -106,7 +106,8 @@ public final class BehaviorExecutor {
         case .goHome:
             return stepHome(body: body, world: world)
         case .walk, .fetch:
-            guard let target = targetX else { return b == .walk }
+            guard let requested = targetX else { return b == .walk }
+            let target = body.standingOn?.clampX(requested) ?? requested
             let dx = target - body.position.x
             if abs(dx) < 4 {
                 body.stop()
@@ -135,6 +136,8 @@ public final class BehaviorExecutor {
         switch (behavior, event) {
         case (.zoomies, .hitEdge):
             zoomDirection = -zoomDirection
+            // Body stops at an edge. Restore the reversed run before this tick chooses its animation.
+            body.walk(direction: zoomDirection, speed: body.config.runSpeed * 1.2)
             return false
         case (.walk, .hitEdge):
             return true
@@ -213,7 +216,7 @@ public final class BehaviorExecutor {
     /// Runs after the cursor (clamped to the screens) and waits facing it once within `followDistance`.
     private func stepChaseMe(body: Body, world: World, cursor: CGPoint) {
         guard body.mode == .roaming else { return }
-        let area = insetRects(world.screens, side: 20, top: body.config.roamHeadroom)
+        let area = world.roamingScreens(headroom: body.config.roamHeadroom)
         let target = nearestPoint(to: cursor, in: area)
         if hypot(target.x - body.position.x, target.y - body.position.y) < followDistance {
             body.hover()
@@ -225,7 +228,7 @@ public final class BehaviorExecutor {
 
     /// Chase the ball (mouth 30pt above the feet), carry it above home, then drop to the floor.
     /// Returns true when the ball is gone before the catch, or after landing with it.
-    private func stepBallChase(body: Body) -> Bool {
+    private func stepBallChase(body: Body, world: World) -> Bool {
         switch ballPhase {
         case .chasing:
             guard body.mode == .roaming else { return false }
@@ -236,11 +239,14 @@ public final class BehaviorExecutor {
                 carryingBall = true
                 onBallCaught?()
             } else {
-                body.roam(toward: CGPoint(x: ball.x, y: ball.y - 30), speed: body.config.runSpeed)
+                let target = nearestPoint(to: CGPoint(x: ball.x, y: ball.y - 30),
+                                          in: world.roamingScreens(headroom: body.config.roamHeadroom))
+                body.roam(toward: target, speed: body.config.runSpeed)
             }
         case .carrying:
             guard body.mode == .roaming else { return false }
-            let target = home.map { CGPoint(x: $0.x, y: $0.y + 60) } ?? body.position
+            let requested = home.map { CGPoint(x: $0.x, y: $0.y + 60) } ?? body.position
+            let target = nearestPoint(to: requested, in: world.roamingScreens(headroom: body.config.roamHeadroom))
             if hypot(target.x - body.position.x, target.y - body.position.y) < 10 {
                 body.stopRoaming()
                 ballPhase = .dropping
