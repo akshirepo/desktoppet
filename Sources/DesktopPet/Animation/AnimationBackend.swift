@@ -13,6 +13,8 @@ protocol AnimationBackend: AnimationPlaybackBackend {
     var movementBounds: CGRect { get }
     /// Unmirrored canvas for a resolved pose, used to validate a window grip.
     func bounds(for state: AnimState) -> CGRect
+    /// Posture of each pose for this pet, used to route transitions.
+    var postures: [AnimState: Posture] { get }
     func play(_ state: AnimState)
     func setFacing(right: Bool)
     /// Where a carried ball sits, facing right, relative to the feet.

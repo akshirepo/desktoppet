@@ -63,7 +63,7 @@ final class PetController {
     init(needs: NeedsEngine, backend: AnimationBackend) {
         self.needs = needs
         self.backend = backend
-        playback = AnimationPlayback(backend: backend)
+        playback = AnimationPlayback(backend: backend, graph: TransitionGraph(postures: backend.postures))
         overlays = OverlayManager(corgiNode: backend.node)
         let frames = NSScreen.screens.map(\.visibleFrame)
         world = World(provider: CGWindowListProvider(), screens: frames, bodyBounds: backend.movementBounds)
@@ -510,7 +510,7 @@ final class PetController {
         }
         debug.update(world: world, hitRect: hitRect, behavior: brain.current, overlays: overlays)
         overlays.setClickThrough(!(body.mode == .held || hitRect.contains(cursor)))
-        setRate(body.isMoving || body.mode == .held || playback.reactionState != nil || ball != nil ? 30 : 15)
+        setRate(body.isMoving || body.mode == .held || playback.reactionState != nil || playback.transitionTarget != nil || ball != nil ? 30 : 15)
     }
 
     /// A thought bubble for the lowest low need, about once a minute.

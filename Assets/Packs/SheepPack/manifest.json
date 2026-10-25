@@ -53,7 +53,8 @@
       "anchor": [
         0.5,
         0.075
-      ]
+      ],
+      "posture": "stand"
     },
     "beg": {
       "folder": "beg",
@@ -152,7 +153,8 @@
       "anchor": [
         0.5,
         0.075
-      ]
+      ],
+      "posture": "lie"
     },
     "music": {
       "folder": "music",

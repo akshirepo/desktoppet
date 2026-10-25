@@ -14,6 +14,11 @@ final class FrameSequenceBackend: AnimationBackend {
     private var animations: [AnimState: (spec: AnimationSpec, frames: [SKTexture])] = [:]
     private var facingRight = true
     private var playbackID: UInt64 = 0
+    /// Postures for this pet, with the pack's overrides.
+    let postures: [AnimState: Posture]
+    /// When the current loop started and how long one cycle is, for finishing a step or bite.
+    private var loopStart: CFTimeInterval = 0
+    private var loopCycle: TimeInterval = 0
 
     init(packURL: URL) throws {
         let manifest = try AnimationManifest.load(from: packURL.appendingPathComponent("manifest.json"))
@@ -41,6 +46,7 @@ final class FrameSequenceBackend: AnimationBackend {
         }
         self.animations = animations
         scale = CGFloat(manifest.scale ?? 1)
+        postures = manifest.postures
         let frameSize = idle.frames[0].size()
         size = CGSize(width: frameSize.width * scale, height: frameSize.height * scale)
         let grips: Set<AnimState> = [.clingSit, .clingHang, .clingPeek, .clingLeft, .clingRight]
@@ -104,6 +110,8 @@ final class FrameSequenceBackend: AnimationBackend {
             }]), withKey: "frames")
         } else {
             sprite.run(entry.spec.loop ? .repeatForever(animation) : animation, withKey: "frames")
+            loopStart = CACurrentMediaTime()
+            loopCycle = entry.spec.loop ? duration : 0
         }
         if state == .drink && !once {
             // Lapping head-bob: the drinking frames only move the tongue and ripples.
@@ -111,6 +119,13 @@ final class FrameSequenceBackend: AnimationBackend {
             sprite.run(.repeatForever(lap))
         }
         return duration
+    }
+
+    func timeToCycleBoundary(parts: Int) -> TimeInterval? {
+        guard loopCycle > 0, parts > 0 else { return nil }
+        let part = loopCycle / Double(parts)
+        let left = part - (CACurrentMediaTime() - loopStart).truncatingRemainder(dividingBy: part)
+        return left < 0.02 ? 0 : left
     }
 
     func setFacing(right: Bool) {

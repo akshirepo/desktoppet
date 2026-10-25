@@ -7,10 +7,14 @@ public protocol AnimationPlaybackBackend: AnyObject {
     /// Returns nil when unsupported. Replacing playback cancels its completion.
     @discardableResult
     func playOnce(_ state: AnimState, completion: @escaping () -> Void) -> TimeInterval?
+    /// Seconds until the current loop reaches its next 1/`parts` mark (the next footfall of a walk,
+    /// the end of a bite). Nil when unknown.
+    func timeToCycleBoundary(parts: Int) -> TimeInterval?
 }
 
 extension AnimationPlaybackBackend {
     public func playOnce(_ state: AnimState, completion: @escaping () -> Void) -> TimeInterval? { nil }
+    public func timeToCycleBoundary(parts: Int) -> TimeInterval? { nil }
 }
 
 /// Owns temporary poses without letting old completions replace a newer physical or behavior state.
@@ -22,13 +26,28 @@ public final class AnimationPlayback {
         var remaining: TimeInterval
     }
 
+    private struct Transition {
+        let target: AnimState
+        var steps: [TransitionStep]
+        /// Changes with every step, so a late completion from an earlier step is ignored.
+        var token: UInt64
+        var remaining: TimeInterval
+    }
+
     private let backend: any AnimationPlaybackBackend
     private var reaction: Reaction?
+    private var transition: Transition?
     private var nextID: UInt64 = 0
     public private(set) var currentState: AnimState?
     public var reactionState: AnimState? { reaction?.state }
+    /// The loop it's on its way to while in-between poses play.
+    public var transitionTarget: AnimState? { transition?.target }
+    public var graph: TransitionGraph
 
-    public init(backend: any AnimationPlaybackBackend) { self.backend = backend }
+    public init(backend: any AnimationPlaybackBackend, graph: TransitionGraph = .init()) {
+        self.backend = backend
+        self.graph = graph
+    }
 
     @discardableResult
     public func requestReaction(_ state: AnimState, mode: BodyMode) -> Bool {
@@ -40,6 +59,7 @@ public final class AnimationPlayback {
         if reaction?.state == state { return true }
         // Hover/click feedback must not cut a landing short.
         if reaction?.state == .land { return false }
+        transition = nil
 
         nextID &+= 1
         let id = nextID
@@ -65,10 +85,18 @@ public final class AnimationPlayback {
 
     public func advance(dt: TimeInterval, mode: BodyMode) {
         reconcile(mode: mode)
-        guard dt.isFinite, dt > 0, var active = reaction else { return }
-        active.remaining -= dt
-        reaction = active
-        if active.remaining <= 0 { finish(id: active.id) }
+        guard dt.isFinite, dt > 0 else { return }
+        if var active = reaction {
+            active.remaining -= dt
+            reaction = active
+            if active.remaining <= 0 { finish(id: active.id) }
+            return
+        }
+        if var t = transition {
+            t.remaining -= dt
+            transition = t
+            if t.remaining <= 0 { nextStep(token: t.token) }
+        }
     }
 
     public func cancelReaction() {
@@ -82,15 +110,69 @@ public final class AnimationPlayback {
         mode == .grounded && reaction?.mode == .grounded
     }
 
+    /// Show `state` as the looping animation, going through in-between poses when the posture changes.
     public func update(_ state: AnimState, mode: BodyMode) {
         reconcile(mode: mode)
-        guard reaction == nil, state != currentState else { return }
-        currentState = state
-        backend.play(state)
+        guard reaction == nil else { return }
+        if let t = transition {
+            guard t.target != state else { return }
+            // Changed its mind halfway: plan again from the pose on screen.
+            transition = nil
+        } else if state == currentState {
+            return
+        }
+        let steps = mode == .grounded ? currentState.map { graph.plan(from: $0, to: state) } ?? [] : []
+        guard !steps.isEmpty else {
+            currentState = state
+            backend.play(state)
+            return
+        }
+        transition = Transition(target: state, steps: steps, token: 0, remaining: 0)
+        nextStep(token: 0)
+    }
+
+    private func nextStep(token: UInt64) {
+        guard var t = transition, t.token == token else { return }
+        nextID &+= 1
+        t.token = nextID
+        guard !t.steps.isEmpty else {
+            transition = nil
+            currentState = t.target
+            backend.play(t.target)
+            return
+        }
+        let step = t.steps.removeFirst()
+        let mine = t.token
+        switch step {
+        case .finish(let s):
+            // The loop already on screen keeps going until its next natural break.
+            let wait = currentState == s ? backend.timeToCycleBoundary(parts: graph.finishParts[s] ?? 1) ?? 0 : 0
+            t.remaining = wait.isFinite ? wait : 0
+            transition = t
+            if t.remaining <= 0 { nextStep(token: mine) }
+        case .hold(let s, let seconds):
+            t.remaining = seconds
+            transition = t
+            currentState = s
+            backend.play(s)
+        case .once(let s):
+            t.remaining = .infinity
+            transition = t
+            currentState = s
+            let duration = backend.playOnce(s) { [weak self] in self?.nextStep(token: mine) }
+            guard transition?.token == mine else { return }   // finished synchronously
+            guard let duration, duration.isFinite, duration > 0 else {
+                nextStep(token: mine)
+                return
+            }
+            // Completion is authoritative; this only recovers a lost callback.
+            transition?.remaining = duration + max(1, duration * 0.25)
+        }
     }
 
     private func reconcile(mode: BodyMode) {
         if let reaction, reaction.mode != mode { cancelReaction() }
+        if transition != nil && mode != .grounded { transition = nil }
     }
 
     private func finish(id: UInt64) {

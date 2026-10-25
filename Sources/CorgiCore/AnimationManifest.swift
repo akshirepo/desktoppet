@@ -11,12 +11,15 @@ public struct AnimationSpec: Codable, Equatable {
     public var fps: Double
     public var loop: Bool
     public var anchor: [Double]
+    /// Overrides the shared posture for this pet, e.g. a sheep that eats standing up.
+    public var posture: Posture?
 
-    public init(folder: String, fps: Double, loop: Bool, anchor: [Double]) {
+    public init(folder: String, fps: Double, loop: Bool, anchor: [Double], posture: Posture? = nil) {
         self.folder = folder
         self.fps = fps
         self.loop = loop
         self.anchor = anchor
+        self.posture = posture
     }
 }
 
@@ -41,6 +44,15 @@ public struct AnimationManifest: Codable, Equatable {
         if let alt = stand[state], let spec = states[alt.rawValue] { return (alt, spec) }
         if let idle = states[AnimState.idle.rawValue] { return (.idle, idle) }
         return nil
+    }
+
+    /// Shared postures with this pack's overrides applied.
+    public var postures: [AnimState: Posture] {
+        var p = Posture.defaults
+        for (key, spec) in states {
+            if let state = AnimState(rawValue: key), let override = spec.posture { p[state] = override }
+        }
+        return p
     }
 
     public var missingStates: [AnimState] {
