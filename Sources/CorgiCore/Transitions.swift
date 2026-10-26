@@ -12,6 +12,8 @@ public enum Posture: String, Codable {
         .sit: .sit, .yawn: .sit, .beg: .sit, .read: .sit, .readSleep: .sit, .music: .sit, .happy: .sit,
         .wave: .sit, .refreshed: .sit,
         .sleep: .lie, .eat: .lie, .drink: .lie, .watch: .lie,
+        // A bridge counts as where it's heading, so a change of plan halfway turns back sensibly.
+        .standToSit: .sit, .sitToStand: .stand, .sitToLie: .lie, .lieToSit: .sit,
     ]
 }
 
@@ -39,11 +41,25 @@ public struct TransitionGraph {
     /// splits: a walk cycle has two footfalls, a bite or a lap is the whole cycle.
     public var finishParts: [AnimState: Int] = [.walk: 2, .run: 2, .eat: 1, .drink: 1, .kick: 1]
     /// Pairs drawn to follow each other directly.
-    public var direct: Set<[AnimState]> = [[.drink, .refreshed], [.read, .readSleep], [.readSleep, .read],
-                                           [.sleep, .yawn], [.yawn, .sleep]]
+    public var direct: Set<[AnimState]> = [[.drink, .refreshed], [.read, .readSleep], [.readSleep, .read]]
+    /// Bridge animations this pet has art for (`standToSit` and friends).
+    public var bridges: Set<AnimState>
 
-    public init(postures: [AnimState: Posture] = Posture.defaults) {
+    public init(postures: [AnimState: Posture] = Posture.defaults, bridges: Set<AnimState> = []) {
         self.postures = postures
+        self.bridges = bridges
+    }
+
+    private func bridge(_ a: Posture, _ b: Posture) -> AnimState? {
+        let s: AnimState?
+        switch (a, b) {
+        case (.stand, .sit): s = .standToSit
+        case (.sit, .stand): s = .sitToStand
+        case (.sit, .lie): s = .sitToLie
+        case (.lie, .sit): s = .lieToSit
+        default: s = nil
+        }
+        return s.flatMap { bridges.contains($0) ? $0 : nil }
     }
 
     /// Steps to show before `to` starts looping. Empty means switch straight away.
@@ -52,18 +68,28 @@ public struct TransitionGraph {
         guard from != to, let a = postures[from], let b = postures[to], !direct.contains([from, to]) else { return [] }
         var steps: [TransitionStep] = []
         if finishParts[from] != nil { steps.append(.finish(from)) }
-        if from == .sleep {
-            // Wake with a sitting yawn, then get up.
-            steps.append(.once(.yawn))
-            return steps
-        }
-        if to == .sleep {
-            // Sit and yawn before lying down. Already lying (watching TV, say) it just dozes off.
-            if a != .lie && from != .yawn { steps.append(.once(.yawn)) }
-            return steps
-        }
+        let bedtime = to == .sleep, waking = from == .sleep && to != .yawn
+        // Sit and yawn before lying down to sleep. Already lying (watching TV, say) it just dozes off.
+        if bedtime && a == .sit && from != .yawn { steps.append(.once(.yawn)) }
+
         // Standing to lying and back goes through a sit.
-        if (a == .stand && b == .lie) || (a == .lie && b == .stand) { steps.append(.hold(.sit, bridgeHold)) }
+        var path = [a]
+        if (a == .stand && b == .lie) || (a == .lie && b == .stand) { path.append(.sit) }
+        if a != b { path.append(b) }
+        for i in 1..<path.count {
+            let (p, q) = (path[i - 1], path[i])
+            let via = bridge(p, q)
+            if let via { steps.append(.once(via)) }
+            guard q == .sit else { continue }
+            let waypoint = i < path.count - 1
+            if waking {
+                steps.append(.once(.yawn))           // wake with a sitting yawn, then get up
+            } else if waypoint && bedtime {
+                steps.append(.once(.yawn))
+            } else if waypoint && via == nil && bridge(q, path[i + 1]) == nil {
+                steps.append(.hold(.sit, bridgeHold))
+            }
+        }
         return steps
     }
 }

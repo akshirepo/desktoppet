@@ -32,6 +32,7 @@ public final class AnimationPlayback {
         /// Changes with every step, so a late completion from an earlier step is ignored.
         var token: UInt64
         var remaining: TimeInterval
+        var current: TransitionStep?
     }
 
     private let backend: any AnimationPlaybackBackend
@@ -106,8 +107,12 @@ public final class AnimationPlayback {
     }
 
     /// Pause only the grounded behavior clock and its locomotion command, never gravity.
+    /// Also true while a one-shot step (sitting down, getting up, a yawn) plays, so it doesn't slide.
     public func holdsGroundedMotion(in mode: BodyMode) -> Bool {
-        mode == .grounded && reaction?.mode == .grounded
+        guard mode == .grounded else { return false }
+        if reaction?.mode == .grounded { return true }
+        if case .once? = transition?.current { return true }
+        return false
     }
 
     /// Show `state` as the looping animation, going through in-between poses when the posture changes.
@@ -142,6 +147,7 @@ public final class AnimationPlayback {
             return
         }
         let step = t.steps.removeFirst()
+        t.current = step
         let mine = t.token
         switch step {
         case .finish(let s):

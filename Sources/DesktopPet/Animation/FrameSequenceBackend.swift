@@ -16,6 +16,8 @@ final class FrameSequenceBackend: AnimationBackend {
     private var playbackID: UInt64 = 0
     /// Postures for this pet, with the pack's overrides.
     let postures: [AnimState: Posture]
+    /// States the pack has art for, so transitions only use bridges that exist.
+    let available: Set<AnimState>
     /// When the current loop started and how long one cycle is, for finishing a step or bite.
     private var loopStart: CFTimeInterval = 0
     private var loopCycle: TimeInterval = 0
@@ -32,7 +34,8 @@ final class FrameSequenceBackend: AnimationBackend {
             let files = ((try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? [])
                 .filter { $0.pathExtension.lowercased() == "png" }
                 .sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
-            let frames = files.compactMap { NSImage(contentsOf: $0) }.map { SKTexture(image: $0) }
+            var frames = files.compactMap { NSImage(contentsOf: $0) }.map { SKTexture(image: $0) }
+            if spec.reversed == true { frames.reverse() }
             guard !frames.isEmpty else {
                 NSLog("DesktopPet: no PNG frames in \(dir.path), '\(key)' will use idle")
                 continue
@@ -47,6 +50,7 @@ final class FrameSequenceBackend: AnimationBackend {
         self.animations = animations
         scale = CGFloat(manifest.scale ?? 1)
         postures = manifest.postures
+        available = manifest.available
         let frameSize = idle.frames[0].size()
         size = CGSize(width: frameSize.width * scale, height: frameSize.height * scale)
         let grips: Set<AnimState> = [.clingSit, .clingHang, .clingPeek, .clingLeft, .clingRight]
