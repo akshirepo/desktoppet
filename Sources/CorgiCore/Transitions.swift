@@ -18,11 +18,14 @@ public enum Posture: String, Codable {
 /// Bridge animations a pack can provide, by name:
 /// - between hub poses: `stand>sit`, `sit>stand`, `sit>sleep`, `sleep>sit` (idle, sit and sleep are the hubs);
 /// - into and out of an activity from its hub: `enter:watch`, `exit:watch`. A pack without an exit can
-///   point it at the entry's frames played backwards.
+///   point it at the entry's frames played backwards;
+/// - straight between two activities drawn in the same view: `pair:walk>fetch`.
 public enum Bridge {
     public static func hop(_ a: AnimState, _ b: AnimState) -> String { "\(hubName(a))>\(hubName(b))" }
     public static func enter(_ s: AnimState) -> String { "enter:\(s.rawValue)" }
     public static func exit(_ s: AnimState) -> String { "exit:\(s.rawValue)" }
+    /// A direct bridge between two specific activities, e.g. "pair:walk>fetch".
+    public static func pair(_ a: AnimState, _ b: AnimState) -> String { "pair:\(a.rawValue)>\(b.rawValue)" }
 
     static func hubName(_ s: AnimState) -> String { s == .idle ? "stand" : s.rawValue }
 }
@@ -77,7 +80,11 @@ public struct TransitionGraph {
     /// Steps to show before `to` starts looping. Empty means switch straight away.
     /// Poses without a posture (falling, clinging, reactions) always switch directly.
     public func plan(from: AnimState, to: AnimState) -> [TransitionStep] {
-        guard from != to, let a = postures[from], let b = postures[to], !direct.contains([from, to]),
+        guard from != to, postures[from] != nil, postures[to] != nil else { return [] }
+        if bridges.contains(Bridge.pair(from, to)) {
+            return (finishParts[from] != nil ? [.finish(from)] : []) + [.bridge(Bridge.pair(from, to), endsAt: to)]
+        }
+        guard let a = postures[from], let b = postures[to], !direct.contains([from, to]),
               let hf = hub(from), let ht = hub(to) else { return [] }
         var steps: [TransitionStep] = []
         // Already lying down (watching TV, say) with no way to get up drawn, it just dozes off.

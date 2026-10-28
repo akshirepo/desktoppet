@@ -225,4 +225,10 @@ final class TransitionTests: XCTestCase {
         XCTAssertEqual(g.plan(from: .idle, to: .walk), [.bridge("enter:walk", endsAt: .walk)])
         XCTAssertEqual(g.plan(from: .walk, to: .idle), [.finish(.walk), .bridge("exit:walk", endsAt: .idle)])
     }
+
+    func testPairBridgesBeatDirectSwitches() {
+        let g = TransitionGraph(bridges: ["pair:walk>fetch"], direct: [[.walk, .fetch], [.fetch, .walk]])
+        XCTAssertEqual(g.plan(from: .walk, to: .fetch), [.finish(.walk), .bridge("pair:walk>fetch", endsAt: .fetch)])
+        XCTAssertEqual(g.plan(from: .fetch, to: .walk), [])
+    }
 }
