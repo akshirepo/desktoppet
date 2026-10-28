@@ -14,6 +14,8 @@ final class PetController {
 
     private let playback: AnimationPlayback
     private var saidRefreshed = false
+    /// The behavior that started the current transition.
+    private var transitionBehavior: Behavior?
     private var timer: Timer?
     private var timerFPS = 0
     private var worldTimer: Timer?
@@ -662,6 +664,13 @@ final class PetController {
                 say(mood: "refreshed")
             }
         }
+        // A bridge holds the pet still, which would otherwise read as "stopped" and retarget it (run -> sit -> run ...).
+        // Keep heading where it was going unless the behavior itself changed.
+        if let target = playback.transitionTarget, playback.holdsGroundedMotion(in: body.mode),
+           brain.current == transitionBehavior {
+            state = target
+        }
+        if playback.transitionTarget == nil { transitionBehavior = brain.current }
         playback.update(state, mode: body.mode)
     }
 
