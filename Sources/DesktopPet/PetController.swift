@@ -68,6 +68,7 @@ final class PetController {
         playback = AnimationPlayback(backend: backend, graph: TransitionGraph(postures: backend.postures, bridges: backend.bridgeNames,
                                                                               direct: backend.directPairs))
         overlays = OverlayManager(corgiNode: backend.node)
+        playback.trace = { TransitionLog.append($0) }
         let frames = NSScreen.screens.map(\.visibleFrame)
         world = World(provider: CGWindowListProvider(), screens: frames, bodyBounds: backend.movementBounds)
         let vf = HomeTracker.cornerScreenIndex(frames).map { frames[$0] } ?? .zero
