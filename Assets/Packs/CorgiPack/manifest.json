@@ -479,6 +479,44 @@
         0.075
       ],
       "reversed": true
+    },
+    "enter:watch": {
+      "folder": "bridges/enter-watch",
+      "fps": 9,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "exit:watch": {
+      "folder": "bridges/enter-watch",
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ],
+      "reversed": true
+    },
+    "enter:beg": {
+      "folder": "bridges/enter-beg",
+      "fps": 9,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "exit:beg": {
+      "folder": "bridges/enter-beg",
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ],
+      "reversed": true
     }
   },
   "directGroups": [
