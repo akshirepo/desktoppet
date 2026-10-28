@@ -306,6 +306,42 @@
         0.5,
         0.075
       ]
+    },
+    "eatHalf": {
+      "folder": "eatHalf",
+      "fps": 7.692,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "eatEmpty": {
+      "folder": "eatEmpty",
+      "fps": 7.692,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "drinkHalf": {
+      "folder": "drinkHalf",
+      "fps": 12,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "drinkEmpty": {
+      "folder": "drinkEmpty",
+      "fps": 12,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
     }
   },
   "bridges": {
@@ -510,6 +546,26 @@
     },
     "exit:beg": {
       "folder": "bridges/enter-beg",
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ],
+      "reversed": true
+    },
+    "exit:eatEmpty": {
+      "folder": "bridges/enter-eatEmpty",
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ],
+      "reversed": true
+    },
+    "exit:drinkEmpty": {
+      "folder": "bridges/enter-drinkEmpty",
       "fps": 10,
       "loop": false,
       "anchor": [
