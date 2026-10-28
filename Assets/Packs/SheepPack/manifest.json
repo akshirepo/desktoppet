@@ -312,8 +312,8 @@
   },
   "bridges": {
     "sit>sleep": {
-      "folder": "sitToSleep",
-      "fps": 8,
+      "folder": "bridges/sit-to-sleep",
+      "fps": 9,
       "loop": false,
       "anchor": [
         0.5,
@@ -321,7 +321,273 @@
       ]
     },
     "sleep>sit": {
-      "folder": "sitToSleep",
+      "folder": "bridges/sit-to-sleep",
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ],
+      "reversed": true
+    },
+    "stand>sit": {
+      "folder": "bridges/stand-to-sit",
+      "fps": 9,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "sit>stand": {
+      "folder": "bridges/stand-to-sit",
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ],
+      "reversed": true
+    },
+    "enter:walk": {
+      "folder": "bridges/enter-walk",
+      "fps": 9,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "exit:walk": {
+      "folder": "bridges/enter-walk",
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ],
+      "reversed": true
+    },
+    "enter:run": {
+      "folder": "bridges/enter-run",
+      "fps": 9,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "exit:run": {
+      "folder": "bridges/enter-run",
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ],
+      "reversed": true
+    },
+    "enter:kick": {
+      "folder": "bridges/enter-kick",
+      "fps": 9,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "exit:kick": {
+      "folder": "bridges/enter-kick",
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ],
+      "reversed": true
+    },
+    "enter:eat": {
+      "folder": "bridges/enter-eat",
+      "fps": 9,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "exit:eat": {
+      "folder": "bridges/enter-eat",
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ],
+      "reversed": true
+    },
+    "enter:fetch": {
+      "folder": "bridges/enter-fetch",
+      "fps": 9,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "exit:fetch": {
+      "folder": "bridges/enter-fetch",
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ],
+      "reversed": true
+    },
+    "enter:bath": {
+      "folder": "bridges/enter-bath",
+      "fps": 9,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "exit:bath": {
+      "folder": "bridges/enter-bath",
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ],
+      "reversed": true
+    },
+    "enter:watch": {
+      "folder": "bridges/enter-watch",
+      "fps": 9,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "exit:watch": {
+      "folder": "bridges/enter-watch",
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ],
+      "reversed": true
+    },
+    "enter:readSleep": {
+      "folder": "bridges/enter-readSleep",
+      "fps": 9,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "exit:readSleep": {
+      "folder": "bridges/enter-readSleep",
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ],
+      "reversed": true
+    },
+    "enter:drink": {
+      "folder": "bridges/enter-drink",
+      "fps": 9,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "exit:drink": {
+      "folder": "bridges/enter-drink",
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ],
+      "reversed": true
+    },
+    "enter:read": {
+      "folder": "bridges/enter-read",
+      "fps": 9,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "exit:read": {
+      "folder": "bridges/enter-read",
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ],
+      "reversed": true
+    },
+    "enter:music": {
+      "folder": "bridges/enter-music",
+      "fps": 9,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "exit:music": {
+      "folder": "bridges/enter-music",
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ],
+      "reversed": true
+    },
+    "enter:beg": {
+      "folder": "bridges/enter-beg",
+      "fps": 9,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "exit:beg": {
+      "folder": "bridges/enter-beg",
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ],
+      "reversed": true
+    },
+    "enter:wave": {
+      "folder": "bridges/enter-wave",
+      "fps": 9,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "exit:wave": {
+      "folder": "bridges/enter-wave",
       "fps": 10,
       "loop": false,
       "anchor": [
@@ -330,5 +596,13 @@
       ],
       "reversed": true
     }
-  }
+  },
+  "directGroups": [
+    [
+      "walk",
+      "run",
+      "kick",
+      "fetch"
+    ]
+  ]
 }

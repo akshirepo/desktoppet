@@ -213,4 +213,14 @@ final class TransitionTests: XCTestCase {
         p.update(.watch, mode: .grounded)
         XCTAssertFalse(b.bridges.contains("sit>sleep"))
     }
+
+    func testDirectGroupsSkipTheHub() throws {
+        let json = #"{"states":{"idle":{"folder":"idle","fps":5,"loop":true,"anchor":[0.5,0]}},"directGroups":[["walk","run","kick"]]}"#
+        let m = try JSONDecoder().decode(AnimationManifest.self, from: Data(json.utf8))
+        XCTAssertEqual(m.directPairs.count, 6)
+        let g = TransitionGraph(bridges: ["enter:walk", "exit:walk", "enter:run", "exit:run"], direct: m.directPairs)
+        XCTAssertEqual(g.plan(from: .walk, to: .run), [])
+        XCTAssertEqual(g.plan(from: .idle, to: .walk), [.bridge("enter:walk", endsAt: .walk)])
+        XCTAssertEqual(g.plan(from: .walk, to: .idle), [.finish(.walk), .bridge("exit:walk", endsAt: .idle)])
+    }
 }

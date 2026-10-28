@@ -57,9 +57,11 @@ public struct TransitionGraph {
     /// Bridge animations this pet has art for (see `Bridge`).
     public var bridges: Set<String>
 
-    public init(postures: [AnimState: Posture] = Posture.defaults, bridges: Set<String> = []) {
+    public init(postures: [AnimState: Posture] = Posture.defaults, bridges: Set<String> = [],
+                direct extra: Set<[AnimState]> = []) {
         self.postures = postures
         self.bridges = bridges
+        direct.formUnion(extra)
     }
 
     /// The hub pose an activity is entered from: idle for standing ones, sit for sitting ones and for

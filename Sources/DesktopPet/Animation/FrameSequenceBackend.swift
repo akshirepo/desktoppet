@@ -21,6 +21,8 @@ final class FrameSequenceBackend: AnimationBackend {
     let postures: [AnimState: Posture]
     /// States the pack has art for, so transitions only use bridges that exist.
     let available: Set<AnimState>
+    /// Pairs the pack draws in the same view, switched without going through the hub.
+    let directPairs: Set<[AnimState]>
     /// When the current loop started and how long one cycle is, for finishing a step or bite.
     private var loopStart: CFTimeInterval = 0
     private var loopCycle: TimeInterval = 0
@@ -54,6 +56,7 @@ final class FrameSequenceBackend: AnimationBackend {
         scale = CGFloat(manifest.scale ?? 1)
         postures = manifest.postures
         available = manifest.available
+        directPairs = manifest.directPairs
         let frameSize = idle.frames[0].size()
         size = CGSize(width: frameSize.width * scale, height: frameSize.height * scale)
         let grips: Set<AnimState> = [.clingSit, .clingHang, .clingPeek, .clingLeft, .clingRight]

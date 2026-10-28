@@ -310,7 +310,7 @@
   },
   "bridges": {
     "stand>sit": {
-      "folder": "standToSit",
+      "folder": "bridges/stand-to-sit",
       "fps": 9,
       "loop": false,
       "anchor": [
@@ -319,7 +319,7 @@
       ]
     },
     "sit>stand": {
-      "folder": "standToSit",
+      "folder": "bridges/stand-to-sit",
       "fps": 10,
       "loop": false,
       "anchor": [
@@ -339,6 +339,139 @@
     },
     "sleep>sit": {
       "folder": "sitToSleep",
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ],
+      "reversed": true
+    },
+    "enter:eat": {
+      "folder": "bridges/enter-eat",
+      "fps": 9,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "exit:eat": {
+      "folder": "bridges/enter-eat",
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ],
+      "reversed": true
+    },
+    "enter:drink": {
+      "folder": "bridges/enter-drink",
+      "fps": 9,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "exit:drink": {
+      "folder": "bridges/enter-drink",
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ],
+      "reversed": true
+    },
+    "enter:back": {
+      "folder": "bridges/enter-back",
+      "fps": 9,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "exit:back": {
+      "folder": "bridges/enter-back",
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ],
+      "reversed": true
+    },
+    "enter:fetch": {
+      "folder": "bridges/enter-fetch",
+      "fps": 9,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "exit:fetch": {
+      "folder": "bridges/enter-fetch",
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ],
+      "reversed": true
+    },
+    "enter:run": {
+      "folder": "bridges/enter-run",
+      "fps": 9,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "exit:run": {
+      "folder": "bridges/enter-run",
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ],
+      "reversed": true
+    },
+    "enter:bath": {
+      "folder": "bridges/enter-bath",
+      "fps": 9,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "exit:bath": {
+      "folder": "bridges/enter-bath",
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ],
+      "reversed": true
+    },
+    "enter:wave": {
+      "folder": "bridges/enter-wave",
+      "fps": 9,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "exit:wave": {
+      "folder": "bridges/enter-wave",
       "fps": 10,
       "loop": false,
       "anchor": [

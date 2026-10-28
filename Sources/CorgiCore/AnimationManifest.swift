@@ -51,6 +51,18 @@ public struct AnimationManifest: Codable, Equatable {
 
     /// One-shot transition animations by name (see `Bridge`), e.g. "stand>sit" or "enter:watch".
     public var bridges: [String: AnimationSpec]?
+    /// Activities drawn from the same view (e.g. a side-on walk, run and kick) that switch into each other directly.
+    public var directGroups: [[String]]?
+
+    /// Every ordered pair inside a direct group.
+    public var directPairs: Set<[AnimState]> {
+        var pairs: Set<[AnimState]> = []
+        for group in directGroups ?? [] {
+            let states = group.compactMap(AnimState.init(rawValue:))
+            for a in states { for b in states where a != b { pairs.insert([a, b]) } }
+        }
+        return pairs
+    }
 
     /// States this pack has art for.
     public var available: Set<AnimState> { Set(states.keys.compactMap(AnimState.init(rawValue:))) }
