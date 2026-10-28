@@ -63,7 +63,7 @@ final class PetController {
     init(needs: NeedsEngine, backend: AnimationBackend) {
         self.needs = needs
         self.backend = backend
-        playback = AnimationPlayback(backend: backend, graph: TransitionGraph(postures: backend.postures, bridges: backend.available))
+        playback = AnimationPlayback(backend: backend, graph: TransitionGraph(postures: backend.postures, bridges: backend.bridgeNames))
         overlays = OverlayManager(corgiNode: backend.node)
         let frames = NSScreen.screens.map(\.visibleFrame)
         world = World(provider: CGWindowListProvider(), screens: frames, bodyBounds: backend.movementBounds)

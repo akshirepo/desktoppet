@@ -12,9 +12,19 @@ public enum Posture: String, Codable {
         .sit: .sit, .yawn: .sit, .beg: .sit, .read: .sit, .readSleep: .sit, .music: .sit, .happy: .sit,
         .wave: .sit, .refreshed: .sit,
         .sleep: .lie, .eat: .lie, .drink: .lie, .watch: .lie,
-        // A bridge counts as where it's heading, so a change of plan halfway turns back sensibly.
-        .standToSit: .sit, .sitToStand: .stand, .sitToLie: .lie, .lieToSit: .sit,
     ]
+}
+
+/// Bridge animations a pack can provide, by name:
+/// - between hub poses: `stand>sit`, `sit>stand`, `sit>sleep`, `sleep>sit` (idle, sit and sleep are the hubs);
+/// - into and out of an activity from its hub: `enter:watch`, `exit:watch`. A pack without an exit can
+///   point it at the entry's frames played backwards.
+public enum Bridge {
+    public static func hop(_ a: AnimState, _ b: AnimState) -> String { "\(hubName(a))>\(hubName(b))" }
+    public static func enter(_ s: AnimState) -> String { "enter:\(s.rawValue)" }
+    public static func exit(_ s: AnimState) -> String { "exit:\(s.rawValue)" }
+
+    static func hubName(_ s: AnimState) -> String { s == .idle ? "stand" : s.rawValue }
 }
 
 public enum TransitionStep: Equatable {
@@ -24,10 +34,12 @@ public enum TransitionStep: Equatable {
     case hold(AnimState, TimeInterval)
     /// Play one full cycle, like a yawn before lying down to sleep.
     case once(AnimState)
+    /// Play a named bridge animation once. `endsAt` is the pose it finishes in, used if plans change halfway.
+    case bridge(String, endsAt: AnimState)
 
     public var state: AnimState {
         switch self {
-        case .finish(let s), .hold(let s, _), .once(let s): return s
+        case .finish(let s), .hold(let s, _), .once(let s), .bridge(_, let s): return s
         }
     }
 }
@@ -42,54 +54,58 @@ public struct TransitionGraph {
     public var finishParts: [AnimState: Int] = [.walk: 2, .run: 2, .eat: 1, .drink: 1, .kick: 1]
     /// Pairs drawn to follow each other directly.
     public var direct: Set<[AnimState]> = [[.drink, .refreshed], [.read, .readSleep], [.readSleep, .read]]
-    /// Bridge animations this pet has art for (`standToSit` and friends).
-    public var bridges: Set<AnimState>
+    /// Bridge animations this pet has art for (see `Bridge`).
+    public var bridges: Set<String>
 
-    public init(postures: [AnimState: Posture] = Posture.defaults, bridges: Set<AnimState> = []) {
+    public init(postures: [AnimState: Posture] = Posture.defaults, bridges: Set<String> = []) {
         self.postures = postures
         self.bridges = bridges
     }
 
-    /// The lie-down art ends curled up on its pillow, so it only bridges into and out of sleep.
-    private func bridge(_ a: Posture, _ b: Posture, from: AnimState, to: AnimState) -> AnimState? {
-        let s: AnimState?
-        switch (a, b) {
-        case (.stand, .sit): s = .standToSit
-        case (.sit, .stand): s = .sitToStand
-        case (.sit, .lie): s = to == .sleep ? .sitToLie : nil
-        case (.lie, .sit): s = from == .sleep ? .lieToSit : nil
-        default: s = nil
-        }
-        return s.flatMap { bridges.contains($0) ? $0 : nil }
+    /// The hub pose an activity is entered from: idle for standing ones, sit for sitting ones and for
+    /// lying activities like watching TV or eating, and sleep only for sleep itself.
+    public func hub(_ s: AnimState) -> AnimState? {
+        guard let p = postures[s] else { return nil }
+        if s == .sleep { return .sleep }
+        return p == .stand ? .idle : .sit
     }
+
+    private static let hubs: [AnimState] = [.idle, .sit, .sleep]
 
     /// Steps to show before `to` starts looping. Empty means switch straight away.
     /// Poses without a posture (falling, clinging, reactions) always switch directly.
     public func plan(from: AnimState, to: AnimState) -> [TransitionStep] {
-        guard from != to, let a = postures[from], let b = postures[to], !direct.contains([from, to]) else { return [] }
+        guard from != to, let a = postures[from], let b = postures[to], !direct.contains([from, to]),
+              let hf = hub(from), let ht = hub(to) else { return [] }
         var steps: [TransitionStep] = []
-        if finishParts[from] != nil { steps.append(.finish(from)) }
-        let bedtime = to == .sleep, waking = from == .sleep && to != .yawn
-        // Sit and yawn before lying down to sleep. Already lying (watching TV, say) it just dozes off.
-        if bedtime && a == .sit && from != .yawn { steps.append(.once(.yawn)) }
+        // Already lying down (watching TV, say), it just dozes off.
+        if to == .sleep && a == .lie { return finishParts[from] != nil ? [.finish(from)] : [] }
+        // Exit art starts on the loop's first frame, so finish the current cycle before leaving.
+        if finishParts[from] != nil || (from != hf && bridges.contains(Bridge.exit(from))) { steps.append(.finish(from)) }
 
-        // Standing to lying and back goes through a sit.
-        var path = [a]
-        if (a == .stand && b == .lie) || (a == .lie && b == .stand) { path.append(.sit) }
-        if a != b { path.append(b) }
-        for i in 1..<path.count {
-            let (p, q) = (path[i - 1], path[i])
-            let via = bridge(p, q, from: from, to: to)
-            if let via { steps.append(.once(via)) }
-            guard q == .sit else { continue }
-            let waypoint = i < path.count - 1
-            if waking {
-                steps.append(.once(.yawn))           // wake with a sitting yawn, then get up
-            } else if waypoint && bedtime {
-                steps.append(.once(.yawn))
-            } else if waypoint && via == nil && bridge(q, path[i + 1], from: from, to: to) == nil {
-                steps.append(.hold(.sit, bridgeHold))
-            }
+        var art = false
+        func bridge(_ name: String, endsAt: AnimState) {
+            guard bridges.contains(name) else { return }
+            steps.append(.bridge(name, endsAt: endsAt))
+            art = true
+        }
+        if from != hf { bridge(Bridge.exit(from), endsAt: hf) }
+        var r = Self.hubs.firstIndex(of: hf)!
+        let end = Self.hubs.firstIndex(of: ht)!
+        while r != end {
+            let next = r + (end > r ? 1 : -1)
+            let (x, y) = (Self.hubs[r], Self.hubs[next])
+            // Sit and yawn before lying down to sleep.
+            if y == .sleep && from != .yawn { steps.append(.once(.yawn)) }
+            bridge(Bridge.hop(x, y), endsAt: y)
+            // Wake with a sitting yawn, then get up.
+            if x == .sleep && to != .yawn { steps.append(.once(.yawn)) }
+            r = next
+        }
+        if to != ht { bridge(Bridge.enter(to), endsAt: to) }
+        // With no art for it at all, standing to lying (and back) still pauses in a sit.
+        if !art && Set([a, b]) == [.stand, .lie] && !steps.contains(.once(.yawn)) {
+            steps.append(.hold(.sit, bridgeHold))
         }
         return steps
     }

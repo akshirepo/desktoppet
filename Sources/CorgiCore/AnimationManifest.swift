@@ -4,8 +4,6 @@ public enum AnimState: String, CaseIterable, Codable {
     case idle, walk, run, sit, sleep, eat, beg, dangle, fall, land, wiggle, bath, fetch
     case wave, back, read, readSleep, music, watch, yawn, scared, happy, holdBall, kick, roam
     case clingSit, clingHang, clingPeek, clingLeft, clingRight, letGo, drink, thirsty, refreshed
-    /// One-shot bridges between postures. The reverse ones usually reuse the forward frames backwards.
-    case standToSit, sitToStand, sitToLie, lieToSit
 }
 
 public struct AnimationSpec: Codable, Equatable {
@@ -50,6 +48,9 @@ public struct AnimationManifest: Codable, Equatable {
         if let idle = states[AnimState.idle.rawValue] { return (.idle, idle) }
         return nil
     }
+
+    /// One-shot transition animations by name (see `Bridge`), e.g. "stand>sit" or "enter:watch".
+    public var bridges: [String: AnimationSpec]?
 
     /// States this pack has art for.
     public var available: Set<AnimState> { Set(states.keys.compactMap(AnimState.init(rawValue:))) }

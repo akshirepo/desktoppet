@@ -12,6 +12,9 @@ final class FrameSequenceBackend: AnimationBackend {
     private let sprite = SKSpriteNode()
     private let scale: CGFloat
     private var animations: [AnimState: (spec: AnimationSpec, frames: [SKTexture])] = [:]
+    /// Named one-shot transitions ("stand>sit", "enter:watch", ...), preloaded like the loops.
+    private var bridgeAnims: [String: (spec: AnimationSpec, frames: [SKTexture])] = [:]
+    var bridgeNames: Set<String> { Set(bridgeAnims.keys) }
     private var facingRight = true
     private var playbackID: UInt64 = 0
     /// Postures for this pet, with the pack's overrides.
@@ -30,18 +33,18 @@ final class FrameSequenceBackend: AnimationBackend {
                 NSLog("DesktopPet: manifest has unknown state '\(key)', skipping")
                 continue
             }
-            let dir = packURL.appendingPathComponent(spec.folder)
-            let files = ((try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? [])
-                .filter { $0.pathExtension.lowercased() == "png" }
-                .sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
-            var frames = files.compactMap { NSImage(contentsOf: $0) }.map { SKTexture(image: $0) }
-            if spec.reversed == true { frames.reverse() }
-            guard !frames.isEmpty else {
-                NSLog("DesktopPet: no PNG frames in \(dir.path), '\(key)' will use idle")
+            guard let frames = Self.loadFrames(packURL, spec) else {
+                NSLog("DesktopPet: no PNG frames in \(spec.folder), '\(key)' will use idle")
                 continue
             }
             animations[state] = (spec, frames)
         }
+        var bridgeAnims: [String: (spec: AnimationSpec, frames: [SKTexture])] = [:]
+        for (name, spec) in manifest.bridges ?? [:] {
+            if let frames = Self.loadFrames(packURL, spec) { bridgeAnims[name] = (spec, frames) }
+            else { NSLog("DesktopPet: no PNG frames for bridge '\(name)', skipping") }
+        }
+        self.bridgeAnims = bridgeAnims
         guard let idle = animations[.idle] else { throw AnimationManifestError.missingIdle }
         let missing = AnimState.allCases.filter { animations[$0] == nil }
         if !missing.isEmpty {
@@ -87,8 +90,28 @@ final class FrameSequenceBackend: AnimationBackend {
         start(state, once: true, completion: completion)
     }
 
+    func playBridge(_ name: String, completion: @escaping () -> Void) -> TimeInterval? {
+        guard let entry = bridgeAnims[name] else { return nil }
+        return start(entry, state: nil, once: true, completion: completion)
+    }
+
+    private static func loadFrames(_ packURL: URL, _ spec: AnimationSpec) -> [SKTexture]? {
+        let dir = packURL.appendingPathComponent(spec.folder)
+        let files = ((try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? [])
+            .filter { $0.pathExtension.lowercased() == "png" }
+            .sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
+        var frames = files.compactMap { NSImage(contentsOf: $0) }.map { SKTexture(image: $0) }
+        if spec.reversed == true { frames.reverse() }
+        return frames.isEmpty ? nil : frames
+    }
+
     private func start(_ state: AnimState, once: Bool, completion: (() -> Void)?) -> TimeInterval? {
         guard let entry = animations[state] ?? animations[.idle] else { return nil }
+        return start(entry, state: state, once: once, completion: completion)
+    }
+
+    private func start(_ entry: (spec: AnimationSpec, frames: [SKTexture]), state: AnimState?, once: Bool,
+                       completion: (() -> Void)?) -> TimeInterval? {
         let fps = entry.spec.fps.isFinite ? max(entry.spec.fps, 1) : 1
         let frameDuration = 1 / fps
         let duration = Double(entry.frames.count) * frameDuration

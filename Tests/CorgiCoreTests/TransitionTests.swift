@@ -13,6 +13,13 @@ private final class TimelineBackend: AnimationPlaybackBackend {
         once.append((state, completion))
         return 2.5
     }
+    var bridges: [String] = []
+    var bridgeDone: [() -> Void] = []
+    func playBridge(_ name: String, completion: @escaping () -> Void) -> TimeInterval? {
+        bridges.append(name)
+        bridgeDone.append(completion)
+        return 0.6
+    }
     func timeToCycleBoundary(parts: Int) -> TimeInterval? {
         asked.append(parts)
         return boundary
@@ -140,49 +147,70 @@ final class TransitionTests: XCTestCase {
     }
 
     func testBridgeArtReplacesCutsWhenThePackHasIt() {
-        let g = TransitionGraph(bridges: [.standToSit, .sitToStand, .sitToLie, .lieToSit])
-        XCTAssertEqual(g.plan(from: .idle, to: .sit), [.once(.standToSit)])
-        XCTAssertEqual(g.plan(from: .sit, to: .walk), [.once(.sitToStand)])
-        XCTAssertEqual(g.plan(from: .idle, to: .watch), [.once(.standToSit)])     // lie-down art is for sleep only
-        XCTAssertEqual(g.plan(from: .watch, to: .idle), [.once(.sitToStand)])
+        let g = TransitionGraph(bridges: ["stand>sit", "sit>stand", "sit>sleep", "sleep>sit"])
+        XCTAssertEqual(g.plan(from: .idle, to: .sit), [.bridge("stand>sit", endsAt: .sit)])
+        XCTAssertEqual(g.plan(from: .sit, to: .walk), [.bridge("sit>stand", endsAt: .idle)])
+        XCTAssertEqual(g.plan(from: .idle, to: .watch), [.bridge("stand>sit", endsAt: .sit)])  // lie-down art is for sleep
+        XCTAssertEqual(g.plan(from: .watch, to: .idle), [.bridge("sit>stand", endsAt: .idle)])
         XCTAssertEqual(g.plan(from: .sit, to: .eat), [])
         XCTAssertEqual(g.plan(from: .walk, to: .sleep),
-                       [.finish(.walk), .once(.standToSit), .once(.yawn), .once(.sitToLie)])
-        XCTAssertEqual(g.plan(from: .sit, to: .sleep), [.once(.yawn), .once(.sitToLie)])
-        XCTAssertEqual(g.plan(from: .yawn, to: .sleep), [.once(.sitToLie)])
-        XCTAssertEqual(g.plan(from: .sleep, to: .walk), [.once(.lieToSit), .once(.yawn), .once(.sitToStand)])
-        XCTAssertEqual(g.plan(from: .sleep, to: .sit), [.once(.lieToSit), .once(.yawn)])
+                       [.finish(.walk), .bridge("stand>sit", endsAt: .sit), .once(.yawn), .bridge("sit>sleep", endsAt: .sleep)])
+        XCTAssertEqual(g.plan(from: .sit, to: .sleep), [.once(.yawn), .bridge("sit>sleep", endsAt: .sleep)])
+        XCTAssertEqual(g.plan(from: .yawn, to: .sleep), [.bridge("sit>sleep", endsAt: .sleep)])
+        XCTAssertEqual(g.plan(from: .sleep, to: .walk),
+                       [.bridge("sleep>sit", endsAt: .sit), .once(.yawn), .bridge("sit>stand", endsAt: .idle)])
+        XCTAssertEqual(g.plan(from: .sleep, to: .sit), [.bridge("sleep>sit", endsAt: .sit), .once(.yawn)])
         XCTAssertEqual(g.plan(from: .drink, to: .refreshed), [])
     }
 
     func testOnlyBridgesThePackHasAreUsed() {
-        let g = TransitionGraph(bridges: [.standToSit, .sitToStand])
-        XCTAssertEqual(g.plan(from: .idle, to: .watch), [.once(.standToSit)])
-        XCTAssertEqual(g.plan(from: .walk, to: .sleep), [.finish(.walk), .once(.standToSit), .once(.yawn)])
+        let g = TransitionGraph(bridges: ["stand>sit", "sit>stand"])
+        XCTAssertEqual(g.plan(from: .idle, to: .watch), [.bridge("stand>sit", endsAt: .sit)])
+        XCTAssertEqual(g.plan(from: .walk, to: .sleep), [.finish(.walk), .bridge("stand>sit", endsAt: .sit), .once(.yawn)])
     }
 
-    func testReversedSpecDecodesAndAvailableListsStates() throws {
-        let json = #"{"states":{"idle":{"folder":"idle","fps":5,"loop":true,"anchor":[0.5,0]},"#
-            + #""sitToStand":{"folder":"stand-to-sit","fps":10,"loop":false,"anchor":[0.5,0],"reversed":true}}}"#
+    func testActivitiesAreEnteredAndLeftThroughTheirHub() {
+        let g = TransitionGraph(bridges: ["stand>sit", "sit>stand", "enter:watch", "exit:watch", "enter:read", "exit:read",
+                                          "enter:run", "exit:run", "enter:eat"])
+        XCTAssertEqual(g.hub(.watch), .sit)
+        XCTAssertEqual(g.hub(.run), .idle)
+        XCTAssertEqual(g.hub(.sleep), .sleep)
+        XCTAssertEqual(g.plan(from: .walk, to: .watch),
+                       [.finish(.walk), .bridge("stand>sit", endsAt: .sit), .bridge("enter:watch", endsAt: .watch)])
+        XCTAssertEqual(g.plan(from: .watch, to: .read),
+                       [.finish(.watch), .bridge("exit:watch", endsAt: .sit), .bridge("enter:read", endsAt: .read)])
+        XCTAssertEqual(g.plan(from: .read, to: .run),
+                       [.finish(.read), .bridge("exit:read", endsAt: .sit), .bridge("sit>stand", endsAt: .idle),
+                        .bridge("enter:run", endsAt: .run)])
+        XCTAssertEqual(g.plan(from: .run, to: .idle), [.finish(.run), .bridge("exit:run", endsAt: .idle)])
+        XCTAssertEqual(g.plan(from: .eat, to: .sit), [.finish(.eat)])          // no exit:eat art: cut back to the hub
+        XCTAssertEqual(g.plan(from: .watch, to: .sleep), [])                    // already lying: dozes off
+    }
+
+    func testBridgesDecodeFromTheManifest() throws {
+        let json = #"{"states":{"idle":{"folder":"idle","fps":5,"loop":true,"anchor":[0.5,0]}},"bridges":{"#
+            + #""stand>sit":{"folder":"standToSit","fps":9,"loop":false,"anchor":[0.5,0]},"#
+            + #""sit>stand":{"folder":"standToSit","fps":10,"loop":false,"anchor":[0.5,0],"reversed":true}}}"#
         let m = try JSONDecoder().decode(AnimationManifest.self, from: Data(json.utf8))
-        XCTAssertEqual(m.states["sitToStand"]?.reversed, true)
-        XCTAssertEqual(m.available, [.idle, .sitToStand])
+        XCTAssertEqual(Set(m.bridges!.keys), ["stand>sit", "sit>stand"])
+        XCTAssertEqual(m.bridges?["sit>stand"]?.reversed, true)
+        XCTAssertEqual(m.available, [.idle])
     }
 
     func testOneShotStepsHoldMotionAndRetargetingMidBridgeTurnsBack() throws {
         let b = TimelineBackend()
-        let p = AnimationPlayback(backend: b, graph: TransitionGraph(bridges: [.standToSit, .sitToStand]))
+        let p = AnimationPlayback(backend: b, graph: TransitionGraph(bridges: ["stand>sit", "sit>stand"]))
         p.update(.idle, mode: .grounded)
         p.update(.sit, mode: .grounded)
-        XCTAssertEqual(b.played, [.idle, .standToSit])
+        XCTAssertEqual(b.bridges, ["stand>sit"])
         XCTAssertTrue(p.holdsGroundedMotion(in: .grounded))
         p.update(.walk, mode: .grounded)                    // changed its mind while sitting down
-        XCTAssertEqual(b.played, [.idle, .standToSit, .sitToStand])
-        try XCTUnwrap(b.once.last).completion()
+        XCTAssertEqual(b.bridges, ["stand>sit", "sit>stand"])
+        try XCTUnwrap(b.bridgeDone.last)()
         XCTAssertEqual(b.played.last, .walk)
         XCTAssertFalse(p.holdsGroundedMotion(in: .grounded))
         p.update(.idle, mode: .grounded)
-        p.update(.watch, mode: .grounded)                   // no sitToLie art: brief sit hold, motion not held
-        XCTAssertFalse(p.holdsGroundedMotion(in: .grounded))
+        p.update(.watch, mode: .grounded)
+        XCTAssertFalse(b.bridges.contains("sit>sleep"))
     }
 }

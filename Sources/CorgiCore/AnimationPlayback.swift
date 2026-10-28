@@ -10,11 +10,15 @@ public protocol AnimationPlaybackBackend: AnyObject {
     /// Seconds until the current loop reaches its next 1/`parts` mark (the next footfall of a walk,
     /// the end of a bite). Nil when unknown.
     func timeToCycleBoundary(parts: Int) -> TimeInterval?
+    /// Plays a named bridge animation once (see `Bridge`). Returns nil when the pack doesn't have it.
+    @discardableResult
+    func playBridge(_ name: String, completion: @escaping () -> Void) -> TimeInterval?
 }
 
 extension AnimationPlaybackBackend {
     public func playOnce(_ state: AnimState, completion: @escaping () -> Void) -> TimeInterval? { nil }
     public func timeToCycleBoundary(parts: Int) -> TimeInterval? { nil }
+    public func playBridge(_ name: String, completion: @escaping () -> Void) -> TimeInterval? { nil }
 }
 
 /// Owns temporary poses without letting old completions replace a newer physical or behavior state.
@@ -111,8 +115,10 @@ public final class AnimationPlayback {
     public func holdsGroundedMotion(in mode: BodyMode) -> Bool {
         guard mode == .grounded else { return false }
         if reaction?.mode == .grounded { return true }
-        if case .once? = transition?.current { return true }
-        return false
+        switch transition?.current {
+        case .once?, .bridge?: return true
+        default: return false
+        }
     }
 
     /// Show `state` as the looping animation, going through in-between poses when the posture changes.
@@ -161,11 +167,14 @@ public final class AnimationPlayback {
             transition = t
             currentState = s
             backend.play(s)
-        case .once(let s):
+        case .once, .bridge:
             t.remaining = .infinity
             transition = t
-            currentState = s
-            let duration = backend.playOnce(s) { [weak self] in self?.nextStep(token: mine) }
+            currentState = step.state
+            let done: () -> Void = { [weak self] in self?.nextStep(token: mine) }
+            let duration: TimeInterval?
+            if case .bridge(let name, _) = step { duration = backend.playBridge(name, completion: done) }
+            else { duration = backend.playOnce(step.state, completion: done) }
             guard transition?.token == mine else { return }   // finished synchronously
             guard let duration, duration.isFinite, duration > 0 else {
                 nextStep(token: mine)
