@@ -26,6 +26,8 @@ final class FrameSequenceBackend: AnimationBackend {
     /// When the current loop started and how long one cycle is, for finishing a step or bite.
     private var loopStart: CFTimeInterval = 0
     private var loopCycle: TimeInterval = 0
+    private var loopState: AnimState?
+    private var loopFrameCount: Int?
 
     init(packURL: URL) throws {
         let manifest = try AnimationManifest.load(from: packURL.appendingPathComponent("manifest.json"))
@@ -109,12 +111,19 @@ final class FrameSequenceBackend: AnimationBackend {
     }
 
     private func start(_ state: AnimState, once: Bool, completion: (() -> Void)?) -> TimeInterval? {
-        guard let entry = animations[state] ?? animations[.idle] else { return nil }
-        return start(entry, state: state, once: once, completion: completion)
+        guard let entry = animations[state] ?? animations[state.base] ?? animations[.idle] else { return nil }
+        // Swapping bowl versions of the same loop carries on from the same frame instead of restarting.
+        var phase = 0
+        if !once, let cur = loopState, cur != state, cur.base == state.base, loopCycle > 0,
+           let curCount = loopFrameCount, curCount == entry.frames.count {
+            let fps = entry.spec.fps.isFinite ? max(entry.spec.fps, 1) : 1
+            phase = Int(((CACurrentMediaTime() - loopStart) * fps).rounded(.down)) % curCount
+        }
+        return start(entry, state: state, once: once, completion: completion, phase: phase)
     }
 
     private func start(_ entry: (spec: AnimationSpec, frames: [SKTexture]), state: AnimState?, once: Bool,
-                       completion: (() -> Void)?) -> TimeInterval? {
+                       completion: (() -> Void)?, phase: Int = 0) -> TimeInterval? {
         let fps = entry.spec.fps.isFinite ? max(entry.spec.fps, 1) : 1
         let frameDuration = 1 / fps
         let duration = Double(entry.frames.count) * frameDuration
@@ -123,7 +132,8 @@ final class FrameSequenceBackend: AnimationBackend {
         let id = playbackID
         sprite.removeAllActions()
         sprite.anchorPoint = Self.anchor(entry.spec)
-        sprite.texture = entry.frames[0]
+        let frames = phase > 0 ? Array(entry.frames[phase...] + entry.frames[..<phase]) : entry.frames
+        sprite.texture = frames[0]
         // SKSpriteNode.size is the on-screen size (it already includes xScale/yScale), so the pack scale is
         // applied here once and the node scale only carries the left/right flip. Frames in a state share one size.
         let t = entry.frames[0].size()
@@ -131,7 +141,7 @@ final class FrameSequenceBackend: AnimationBackend {
         sprite.xScale = facingRight ? 1 : -1
         sprite.size = CGSize(width: t.width * scale, height: t.height * scale)
         // Keep the last displayed pose on completion/cancellation; do not restore an older texture.
-        let animation = SKAction.animate(with: entry.frames, timePerFrame: frameDuration,
+        let animation = SKAction.animate(with: frames, timePerFrame: frameDuration,
                                          resize: false, restore: false)
         if once {
             sprite.run(.sequence([animation, .run { [weak self] in
@@ -140,10 +150,13 @@ final class FrameSequenceBackend: AnimationBackend {
             }]), withKey: "frames")
         } else {
             sprite.run(entry.spec.loop ? .repeatForever(animation) : animation, withKey: "frames")
-            loopStart = CACurrentMediaTime()
+            loopStart = CACurrentMediaTime() - Double(phase) * frameDuration
             loopCycle = entry.spec.loop ? duration : 0
+            loopState = state
+            loopFrameCount = entry.frames.count
         }
-        if state == .drink && !once {
+        if once { loopState = nil; loopFrameCount = nil }
+        if state?.base == .drink && !once {
             // Lapping head-bob: the drinking frames only move the tongue and ripples.
             let lap = SKAction.sequence([.scaleY(to: 0.95, duration: 0.12), .scaleY(to: 1, duration: 0.14), .wait(forDuration: 0.12)])
             sprite.run(.repeatForever(lap))

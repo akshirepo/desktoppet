@@ -4,6 +4,17 @@ public enum AnimState: String, CaseIterable, Codable {
     case idle, walk, run, sit, sleep, eat, beg, dangle, fall, land, wiggle, bath, fetch
     case wave, back, read, readSleep, music, watch, yawn, scared, happy, holdBall, kick, roam
     case clingSit, clingHang, clingPeek, clingLeft, clingRight, letGo, drink, thirsty, refreshed
+    /// The same eating and drinking loops with the bowl half empty and empty.
+    case eatHalf, eatEmpty, drinkHalf, drinkEmpty
+
+    /// The loop a variant is drawn from (eatHalf -> eat); itself for everything else.
+    public var base: AnimState {
+        switch self {
+        case .eatHalf, .eatEmpty: return .eat
+        case .drinkHalf, .drinkEmpty: return .drink
+        default: return self
+        }
+    }
 }
 
 public struct AnimationSpec: Codable, Equatable {
@@ -42,6 +53,7 @@ public struct AnimationManifest: Codable, Equatable {
 
     public func resolve(_ state: AnimState) -> (state: AnimState, spec: AnimationSpec)? {
         if let spec = states[state.rawValue] { return (state, spec) }
+        if state.base != state { return resolve(state.base) }
         // Packs without the hydration art borrow the closest older pose.
         let stand: [AnimState: AnimState] = [.drink: .eat, .thirsty: .beg, .refreshed: .happy]
         if let alt = stand[state], let spec = states[alt.rawValue] { return (alt, spec) }
@@ -73,6 +85,7 @@ public struct AnimationManifest: Codable, Equatable {
         for (key, spec) in states {
             if let state = AnimState(rawValue: key), let override = spec.posture { p[state] = override }
         }
+        for s in AnimState.allCases where s.base != s { p[s] = p[s.base] }
         return p
     }
 

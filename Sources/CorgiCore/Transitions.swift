@@ -12,6 +12,7 @@ public enum Posture: String, Codable {
         .sit: .sit, .yawn: .sit, .beg: .sit, .read: .sit, .readSleep: .sit, .music: .sit, .happy: .sit,
         .wave: .sit, .refreshed: .sit,
         .sleep: .lie, .eat: .lie, .drink: .lie, .watch: .lie,
+        .eatHalf: .lie, .eatEmpty: .lie, .drinkHalf: .lie, .drinkEmpty: .lie,
     ]
 }
 
@@ -81,18 +82,22 @@ public struct TransitionGraph {
     /// Poses without a posture (falling, clinging, reactions) always switch directly.
     public func plan(from: AnimState, to: AnimState) -> [TransitionStep] {
         guard from != to, postures[from] != nil, postures[to] != nil else { return [] }
+        // Bowl versions of one loop swap in place.
+        if from.base == to.base { return [] }
         if bridges.contains(Bridge.pair(from, to)) {
             return (finishParts[from] != nil ? [.finish(from)] : []) + [.bridge(Bridge.pair(from, to), endsAt: to)]
         }
-        guard let a = postures[from], let b = postures[to], !direct.contains([from, to]),
+        guard let a = postures[from], let b = postures[to], !direct.contains([from.base, to.base]),
               let hf = hub(from), let ht = hub(to) else { return [] }
         var steps: [TransitionStep] = []
         // Already lying down (watching TV, say) with no way to get up drawn, it just dozes off.
-        if to == .sleep && a == .lie && !bridges.contains(Bridge.exit(from)) {
-            return finishParts[from] != nil ? [.finish(from)] : []
+        if to == .sleep && a == .lie && !bridges.contains(Bridge.exit(from)) && !bridges.contains(Bridge.exit(from.base)) {
+            return finishParts[from.base] != nil ? [.finish(from)] : []
         }
+        // Leaving a bowl half or fully eaten uses the matching exit art when there is one.
+        let exitName = bridges.contains(Bridge.exit(from)) ? Bridge.exit(from) : Bridge.exit(from.base)
         // Exit art starts on the loop's first frame, so finish the current cycle before leaving.
-        if finishParts[from] != nil || (from != hf && bridges.contains(Bridge.exit(from))) { steps.append(.finish(from)) }
+        if finishParts[from.base] != nil || (from != hf && bridges.contains(exitName)) { steps.append(.finish(from)) }
 
         var art = false
         func bridge(_ name: String, endsAt: AnimState) {
@@ -100,7 +105,7 @@ public struct TransitionGraph {
             steps.append(.bridge(name, endsAt: endsAt))
             art = true
         }
-        if from != hf { bridge(Bridge.exit(from), endsAt: hf) }
+        if from != hf { bridge(exitName, endsAt: hf) }
         var r = Self.hubs.firstIndex(of: hf)!
         let end = Self.hubs.firstIndex(of: ht)!
         while r != end {

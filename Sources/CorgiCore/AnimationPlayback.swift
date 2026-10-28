@@ -168,7 +168,7 @@ public final class AnimationPlayback {
         switch step {
         case .finish(let s):
             // The loop already on screen keeps going until its next natural break.
-            let wait = currentState == s ? backend.timeToCycleBoundary(parts: graph.finishParts[s] ?? 1) ?? 0 : 0
+            let wait = currentState == s ? backend.timeToCycleBoundary(parts: graph.finishParts[s.base] ?? 1) ?? 0 : 0
             t.remaining = wait.isFinite ? wait : 0
             transition = t
             if t.remaining <= 0 { nextStep(token: mine) }

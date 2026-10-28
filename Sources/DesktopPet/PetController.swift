@@ -254,17 +254,28 @@ final class PetController {
     func feed() {
         wake()
         boredom.noteInteraction()
-        brain.interrupt(with: .eat, duration: 4)
+        brain.interrupt(with: .eat, duration: Self.eatSeconds)
         beginBehavior(.eat)
         needs.feed()
         Effects.floatDoodle("menu:feed", fallback: "🍖", on: backend.node, height: backend.size.height)
+    }
+
+    static let eatSeconds = 4.0
+    static let drinkSeconds = 4.0
+    static let refreshedSeconds = 2.0
+
+    /// Full, half or empty bowl as the meal goes on (0 at the start, 1 when done).
+    private static func bowl(_ base: AnimState, progress: Double) -> AnimState {
+        let half: AnimState = base == .eat ? .eatHalf : .drinkHalf
+        let empty: AnimState = base == .eat ? .eatEmpty : .drinkEmpty
+        return progress < 0.35 ? base : progress < 0.7 ? half : empty
     }
 
     /// A few laps from the water bowl, then a happy "ahh".
     func drink() {
         wake()
         boredom.noteInteraction()
-        brain.interrupt(with: .drink, duration: 6)
+        brain.interrupt(with: .drink, duration: Self.drinkSeconds + Self.refreshedSeconds)
         beginBehavior(.drink)
         needs.drink()
         // The drinking frames are subtle at desktop size, so keep the laps audible the whole time.
@@ -658,7 +669,13 @@ final class PetController {
         }
         if body.mode == .grounded && brain.current == .beg && needs.state.thirst < needs.state.hunger { state = .thirsty }
         // The last two seconds of a drink are the happy "ahh".
-        if state == .drink && brain.remaining < 2 {
+        if state == .eat && brain.current == .eat {
+            state = Self.bowl(.eat, progress: 1 - brain.remaining / Self.eatSeconds)
+        }
+        if state == .drink && brain.remaining >= Self.refreshedSeconds {
+            state = Self.bowl(.drink, progress: (Self.drinkSeconds + Self.refreshedSeconds - brain.remaining) / Self.drinkSeconds)
+        }
+        if state.base == .drink && brain.remaining < Self.refreshedSeconds {
             state = .refreshed
             if !saidRefreshed {
                 saidRefreshed = true

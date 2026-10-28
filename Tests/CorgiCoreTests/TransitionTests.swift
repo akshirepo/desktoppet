@@ -243,4 +243,22 @@ final class TransitionTests: XCTestCase {
         try XCTUnwrap(b.bridgeDone.last)()
         XCTAssertEqual(b.bridges, ["stand>sit", "enter:wave"])
     }
+
+    func testBowlVersionsSwapInPlaceAndLeaveWithTheEmptyBowl() throws {
+        let g = TransitionGraph(bridges: ["enter:eat", "exit:eat", "exit:eatEmpty", "exit:drink"], direct: [[.drink, .refreshed]])
+        XCTAssertEqual(g.plan(from: .eat, to: .eatHalf), [])
+        XCTAssertEqual(g.plan(from: .eatHalf, to: .eatEmpty), [])
+        XCTAssertEqual(g.plan(from: .eatEmpty, to: .sit), [.finish(.eatEmpty), .bridge("exit:eatEmpty", endsAt: .sit)])
+        XCTAssertEqual(g.plan(from: .eatHalf, to: .sit), [.finish(.eatHalf), .bridge("exit:eat", endsAt: .sit)])
+        XCTAssertEqual(g.plan(from: .drinkEmpty, to: .refreshed), [])
+        XCTAssertEqual(g.hub(.drinkHalf), .sit)
+    }
+
+    func testPacksWithoutBowlArtFallBackToTheFullBowl() throws {
+        let json = #"{"states":{"idle":{"folder":"idle","fps":5,"loop":true,"anchor":[0.5,0]},"#
+            + #""eat":{"folder":"eat","fps":5,"loop":true,"anchor":[0.5,0],"posture":"stand"}}}"#
+        let m = try JSONDecoder().decode(AnimationManifest.self, from: Data(json.utf8))
+        XCTAssertEqual(m.resolve(.eatEmpty)?.state, .eat)
+        XCTAssertEqual(m.postures[.eatHalf], .stand)        // follows the pack's override for eat
+    }
 }
