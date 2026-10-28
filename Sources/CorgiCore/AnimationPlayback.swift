@@ -48,6 +48,8 @@ public final class AnimationPlayback {
     /// The loop it's on its way to while in-between poses play.
     public var transitionTarget: AnimState? { transition?.target }
     public var graph: TransitionGraph
+    /// Called with each routing decision, for debugging.
+    public var trace: ((String) -> Void)?
 
     public init(backend: any AnimationPlaybackBackend, graph: TransitionGraph = .init()) {
         self.backend = backend
@@ -105,9 +107,16 @@ public final class AnimationPlayback {
     }
 
     public func cancelReaction() {
-        guard reaction != nil else { return }
+        guard let r = reaction else { return }
         reaction = nil
-        currentState = nil
+        currentState = settledPose(after: r.state)
+    }
+
+    /// The pose a reaction leaves it in, so the next change still routes through bridges:
+    /// a landing or a wiggle ends standing, a happy hop ends sitting. In the air there's no pose to route from.
+    private func settledPose(after state: AnimState) -> AnimState? {
+        if state == .letGo { return nil }
+        return graph.hub(state) ?? .idle
     }
 
     /// Pause only the grounded behavior clock and its locomotion command, never gravity.
@@ -133,6 +142,7 @@ public final class AnimationPlayback {
             return
         }
         let steps = mode == .grounded ? currentState.map { graph.plan(from: $0, to: state) } ?? [] : []
+        trace?("\(currentState?.rawValue ?? "nil") -> \(state.rawValue) mode=\(mode) steps=\(steps)")
         guard !steps.isEmpty else {
             currentState = state
             backend.play(state)

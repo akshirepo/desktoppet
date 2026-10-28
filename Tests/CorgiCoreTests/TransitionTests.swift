@@ -231,4 +231,16 @@ final class TransitionTests: XCTestCase {
         XCTAssertEqual(g.plan(from: .walk, to: .fetch), [.finish(.walk), .bridge("pair:walk>fetch", endsAt: .fetch)])
         XCTAssertEqual(g.plan(from: .fetch, to: .walk), [])
     }
+
+    func testAfterAReactionTheNextChangeStillUsesBridges() throws {
+        let b = TimelineBackend()
+        let p = AnimationPlayback(backend: b, graph: TransitionGraph(bridges: ["stand>sit", "enter:wave"]))
+        p.update(.fall, mode: .airborne)
+        XCTAssertTrue(p.requestReaction(.land, mode: .grounded))
+        p.cancelReaction()
+        p.update(.wave, mode: .grounded)
+        XCTAssertEqual(b.bridges, ["stand>sit"])
+        try XCTUnwrap(b.bridgeDone.last)()
+        XCTAssertEqual(b.bridges, ["stand>sit", "enter:wave"])
+    }
 }
