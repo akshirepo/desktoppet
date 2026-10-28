@@ -1,6 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# Use the Command Line Tools when present, so a freshly installed Xcode with an unaccepted license doesn't block the build.
+if [ -z "${DEVELOPER_DIR:-}" ] && [ -d /Library/Developer/CommandLineTools ]; then export DEVELOPER_DIR=/Library/Developer/CommandLineTools; fi
 swift build -c release
 APP=build/DesktopPet.app
 rm -rf "$APP"
