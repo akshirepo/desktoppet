@@ -27,7 +27,7 @@ private final class TimelineBackend: AnimationPlaybackBackend {
 }
 
 final class TransitionTests: XCTestCase {
-    let graph = TransitionGraph()
+    let graph = TransitionGraph(direct: [[.drink, .refreshed], [.read, .readSleep], [.readSleep, .read]])
 
     func testWalkingToSleepFinishesTheStepSitsAndYawnsFirst() {
         XCTAssertEqual(graph.plan(from: .walk, to: .sleep), [.finish(.walk), .once(.yawn)])
@@ -147,7 +147,7 @@ final class TransitionTests: XCTestCase {
     }
 
     func testBridgeArtReplacesCutsWhenThePackHasIt() {
-        let g = TransitionGraph(bridges: ["stand>sit", "sit>stand", "sit>sleep", "sleep>sit"])
+        let g = TransitionGraph(bridges: ["stand>sit", "sit>stand", "sit>sleep", "sleep>sit"], direct: [[.drink, .refreshed]])
         XCTAssertEqual(g.plan(from: .idle, to: .sit), [.bridge("stand>sit", endsAt: .sit)])
         XCTAssertEqual(g.plan(from: .sit, to: .walk), [.bridge("sit>stand", endsAt: .idle)])
         XCTAssertEqual(g.plan(from: .idle, to: .watch), [.bridge("stand>sit", endsAt: .sit)])  // lie-down art is for sleep
@@ -184,7 +184,9 @@ final class TransitionTests: XCTestCase {
                         .bridge("enter:run", endsAt: .run)])
         XCTAssertEqual(g.plan(from: .run, to: .idle), [.finish(.run), .bridge("exit:run", endsAt: .idle)])
         XCTAssertEqual(g.plan(from: .eat, to: .sit), [.finish(.eat)])          // no exit:eat art: cut back to the hub
-        XCTAssertEqual(g.plan(from: .watch, to: .sleep), [])                    // already lying: dozes off
+        XCTAssertEqual(g.plan(from: .eat, to: .sleep), [.finish(.eat)])         // already lying, no exit art: dozes off
+        XCTAssertEqual(g.plan(from: .watch, to: .sleep),                         // with exit art it gets up, yawns, lies down
+                       [.finish(.watch), .bridge("exit:watch", endsAt: .sit), .once(.yawn)])
     }
 
     func testBridgesDecodeFromTheManifest() throws {

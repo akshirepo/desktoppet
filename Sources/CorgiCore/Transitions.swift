@@ -52,8 +52,8 @@ public struct TransitionGraph {
     /// Loops that finish their current cycle (or step) before changing, and into how many parts the cycle
     /// splits: a walk cycle has two footfalls, a bite or a lap is the whole cycle.
     public var finishParts: [AnimState: Int] = [.walk: 2, .run: 2, .eat: 1, .drink: 1, .kick: 1]
-    /// Pairs drawn to follow each other directly.
-    public var direct: Set<[AnimState]> = [[.drink, .refreshed], [.read, .readSleep], [.readSleep, .read]]
+    /// Pairs drawn to follow each other directly. Packs add their own with `directGroups`.
+    public var direct: Set<[AnimState]> = []
     /// Bridge animations this pet has art for (see `Bridge`).
     public var bridges: Set<String>
 
@@ -80,8 +80,10 @@ public struct TransitionGraph {
         guard from != to, let a = postures[from], let b = postures[to], !direct.contains([from, to]),
               let hf = hub(from), let ht = hub(to) else { return [] }
         var steps: [TransitionStep] = []
-        // Already lying down (watching TV, say), it just dozes off.
-        if to == .sleep && a == .lie { return finishParts[from] != nil ? [.finish(from)] : [] }
+        // Already lying down (watching TV, say) with no way to get up drawn, it just dozes off.
+        if to == .sleep && a == .lie && !bridges.contains(Bridge.exit(from)) {
+            return finishParts[from] != nil ? [.finish(from)] : []
+        }
         // Exit art starts on the loop's first frame, so finish the current cycle before leaving.
         if finishParts[from] != nil || (from != hf && bridges.contains(Bridge.exit(from))) { steps.append(.finish(from)) }
 

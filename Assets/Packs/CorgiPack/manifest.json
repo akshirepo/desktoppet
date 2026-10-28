@@ -480,5 +480,15 @@
       ],
       "reversed": true
     }
-  }
+  },
+  "directGroups": [
+    [
+      "read",
+      "readSleep"
+    ],
+    [
+      "drink",
+      "refreshed"
+    ]
+  ]
 }
