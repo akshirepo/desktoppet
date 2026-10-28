@@ -143,8 +143,9 @@ final class TransitionTests: XCTestCase {
         let g = TransitionGraph(bridges: [.standToSit, .sitToStand, .sitToLie, .lieToSit])
         XCTAssertEqual(g.plan(from: .idle, to: .sit), [.once(.standToSit)])
         XCTAssertEqual(g.plan(from: .sit, to: .walk), [.once(.sitToStand)])
-        XCTAssertEqual(g.plan(from: .idle, to: .watch), [.once(.standToSit), .once(.sitToLie)])
-        XCTAssertEqual(g.plan(from: .watch, to: .idle), [.once(.lieToSit), .once(.sitToStand)])
+        XCTAssertEqual(g.plan(from: .idle, to: .watch), [.once(.standToSit)])     // lie-down art is for sleep only
+        XCTAssertEqual(g.plan(from: .watch, to: .idle), [.once(.sitToStand)])
+        XCTAssertEqual(g.plan(from: .sit, to: .eat), [])
         XCTAssertEqual(g.plan(from: .walk, to: .sleep),
                        [.finish(.walk), .once(.standToSit), .once(.yawn), .once(.sitToLie)])
         XCTAssertEqual(g.plan(from: .sit, to: .sleep), [.once(.yawn), .once(.sitToLie)])

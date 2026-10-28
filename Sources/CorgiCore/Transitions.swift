@@ -50,13 +50,14 @@ public struct TransitionGraph {
         self.bridges = bridges
     }
 
-    private func bridge(_ a: Posture, _ b: Posture) -> AnimState? {
+    /// The lie-down art ends curled up on its pillow, so it only bridges into and out of sleep.
+    private func bridge(_ a: Posture, _ b: Posture, from: AnimState, to: AnimState) -> AnimState? {
         let s: AnimState?
         switch (a, b) {
         case (.stand, .sit): s = .standToSit
         case (.sit, .stand): s = .sitToStand
-        case (.sit, .lie): s = .sitToLie
-        case (.lie, .sit): s = .lieToSit
+        case (.sit, .lie): s = to == .sleep ? .sitToLie : nil
+        case (.lie, .sit): s = from == .sleep ? .lieToSit : nil
         default: s = nil
         }
         return s.flatMap { bridges.contains($0) ? $0 : nil }
@@ -78,7 +79,7 @@ public struct TransitionGraph {
         if a != b { path.append(b) }
         for i in 1..<path.count {
             let (p, q) = (path[i - 1], path[i])
-            let via = bridge(p, q)
+            let via = bridge(p, q, from: from, to: to)
             if let via { steps.append(.once(via)) }
             guard q == .sit else { continue }
             let waypoint = i < path.count - 1
@@ -86,7 +87,7 @@ public struct TransitionGraph {
                 steps.append(.once(.yawn))           // wake with a sitting yawn, then get up
             } else if waypoint && bedtime {
                 steps.append(.once(.yawn))
-            } else if waypoint && via == nil && bridge(q, path[i + 1]) == nil {
+            } else if waypoint && via == nil && bridge(q, path[i + 1], from: from, to: to) == nil {
                 steps.append(.hold(.sit, bridgeHold))
             }
         }
