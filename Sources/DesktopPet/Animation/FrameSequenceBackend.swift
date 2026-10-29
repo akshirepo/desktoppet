@@ -10,6 +10,8 @@ final class FrameSequenceBackend: AnimationBackend {
     var spriteBounds: CGRect { sprite.frame }
     private var poseBounds: [AnimState: CGRect] = [:]
     private let sprite = SKSpriteNode()
+    /// The pet sprite itself, so a neighbouring display can mirror it while the pet straddles a seam.
+    var spriteNode: SKSpriteNode { sprite }
     private let scale: CGFloat
     private var animations: [AnimState: (spec: AnimationSpec, frames: [SKTexture])] = [:]
     /// Named one-shot transitions ("stand>sit", "enter:watch", ...), preloaded like the loops.

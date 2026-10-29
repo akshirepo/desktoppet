@@ -74,6 +74,7 @@ final class PetController {
         playback.trace = { TransitionLog.append($0) }
         let frames = NSScreen.screens.map(\.visibleFrame)
         world = World(provider: CGWindowListProvider(), screens: frames, bodyBounds: backend.movementBounds)
+        world.setScreens(frames, fullFrames: NSScreen.screens.map(\.frame))
         let vf = HomeTracker.cornerScreenIndex(frames).map { frames[$0] } ?? .zero
         let initial = CGPoint(x: vf.maxX - 80, y: vf.maxY - 100)
         body = Body(position: nearestPoint(to: initial, in: world.movementScreens))
@@ -170,7 +171,7 @@ final class PetController {
     private func refreshScreenBounds() {
         let frames = NSScreen.screens.map(\.visibleFrame)
         guard frames != world.screens else { return }
-        world.setScreens(frames)
+        world.setScreens(frames, fullFrames: NSScreen.screens.map(\.frame))
         updateHome()
         ball?.setArea(ballArea)
     }
@@ -204,6 +205,7 @@ final class PetController {
         refreshScreenBounds()
         clampBody()
         overlays.place(globalFeet: body.position)
+        overlays.mirror(backend.spriteNode, globalFeet: body.position)
     }
 
     /// Called when the floor disappears under the corgi.
@@ -523,6 +525,7 @@ final class PetController {
         if effort == .hard { lastHardExercise = now }
 
         overlays.place(globalFeet: body.position)
+        overlays.mirror(backend.spriteNode, globalFeet: body.position)
         // Cling sprites are drawn for their side already, so they are never mirrored.
         backend.setFacing(right: body.mode == .clinging ? true : body.facingRight)
         updateAnimation()

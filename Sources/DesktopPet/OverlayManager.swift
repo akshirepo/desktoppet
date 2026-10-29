@@ -21,6 +21,8 @@ final class OverlayManager {
     }
 
     func rebuild() {
+        mirrors.values.forEach { $0.removeFromParent() }
+        mirrors = [:]
         corgiNode.removeFromParent()
         overlays.forEach { $0.close() }
         overlays = NSScreen.screens.map { OverlayWindow(screen: $0) }
@@ -44,6 +46,41 @@ final class OverlayManager {
             target.scene.addChild(corgiNode)
         }
         corgiNode.position = CGPoint(x: p.x - target.frame.minX, y: p.y - target.frame.minY)
+    }
+
+    /// Copies of the pet sprite shown on the other displays it overlaps, keyed by overlay.
+    private var mirrors: [ObjectIdentifier: SKSpriteNode] = [:]
+
+    /// While the pet straddles a seam, draws a copy of `sprite` on each other display it overlaps,
+    /// so it isn't cut off at the edge of the display it belongs to.
+    func mirror(_ sprite: SKSpriteNode, globalFeet p: CGPoint) {
+        let local = sprite.frame                       // relative to the feet
+        let global = local.offsetBy(dx: p.x, dy: p.y)
+        for o in overlays {
+            let id = ObjectIdentifier(o)
+            let needed = o.scene !== corgiNode.scene && o.frame.intersects(global)
+            guard needed else {
+                mirrors[id]?.isHidden = true
+                continue
+            }
+            let m = mirrors[id] ?? {
+                let n = SKSpriteNode()
+                o.scene.addChild(n)
+                mirrors[id] = n
+                return n
+            }()
+            if m.scene !== o.scene { m.removeFromParent(); o.scene.addChild(m) }
+            m.isHidden = false
+            m.texture = sprite.texture
+            m.anchorPoint = sprite.anchorPoint
+            m.xScale = 1
+            m.yScale = 1
+            m.size = sprite.size
+            m.xScale = sprite.xScale
+            m.yScale = sprite.yScale
+            m.zPosition = corgiNode.zPosition + sprite.zPosition
+            m.position = CGPoint(x: p.x - o.frame.minX + sprite.position.x, y: p.y - o.frame.minY + sprite.position.y)
+        }
     }
 
     /// Puts any node (the ball) on the overlay of the screen containing the global point `p`.

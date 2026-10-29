@@ -26,6 +26,11 @@ public final class BehaviorExecutor {
     private var homePlanned = false
     private var homeLeapDirection: CGFloat?
 
+    /// A point on another display that the current walk is heading for.
+    private var travelTarget: CGPoint?
+    /// Chance a walk heads over to a neighbouring display when one is reachable.
+    public var crossScreenChance: CGFloat = 0.25
+
     public init(rng: any RandomNumberGenerator = SystemRandomNumberGenerator()) {
         self.rng = rng
     }
@@ -38,6 +43,7 @@ public final class BehaviorExecutor {
         targetX = nil
         hopStarted = false
         hopDownDirection = nil
+        travelTarget = nil
         homePlanned = false
         homeLeapDirection = nil
         carryingBall = false
@@ -50,6 +56,17 @@ public final class BehaviorExecutor {
             if let s = segment {
                 let lo = s.minX + 20, hi = max(lo, s.maxX - 20)
                 targetX = lo + random() * (hi - lo)
+                // Now and then it wanders over to the next display.
+                if random() < crossScreenChance {
+                    if let next = neighborFloor(of: s, body: body, world: world) {
+                        targetX = next.minX + 40 + random() * max(0, next.width - 80)
+                    } else if let here = world.display(at: body.position),
+                              let link = world.stacks.first(where: { $0.lower == here || $0.upper == here }),
+                              let floor = world.ground(of: link.lower == here ? link.upper : link.lower) {
+                        // A display above or below: go and visit it.
+                        travelTarget = CGPoint(x: floor.minX + 40 + random() * max(0, floor.width - 80), y: floor.y)
+                    }
+                }
             }
         case .greet:
             body.face(right: cursor.x >= body.position.x)
@@ -106,8 +123,18 @@ public final class BehaviorExecutor {
         case .goHome:
             return stepHome(body: body, world: world)
         case .walk, .fetch:
+            if b == .walk, let t = travelTarget {
+                if travel(toward: t, body: body, world: world) { return false }
+                travelTarget = nil
+                targetX = t.x
+            }
             guard let requested = targetX else { return b == .walk }
-            let target = body.standingOn?.clampX(requested) ?? requested
+            var target = body.standingOn?.clampX(requested) ?? requested
+            // A target on the next display: keep walking into the edge and let the body cross over.
+            if let s = body.standingOn, !s.contains(x: requested),
+               world.crossing(from: s, direction: requested - body.position.x, maxJumpUp: body.config.maxJumpUp) != nil {
+                target = requested
+            }
             let dx = target - body.position.x
             if abs(dx) < 4 {
                 body.stop()
@@ -118,9 +145,14 @@ public final class BehaviorExecutor {
         case .zoomies:
             body.walk(direction: zoomDirection, speed: body.config.runSpeed * 1.2)
         case .chaseCursor:
+            if travel(toward: cursor, body: body, world: world) { return false }
             let segment = body.standingOn ?? world.segment(under: body.position)
             let dx = cursor.x - body.position.x
-            if let s = segment, s.contains(x: cursor.x), abs(dx) > 30 {
+            let across = segment.map {
+                !$0.contains(x: cursor.x)
+                    && world.crossing(from: $0, direction: dx, maxJumpUp: body.config.maxJumpUp) != nil
+            } ?? false
+            if let s = segment, s.contains(x: cursor.x) || across, abs(dx) > 30 {
                 body.walk(direction: dx, speed: body.config.runSpeed)
             } else {
                 body.stop()
@@ -167,9 +199,60 @@ public final class BehaviorExecutor {
 
     /// Walks (runs if far) to `home`. From another floor it leaps off the edge facing home,
     /// or jumps up if home is higher and in range, then re-plans after landing.
+    /// Heads for a point on another display: across a side seam it just walks (the body crosses),
+    /// between stacked displays it goes to the overlap and leaps up or hops down.
+    /// Returns false when the target is on this display or there's no way there.
+    func travel(toward target: CGPoint, body: Body, world: World) -> Bool {
+        guard body.mode == .grounded, let s = body.standingOn ?? world.segment(under: body.position),
+              let here = world.display(at: body.position), let there = world.display(at: target), here != there else { return false }
+        let dx = target.x - body.position.x
+        if !s.contains(x: target.x), world.crossing(from: s, direction: dx, maxJumpUp: body.config.maxJumpUp) != nil {
+            body.walk(direction: dx, speed: body.config.runSpeed)
+            return true
+        }
+        let up = world.stacks.first { $0.lower == here && $0.upper == there }
+        let down = world.stacks.first { $0.upper == here && $0.lower == there }
+        guard let link = up ?? down else { return false }
+        let lo = max(s.minX, link.minX + 60), hi = min(s.maxX, link.maxX - 60)
+        guard lo <= hi else { return false }
+        let x = min(max(body.position.x, lo), hi)
+        if abs(x - body.position.x) > 4 {
+            body.walk(direction: x - body.position.x, speed: body.config.runSpeed)
+            return true
+        }
+        if up != nil {
+            guard let floor = world.ground(of: there) else { return false }
+            body.jump(to: CGPoint(x: floor.clampX(x), y: floor.y))
+        } else {
+            body.face(right: dx >= 0)
+            body.dropThrough()
+        }
+        return true
+    }
+
+    /// A floor on a neighbouring display reachable from `s`, picked at random.
+    private func neighborFloor(of s: FloorSegment, body: Body, world: World) -> FloorSegment? {
+        let dirs: [CGFloat] = random() < 0.5 ? [1, -1] : [-1, 1]
+        for d in dirs where world.crossing(from: s, direction: d, maxJumpUp: body.config.maxJumpUp) != nil {
+            let edge = d > 0 ? s.maxX : s.minX
+            return world.segments.first {
+                guard case .ground = $0.kind, $0 != s else { return false }
+                return abs((d > 0 ? $0.minX : $0.maxX) - edge) <= 2
+            }
+        }
+        return nil
+    }
+
     private func stepHome(body: Body, world: World) -> Bool {
         guard let home else { return true }
         guard let s = body.standingOn ?? world.segment(under: body.position) else { return false }
+        if travel(toward: home, body: body, world: world) { return false }
+        // Home is on another display: head that way and cross at the seam.
+        if !s.contains(x: home.x),
+           world.crossing(from: s, direction: home.x - body.position.x, maxJumpUp: body.config.maxJumpUp) != nil {
+            body.walk(direction: home.x - body.position.x, speed: body.config.runSpeed)
+            return false
+        }
         if s.contains(x: home.x) && abs(s.y - home.y) <= 2 {
             let dx = home.x - body.position.x
             if abs(dx) < 4 {

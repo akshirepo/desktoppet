@@ -90,3 +90,69 @@ public func placementRects(_ screens: [CGRect], bounds: CGRect) -> [CGRect] {
                       width: width, height: height)
     }
 }
+
+/// Where two displays touch side by side: `left` ends and `right` begins at `x`, sharing heights `minY...maxY`.
+public struct ScreenSeam: Equatable {
+    public var left: Int
+    public var right: Int
+    public var x: CGFloat
+    public var minY: CGFloat
+    public var maxY: CGFloat
+
+    public init(left: Int, right: Int, x: CGFloat, minY: CGFloat, maxY: CGFloat) {
+        self.left = left
+        self.right = right
+        self.x = x
+        self.minY = minY
+        self.maxY = maxY
+    }
+}
+
+/// Side-by-side display edges (within `tolerance` points) that share some height.
+public func screenSeams(_ screens: [CGRect], tolerance: CGFloat = 2) -> [ScreenSeam] {
+    var seams: [ScreenSeam] = []
+    for i in screens.indices {
+        for j in screens.indices where i != j && abs(screens[i].maxX - screens[j].minX) <= tolerance {
+            let lo = max(screens[i].minY, screens[j].minY), hi = min(screens[i].maxY, screens[j].maxY)
+            guard hi > lo else { continue }
+            seams.append(ScreenSeam(left: i, right: j, x: (screens[i].maxX + screens[j].minX) / 2, minY: lo, maxY: hi))
+        }
+    }
+    return seams
+}
+
+/// What the pet does where its floor ends at a display edge and the next display's floor continues.
+public enum SeamCrossing: Equatable {
+    /// The next floor is lower: step off and drop.
+    case drop
+    /// The next floor is higher, within jumping range: hop up onto it.
+    case jump(to: CGPoint)
+}
+
+/// A display sitting directly on top of another: `upper`'s bottom edge meets `lower`'s top edge over `minX...maxX`.
+public struct StackedDisplays: Equatable {
+    public var lower: Int
+    public var upper: Int
+    public var minX: CGFloat
+    public var maxX: CGFloat
+
+    public init(lower: Int, upper: Int, minX: CGFloat, maxX: CGFloat) {
+        self.lower = lower
+        self.upper = upper
+        self.minX = minX
+        self.maxX = maxX
+    }
+}
+
+/// Displays stacked on top of each other (full frames, within `tolerance`), overlapping at least `minWidth`.
+public func stackedDisplays(_ frames: [CGRect], tolerance: CGFloat = 2, minWidth: CGFloat = 160) -> [StackedDisplays] {
+    var out: [StackedDisplays] = []
+    for i in frames.indices {
+        for j in frames.indices where i != j && abs(frames[i].maxY - frames[j].minY) <= tolerance {
+            let lo = max(frames[i].minX, frames[j].minX), hi = min(frames[i].maxX, frames[j].maxX)
+            if hi - lo >= minWidth { out.append(StackedDisplays(lower: i, upper: j, minX: lo, maxX: hi)) }
+        }
+    }
+    return out
+}
+

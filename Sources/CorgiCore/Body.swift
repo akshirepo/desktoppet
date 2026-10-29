@@ -27,6 +27,8 @@ public final class Body {
     public private(set) var velocity: CGVector = .zero
     public private(set) var mode: BodyMode = .airborne
     public private(set) var standingOn: FloorSegment?
+    /// The floor it just hopped down through, ignored as a landing spot until it's below it.
+    private var passingThrough: FloorSegment?
     public private(set) var facingRight = true
     /// Set while `mode == .clinging`.
     public private(set) var cling: ClingSpot?
@@ -74,6 +76,16 @@ public final class Body {
         position.x = direction < 0 ? s.minX - 1 : s.maxX + 1
         velocity = CGVector(dx: direction < 0 ? -150 : 150, dy: 250)
         facingRight = direction > 0
+        walkVelocity = 0
+        standingOn = nil
+        mode = .airborne
+    }
+
+    /// Hops down through the floor at the bottom of a display onto the display below.
+    public func dropThrough() {
+        guard mode == .grounded, let s = standingOn else { return }
+        passingThrough = s
+        velocity = CGVector(dx: facingRight ? 40 : -40, dy: 180)
         walkVelocity = 0
         standingOn = nil
         mode = .airborne
@@ -193,6 +205,15 @@ public final class Body {
                 position.x = nextX
                 return nil
             }
+            // At a display edge, carry on onto the next display's floor.
+            if let crossing = world.crossing(from: segment, direction: walkVelocity, maxJumpUp: config.maxJumpUp) {
+                position.x = segment.clampX(nextX)
+                switch crossing {
+                case .drop: leap(direction: walkVelocity)
+                case .jump(let target): jump(to: target)
+                }
+                return nil
+            }
             position.x = segment.clampX(nextX)
             walkVelocity = 0
             return .hitEdge
@@ -209,9 +230,10 @@ public final class Body {
         case .airborne:
             velocity.dy = max(velocity.dy - config.gravity * dt, -config.maxFallSpeed)
             let next = CGPoint(x: position.x + velocity.dx * dt, y: position.y + velocity.dy * dt)
+            if let p = passingThrough, position.y < p.y - 2 { passingThrough = nil }
             if velocity.dy <= 0,
                let landing = world.segments
-                .filter({ $0.contains(x: next.x) && position.y >= $0.y && next.y <= $0.y })
+                .filter({ $0 != passingThrough && $0.contains(x: next.x) && position.y >= $0.y && next.y <= $0.y })
                 .max(by: { $0.y < $1.y }) {
                 position = CGPoint(x: next.x, y: landing.y)
                 velocity = .zero
