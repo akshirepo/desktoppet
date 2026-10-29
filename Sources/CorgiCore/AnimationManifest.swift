@@ -26,6 +26,8 @@ public struct AnimationSpec: Codable, Equatable {
     public var posture: Posture?
     /// Plays the folder's frames last to first, e.g. sit-to-stand from the stand-to-sit frames.
     public var reversed: Bool?
+    /// Size correction for a pose drawn at a different scale than the rest of the pack (0.8 = draw 20% smaller).
+    public var scale: Double?
 
     public init(folder: String, fps: Double, loop: Bool, anchor: [Double], posture: Posture? = nil, reversed: Bool? = nil) {
         self.folder = folder

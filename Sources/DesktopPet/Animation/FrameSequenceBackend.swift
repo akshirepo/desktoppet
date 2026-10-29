@@ -66,7 +66,8 @@ final class FrameSequenceBackend: AnimationBackend {
             // Measure with SpriteKit's own canvas precision; no alpha trimming or per-frame offsets.
             let measurement = SKSpriteNode(texture: entry.frames[0])
             let frame = entry.frames[0].size()
-            measurement.size = CGSize(width: frame.width * scale, height: frame.height * scale)
+            let k = scale * CGFloat(entry.spec.scale ?? 1)
+            measurement.size = CGSize(width: frame.width * k, height: frame.height * k)
             measurement.anchorPoint = Self.anchor(entry.spec)
             let bounds = measurement.frame
             poseBounds[state] = bounds
@@ -151,7 +152,8 @@ final class FrameSequenceBackend: AnimationBackend {
         let t = entry.frames[0].size()
         sprite.yScale = 1
         sprite.xScale = facingRight ? 1 : -1
-        sprite.size = CGSize(width: t.width * scale, height: t.height * scale)
+        let k = scale * CGFloat(entry.spec.scale ?? 1)
+        sprite.size = CGSize(width: t.width * k, height: t.height * k)
         // Keep the last displayed pose on completion/cancellation; do not restore an older texture.
         let animation = SKAction.animate(with: frames, timePerFrame: frameDuration,
                                          resize: false, restore: false)
