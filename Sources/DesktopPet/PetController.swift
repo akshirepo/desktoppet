@@ -120,6 +120,25 @@ final class PetController {
         return mmPerPoint.map { $0.map { min(1.25, max(0.6, ref / $0)) } ?? 1 }
     }
 
+    /// Logs the details whenever the pet is drawn far bigger or smaller than its normal size, so a size glitch
+    /// can be traced from ~/Library/Logs/DesktopPet/transitions.log. At most once a second.
+    private var lastSizeLog: CFTimeInterval = 0
+    private func checkSpriteSize() {
+        let sprite = backend.spriteNode
+        let h = abs(sprite.size.height) * backend.node.yScale
+        let normal = backend.size.height
+        guard normal > 0, h > normal * 1.6 || h < normal * 0.4 else { return }
+        let now = CACurrentMediaTime()
+        guard now - lastSizeLog > 1 else { return }
+        lastSizeLog = now
+        let t = sprite.texture?.size() ?? .zero
+        TransitionLog.append("SIZE \(Int(h))pt vs \(Int(normal)) state=\(playback.currentState?.rawValue ?? "nil") "
+            + "target=\(playback.transitionTarget?.rawValue ?? "-") behavior=\(brain.current.rawValue) mode=\(body.mode) "
+            + "texture=\(Int(t.width))x\(Int(t.height)) size=\(Int(sprite.size.width))x\(Int(sprite.size.height)) "
+            + "xs=\(sprite.xScale) ys=\(sprite.yScale) node=\(backend.node.xScale) at \(Int(body.position.x)),\(Int(body.position.y)) "
+            + "lastSet=[\(backend.lastSetSize)] actions=\(sprite.hasActions())")
+    }
+
     private func updateDrawScale(dt: TimeInterval) {
         let target = world.display(at: body.position).flatMap { displayScales.indices.contains($0) ? displayScales[$0] : nil } ?? 1
         drawScale += (target - drawScale) * min(1, CGFloat(dt) * 5)
@@ -558,6 +577,7 @@ final class PetController {
         clampBody()
         updateMovementSounds(dt: dt)
         updateDrawScale(dt: dt)
+        checkSpriteSize()
         let effort: Exertion = body.isRunning || (body.isMoving && brain.current.exertion == .hard) ? .hard
             : body.isMoving ? .light : .rest
         needs.exert(effort, seconds: dt)

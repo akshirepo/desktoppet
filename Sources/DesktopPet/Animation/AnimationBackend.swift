@@ -20,6 +20,7 @@ protocol AnimationBackend: AnimationPlaybackBackend {
     var bridgeNames: Set<String> { get }
     var directPairs: Set<[AnimState]> { get }
     var spriteNode: SKSpriteNode { get }
+    var lastSetSize: String { get }
     func play(_ state: AnimState)
     func setFacing(right: Bool)
     /// Where a carried ball sits, facing right, relative to the feet.

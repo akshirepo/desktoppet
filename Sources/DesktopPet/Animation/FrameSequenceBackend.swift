@@ -12,6 +12,8 @@ final class FrameSequenceBackend: AnimationBackend {
     private let sprite = SKSpriteNode()
     /// The pet sprite itself, so a neighbouring display can mirror it while the pet straddles a seam.
     var spriteNode: SKSpriteNode { sprite }
+    /// The size the last animation start set, for size-glitch logging.
+    private(set) var lastSetSize = ""
     private let scale: CGFloat
     private var animations: [AnimState: (spec: AnimationSpec, frames: [SKTexture])] = [:]
     /// Named one-shot transitions ("stand>sit", "enter:watch", ...), preloaded like the loops.
@@ -156,6 +158,7 @@ final class FrameSequenceBackend: AnimationBackend {
         sprite.xScale = facingRight ? 1 : -1
         let k = scale * CGFloat(entry.spec.scale ?? 1)
         sprite.size = CGSize(width: t.width * k, height: t.height * k)
+        lastSetSize = "\(Int(sprite.size.width))x\(Int(sprite.size.height)) k=\(k) eased=\(eased) once=\(once) state=\(state?.rawValue ?? "bridge")"
         // Keep the last displayed pose on completion/cancellation; do not restore an older texture.
         let animation = SKAction.animate(with: frames, timePerFrame: frameDuration,
                                          resize: false, restore: false)
@@ -163,7 +166,9 @@ final class FrameSequenceBackend: AnimationBackend {
             let move: SKAction
             if eased {
                 let times = Self.easedTimes(count: frames.count, frameDuration: frameDuration)
-                move = .sequence(zip(frames, times).flatMap { [SKAction.setTexture($0.0, resize: false), .wait(forDuration: $0.1)] })
+                // One single-frame animate per frame: SKAction.setTexture(_:resize: false) still resized the sprite
+                // to the full texture size (420x320 pt), which made the pet huge mid-transition.
+                move = .sequence(zip(frames, times).map { SKAction.animate(with: [$0.0], timePerFrame: $0.1, resize: false, restore: false) })
             } else {
                 move = animation
             }
