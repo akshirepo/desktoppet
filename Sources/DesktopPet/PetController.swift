@@ -177,6 +177,9 @@ final class PetController {
     }
 
     private func clampBody() {
+        // A pet on a floor, or falling onto one, is where it should be; only rescue it when it's truly lost.
+        if body.mode == .grounded, world.segment(under: body.position) != nil { return }
+        if body.mode == .airborne, world.hasFloor(below: body.position) { return }
         let areas = body.cling.map { placementRects(world.screens, bounds: backend.bounds(for: $0.animState)) }
             ?? world.movementScreens
         if body.clamp(to: areas) == .startedFalling {
@@ -210,6 +213,7 @@ final class PetController {
 
     /// Called when the floor disappears under the corgi.
     func fell() {
+        TransitionLog.append("fell at \(Int(body.position.x)),\(Int(body.position.y)) during \(brain.current.rawValue)")
         Effects.floatDoodle("exclamation", fallback: "❗", on: backend.node, height: backend.size.height)
         brain.interrupt(with: .fall, duration: 5)
         beginBehavior(.fall)

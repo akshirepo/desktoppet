@@ -80,6 +80,11 @@ public final class World {
         rebuildSegments()
     }
 
+    /// True when some floor lies under `p` (at or below it) for a falling pet to land on.
+    public func hasFloor(below p: CGPoint) -> Bool {
+        segments.contains { $0.contains(x: p.x) && $0.y <= p.y + 2 }
+    }
+
     /// The display containing `p`, preferring the one whose floor it's standing on.
     public func display(at p: CGPoint) -> Int? {
         let lifted = CGPoint(x: p.x, y: p.y + 1)
@@ -153,8 +158,10 @@ public final class World {
     }
 
     func rebuildSegments() {
-        seams = screenSeams(screens)
-        stacks = stackedDisplays(fullFrames.count == screens.count ? fullFrames : screens)
+        // Measured on full display frames: a Dock or menu bar shouldn't hide where two displays meet.
+        let frames = fullFrames.count == screens.count ? fullFrames : screens
+        seams = screenSeams(frames)
+        stacks = stackedDisplays(frames)
         let areas = placementRects(screens, bounds: bodyBounds)
         let headroom = max(config.headroom, bodyBounds.maxY)
         var result = groundSegments(areas)

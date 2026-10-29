@@ -229,6 +229,23 @@ public final class Body {
             return .hitEdge
         case .airborne:
             velocity.dy = max(velocity.dy - config.gravity * dt, -config.maxFallSpeed)
+            // Falling with nothing below (off a display with no display under it): drift toward the nearest
+            // floor, and if it has already dropped past every floor, put it on the closest one.
+            if velocity.dy < 0, !world.hasFloor(below: position) {
+                if let floor = world.segments.filter({ $0.y <= position.y }).min(by: {
+                    abs($0.clampX(position.x) - position.x) < abs($1.clampX(position.x) - position.x) }) {
+                    let dx = floor.clampX(position.x) - position.x
+                    velocity.dx = max(-900, min(900, dx * 4))
+                } else if let floor = world.segments.min(by: {
+                    hypot($0.clampX(position.x) - position.x, $0.y - position.y)
+                        < hypot($1.clampX(position.x) - position.x, $1.y - position.y) }) {
+                    position = CGPoint(x: floor.clampX(position.x), y: floor.y)
+                    velocity = .zero
+                    standingOn = floor
+                    mode = .grounded
+                    return .landed
+                }
+            }
             let next = CGPoint(x: position.x + velocity.dx * dt, y: position.y + velocity.dy * dt)
             if let p = passingThrough, position.y < p.y - 2 { passingThrough = nil }
             if velocity.dy <= 0,

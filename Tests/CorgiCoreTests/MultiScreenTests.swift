@@ -156,4 +156,32 @@ final class MultiScreenTests: XCTestCase {
         XCTAssertEqual(w.display(at: body2.position), 1)
         XCTAssertEqual(body2.position.y, 1207, accuracy: 1)
     }
+
+    func testEveryFloorSpotIsALegalPositionInTheUsersLayout() {
+        let w = stacked()
+        let areas = w.movementScreens
+        for f in w.segments {
+            for x in stride(from: f.minX, through: f.maxX, by: 8) {
+                XCTAssertTrue(rects(areas, contain: CGPoint(x: x, y: f.y)), "floor \(f) at x \(x)")
+            }
+        }
+    }
+
+    func testFallingNextToTheMonitorSeamLands() {
+        let w = stacked()
+        let body = Body(position: CGPoint(x: 1350, y: 1600))
+        var landed = false
+        for _ in 0..<400 where !landed { landed = body.step(dt: 0.02, world: w) == .landed }
+        XCTAssertTrue(landed)
+        XCTAssertEqual(body.position.y, 1117, accuracy: 1)
+    }
+
+    func testFallingWhereNoDisplayIsBelowDriftsOntoAFloor() {
+        let w = stacked()
+        let body = Body(position: CGPoint(x: -600, y: 1000))       // under the left monitor, left of the laptop
+        var landed = false
+        for _ in 0..<600 where !landed { landed = body.step(dt: 0.02, world: w) == .landed }
+        XCTAssertTrue(landed)
+        XCTAssertEqual(body.position.y, 0, accuracy: 1)
+    }
 }
