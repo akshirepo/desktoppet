@@ -37,6 +37,10 @@ To start it automatically, turn on **Launch at Login** in the menu. This only wo
 - **Idle:** leave the Mac alone for 90 seconds, or watch something full screen, and it falls asleep.
 - **Needs:** they drop slowly, even while the app is closed. A thought bubble shows what it wants.
 - **Little things to say:** speech and thought bubbles in each pet's own voice, like "Snack break?" when hungry or "My wool is fuzzy…" when the sheep wants a bath. It also says hi, thanks you after you help, and sometimes just keeps you company. The lines live in `Assets/Bubbles/messages.json` if you want to change them.
+- **Daily routine:** what it does follows what just happened. Running around makes it thirsty and hungry, so after a chase it sits to catch its breath and then asks for water. While you're paying attention it stays close. Leave it alone for a while and it heads home for TV, a book or its ball, and after about 15 quiet minutes it comes over to ask you to play. It yawns before it sleeps and when it wakes up.
+- **Eating and drinking:** the food and water bowls go down as it eats and drinks, from full to half to empty.
+- **Smooth moves:** it doesn't jump between poses. It finishes its step before it stops, sits down and stands up, lies down to sleep, gets into the bath, picks up its book, puts on headphones and settles in front of the TV, with an animation for each move.
+- **More than one display:** with external monitors connected it travels between them. It walks across where two displays meet side by side (hopping a step when one floor sits higher), leaps up or hops down between a laptop and a monitor stacked above it, and follows you across in **Chase Me**. It's drawn at the same physical size on every display.
 - **Asking for help:** when a need gets low, now and then it comes over to your cursor and begs, with a bubble showing what it wants (food, a bath, play or a nap). Click it to give it that. Ignore it and it goes back to what it was doing and asks again later. Each need asks at most every 30 minutes, and never while you're away, in full screen, or busy with it. Turn it off with **Ask for Care** in the menu.
 
 ### Menu
@@ -56,6 +60,8 @@ Click the menu bar icon or right-click the pet:
 The corgi and sheep art is built into the app. To use your own, put a pack folder in `~/Library/Application Support/DesktopPet/` named `CorgiPack` or `SheepPack`. It overrides the built-in art for that character.
 
 A pack is one folder per animation state with numbered PNG frames, plus a `manifest.json`. See `Assets/Packs/CorgiPack/manifest.json` for the format and the full list of states. Frames should face right; the app mirrors them when the pet walks left. Missing states fall back to `idle`.
+
+A pack can also have `bridges`: one-shot transition animations between poses, like `stand>sit`, `sit>sleep`, `enter:watch` (getting into an activity from the standing or sitting pose) and `pair:walk>fetch`. Set `"reversed": true` to play a folder backwards, for example `sit>stand` from the `stand>sit` frames. Without bridges the pet switches poses directly. A state can set `"posture"` (`stand`, `sit` or `lie`) and `"scale"` (a size correction for a pose drawn bigger or smaller than the rest).
 
 ## Development
 
