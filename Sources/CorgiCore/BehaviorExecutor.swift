@@ -300,8 +300,10 @@ public final class BehaviorExecutor {
     private func stepChaseMe(body: Body, world: World, cursor: CGPoint) {
         guard body.mode == .roaming else { return }
         let area = world.roamingScreens(headroom: body.config.roamHeadroom)
-        let target = nearestPoint(to: cursor, in: area)
-        if hypot(target.x - body.position.x, target.y - body.position.y) < followDistance {
+        let goal = nearestPoint(to: cursor, in: area)
+        // Cursor on a display above or below: go through the corridor between them.
+        let target = world.roamWaypoint(from: body.position, to: goal, headroom: body.config.roamHeadroom)
+        if target == goal && hypot(target.x - body.position.x, target.y - body.position.y) < followDistance {
             body.hover()
             body.face(right: cursor.x >= body.position.x)
         } else {
@@ -322,9 +324,10 @@ public final class BehaviorExecutor {
                 carryingBall = true
                 onBallCaught?()
             } else {
-                let target = nearestPoint(to: CGPoint(x: ball.x, y: ball.y - 30),
-                                          in: world.roamingScreens(headroom: body.config.roamHeadroom))
-                body.roam(toward: target, speed: body.config.runSpeed)
+                let goal = nearestPoint(to: CGPoint(x: ball.x, y: ball.y - 30),
+                                        in: world.roamingScreens(headroom: body.config.roamHeadroom))
+                body.roam(toward: world.roamWaypoint(from: body.position, to: goal, headroom: body.config.roamHeadroom),
+                          speed: body.config.runSpeed)
             }
         case .carrying:
             guard body.mode == .roaming else { return false }
@@ -334,7 +337,8 @@ public final class BehaviorExecutor {
                 body.stopRoaming()
                 ballPhase = .dropping
             } else {
-                body.roam(toward: target, speed: body.config.runSpeed)
+                body.roam(toward: world.roamWaypoint(from: body.position, to: target, headroom: body.config.roamHeadroom),
+                          speed: body.config.runSpeed)
             }
         case .dropping:
             break

@@ -184,4 +184,23 @@ final class MultiScreenTests: XCTestCase {
         XCTAssertTrue(landed)
         XCTAssertEqual(body.position.y, 0, accuracy: 1)
     }
+
+    func testChaseMeFliesDownToTheLaptopAndBackUp() {
+        let w = stacked()
+        let e = BehaviorExecutor()
+        let body = Body(position: CGPoint(x: -800, y: 1600))       // high on the left monitor, far from the laptop
+        e.begin(.chaseMe, body: body, world: w, cursor: CGPoint(x: 1500, y: 400))
+        XCTAssertEqual(body.mode, .roaming)
+        for _ in 0..<1500 {
+            _ = e.step(.chaseMe, body: body, world: w, cursor: CGPoint(x: 1500, y: 400))
+            _ = body.step(dt: 0.02, world: w)
+        }
+        XCTAssertEqual(w.display(at: body.position), 0)
+        XCTAssertLessThan(hypot(body.position.x - 1500, body.position.y - 400), 200)
+        for _ in 0..<1500 {
+            _ = e.step(.chaseMe, body: body, world: w, cursor: CGPoint(x: 3000, y: 2000))
+            _ = body.step(dt: 0.02, world: w)
+        }
+        XCTAssertEqual(w.display(at: body.position), 1)
+    }
 }

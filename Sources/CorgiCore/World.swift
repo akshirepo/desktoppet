@@ -65,13 +65,44 @@ public final class World {
         return placementRects(screens, bounds: bounds) + seamCorridors(bounds)
     }
 
-    /// Feet positions where a sprite with `bounds` straddles a seam and stays on the two displays.
+    /// Feet positions where a sprite with `bounds` straddles a seam and stays on the two displays:
+    /// side-by-side seams, and the edge between a display and the one stacked on top of it.
     private func seamCorridors(_ bounds: CGRect) -> [CGRect] {
-        seams.compactMap { seam in
+        let side: [CGRect] = seams.compactMap { seam in
             let minY = seam.minY - bounds.minY, maxY = seam.maxY - bounds.maxY
             guard maxY >= minY else { return nil }
             return CGRect(x: seam.x - bounds.maxX, y: minY, width: max(0, bounds.width), height: maxY - minY)
         }
+        return side + stackCorridors(bounds)
+    }
+
+    /// Feet positions linking a display's area to the area of the display stacked on top of it.
+    private func stackCorridors(_ bounds: CGRect) -> [CGRect] {
+        stacks.compactMap { corridor(for: $0, bounds: bounds) }
+    }
+
+    private func corridor(for link: StackedDisplays, bounds: CGRect) -> CGRect? {
+        guard screens.indices.contains(link.lower), screens.indices.contains(link.upper) else { return nil }
+        let rects = placementRects([screens[link.lower], screens[link.upper]], bounds: bounds)
+        let minX = link.minX - bounds.minX, maxX = link.maxX - bounds.maxX
+        let minY = min(rects[0].maxY, rects[1].minY), maxY = max(rects[0].maxY, rects[1].minY)
+        guard maxX >= minX else { return nil }
+        return CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
+    }
+
+    /// Where a roaming pet should head next to reach `target`: straight there on the same display, or via the
+    /// corridor to a display stacked above or below.
+    public func roamWaypoint(from p: CGPoint, to target: CGPoint, headroom: CGFloat) -> CGPoint {
+        guard let here = display(at: p), let there = display(at: target), here != there,
+              let link = stacks.first(where: { ($0.lower == here && $0.upper == there) || ($0.upper == here && $0.lower == there) })
+        else { return target }
+        let clearance = CGRect(x: -20, y: 0, width: 40, height: max(0, headroom))
+        let bounds = bodyBounds.union(clearance)
+        guard let corridor = corridor(for: link, bounds: bounds) else { return target }
+        let x = min(max(p.x, corridor.minX + 10), corridor.maxX - 10)
+        if abs(x - p.x) > 2 { return CGPoint(x: x, y: p.y) }            // line up under/over the other display first
+        let goingDown = link.upper == here
+        return CGPoint(x: x, y: goingDown ? corridor.minY - 20 : corridor.maxY + 20)
     }
 
     public func setScreens(_ screens: [CGRect], fullFrames: [CGRect]? = nil) {
