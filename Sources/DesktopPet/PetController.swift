@@ -14,6 +14,9 @@ final class PetController {
 
     private let playback: AnimationPlayback
     private var saidRefreshed = false
+    /// When the eating or drinking loop first showed, and when that meal ends.
+    private var mealStart: CFTimeInterval?
+    private var mealEnd: CFTimeInterval = 0
     /// The behavior that started the current transition.
     private var transitionBehavior: Behavior?
     private var timer: Timer?
@@ -263,6 +266,19 @@ final class PetController {
     static let eatSeconds = 4.0
     static let drinkSeconds = 4.0
     static let refreshedSeconds = 2.0
+
+    /// How far through the meal it is, counted from when the eating or drinking loop first shows
+    /// (getting down to the bowl doesn't use up the full bowl).
+    private func mealProgress(for base: AnimState) -> Double {
+        let now = CACurrentMediaTime()
+        if mealStart == nil {
+            guard playback.transitionTarget == nil, playback.currentState?.base == base else { return 0 }
+            mealStart = now
+            mealEnd = now + max(0.5, base == .drink ? brain.remaining - Self.refreshedSeconds : brain.remaining)
+        }
+        guard let start = mealStart else { return 0 }
+        return min(1, (now - start) / (mealEnd - start))
+    }
 
     /// Full, half or empty bowl as the meal goes on (0 at the start, 1 when done).
     private static func bowl(_ base: AnimState, progress: Double) -> AnimState {
@@ -669,11 +685,10 @@ final class PetController {
         }
         if body.mode == .grounded && brain.current == .beg && needs.state.thirst < needs.state.hunger { state = .thirsty }
         // The last two seconds of a drink are the happy "ahh".
-        if state == .eat && brain.current == .eat {
-            state = Self.bowl(.eat, progress: 1 - brain.remaining / Self.eatSeconds)
-        }
-        if state == .drink && brain.remaining >= Self.refreshedSeconds {
-            state = Self.bowl(.drink, progress: (Self.drinkSeconds + Self.refreshedSeconds - brain.remaining) / Self.drinkSeconds)
+        if (state == .eat && brain.current == .eat) || (state == .drink && brain.remaining >= Self.refreshedSeconds) {
+            state = Self.bowl(state, progress: mealProgress(for: state))
+        } else {
+            mealStart = nil
         }
         if state.base == .drink && brain.remaining < Self.refreshedSeconds {
             state = .refreshed
