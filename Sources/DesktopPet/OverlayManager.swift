@@ -53,8 +53,9 @@ final class OverlayManager {
 
     /// While the pet straddles a seam, draws a copy of `sprite` on each other display it overlaps,
     /// so it isn't cut off at the edge of the display it belongs to.
-    func mirror(_ sprite: SKSpriteNode, globalFeet p: CGPoint) {
-        let local = sprite.frame                       // relative to the feet
+    func mirror(_ sprite: SKSpriteNode, globalFeet p: CGPoint, scale: CGFloat = 1) {
+        let f = sprite.frame                           // relative to the feet, before the pet's display scale
+        let local = CGRect(x: f.minX * scale, y: f.minY * scale, width: f.width * scale, height: f.height * scale)
         let global = local.offsetBy(dx: p.x, dy: p.y)
         for o in overlays {
             let id = ObjectIdentifier(o)
@@ -75,11 +76,11 @@ final class OverlayManager {
             m.anchorPoint = sprite.anchorPoint
             m.xScale = 1
             m.yScale = 1
-            m.size = sprite.size
+            m.size = CGSize(width: sprite.size.width * scale, height: sprite.size.height * scale)
             m.xScale = sprite.xScale
             m.yScale = sprite.yScale
             m.zPosition = corgiNode.zPosition + sprite.zPosition
-            m.position = CGPoint(x: p.x - o.frame.minX + sprite.position.x, y: p.y - o.frame.minY + sprite.position.y)
+            m.position = CGPoint(x: p.x - o.frame.minX + sprite.position.x * scale, y: p.y - o.frame.minY + sprite.position.y * scale)
         }
     }
 

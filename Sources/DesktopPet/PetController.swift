@@ -75,6 +75,7 @@ final class PetController {
         let frames = NSScreen.screens.map(\.visibleFrame)
         world = World(provider: CGWindowListProvider(), screens: frames, bodyBounds: backend.movementBounds)
         world.setScreens(frames, fullFrames: NSScreen.screens.map(\.frame))
+        displayScales = Self.physicalScales()
         let vf = HomeTracker.cornerScreenIndex(frames).map { frames[$0] } ?? .zero
         let initial = CGPoint(x: vf.maxX - 80, y: vf.maxY - 100)
         body = Body(position: nearestPoint(to: initial, in: world.movementScreens))
@@ -91,7 +92,39 @@ final class PetController {
     }
 
     var hitRect: CGRect {
-        backend.spriteBounds.offsetBy(dx: body.position.x, dy: body.position.y)
+        let b = backend.spriteBounds, s = drawScale
+        return CGRect(x: b.minX * s, y: b.minY * s, width: b.width * s, height: b.height * s)
+            .offsetBy(dx: body.position.x, dy: body.position.y)
+    }
+
+    /// Point-to-millimetre ratio of each display relative to the built-in one, so the pet is drawn smaller on
+    /// a display with big points (a 27" 1440p monitor) and looks the same physical size everywhere.
+    private var displayScales: [CGFloat] = []
+    /// The scale the pet is drawn at right now; eases toward the display it's on so crossing a seam doesn't pop.
+    private var drawScale: CGFloat = 1
+
+    private static func physicalScales() -> [CGFloat] {
+        let screens = NSScreen.screens
+        let mmPerPoint: [CGFloat?] = screens.map { s in
+            guard let n = s.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else { return nil }
+            let mm = CGDisplayScreenSize(n.uint32Value).width
+            return mm > 0 && s.frame.width > 0 ? mm / s.frame.width : nil
+        }
+        let builtIn = screens.indices.first { i in
+            (screens[i].deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)
+                .map { CGDisplayIsBuiltin($0.uint32Value) != 0 } ?? false
+        }
+        guard let ref = mmPerPoint[builtIn ?? 0] ?? mmPerPoint.compactMap({ $0 }).min() else {
+            return screens.map { _ in 1 }
+        }
+        return mmPerPoint.map { $0.map { min(1.25, max(0.6, ref / $0)) } ?? 1 }
+    }
+
+    private func updateDrawScale(dt: TimeInterval) {
+        let target = world.display(at: body.position).flatMap { displayScales.indices.contains($0) ? displayScales[$0] : nil } ?? 1
+        drawScale += (target - drawScale) * min(1, CGFloat(dt) * 5)
+        if abs(drawScale - target) < 0.002 { drawScale = target }
+        if backend.node.xScale != drawScale { backend.node.setScale(drawScale) }
     }
 
     func start() {
@@ -172,6 +205,7 @@ final class PetController {
         let frames = NSScreen.screens.map(\.visibleFrame)
         guard frames != world.screens else { return }
         world.setScreens(frames, fullFrames: NSScreen.screens.map(\.frame))
+        displayScales = Self.physicalScales()
         updateHome()
         ball?.setArea(ballArea)
     }
@@ -208,7 +242,7 @@ final class PetController {
         refreshScreenBounds()
         clampBody()
         overlays.place(globalFeet: body.position)
-        overlays.mirror(backend.spriteNode, globalFeet: body.position)
+        overlays.mirror(backend.spriteNode, globalFeet: body.position, scale: drawScale)
     }
 
     /// Called when the floor disappears under the corgi.
@@ -523,13 +557,14 @@ final class PetController {
         }
         clampBody()
         updateMovementSounds(dt: dt)
+        updateDrawScale(dt: dt)
         let effort: Exertion = body.isRunning || (body.isMoving && brain.current.exertion == .hard) ? .hard
             : body.isMoving ? .light : .rest
         needs.exert(effort, seconds: dt)
         if effort == .hard { lastHardExercise = now }
 
         overlays.place(globalFeet: body.position)
-        overlays.mirror(backend.spriteNode, globalFeet: body.position)
+        overlays.mirror(backend.spriteNode, globalFeet: body.position, scale: drawScale)
         // Cling sprites are drawn for their side already, so they are never mirrored.
         backend.setFacing(right: body.mode == .clinging ? true : body.facingRight)
         updateAnimation()
