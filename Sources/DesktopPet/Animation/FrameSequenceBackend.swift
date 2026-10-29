@@ -97,7 +97,19 @@ final class FrameSequenceBackend: AnimationBackend {
 
     func playBridge(_ name: String, completion: @escaping () -> Void) -> TimeInterval? {
         guard let entry = bridgeAnims[name] else { return nil }
-        return start(entry, state: nil, once: true, completion: completion)
+        return start(entry, state: nil, once: true, completion: completion, eased: true)
+    }
+
+    /// Per-frame times for a one-shot move that eases in and out: the first and last frames linger a little,
+    /// the middle moves faster, and the total stays the same.
+    static func easedTimes(count: Int, frameDuration: TimeInterval) -> [TimeInterval] {
+        guard count > 2 else { return Array(repeating: frameDuration, count: count) }
+        let weights = (0..<count).map { i -> Double in
+            let x = (Double(i) + 0.5) / Double(count)          // 0...1 across the move
+            return 1 + 0.6 * cos(2 * .pi * x)                   // ~1.6x at the ends, ~0.4x mid-move
+        }
+        let total = weights.reduce(0, +)
+        return weights.map { $0 / total * frameDuration * Double(count) }
     }
 
     private static func loadFrames(_ packURL: URL, _ spec: AnimationSpec) -> [SKTexture]? {
@@ -123,7 +135,7 @@ final class FrameSequenceBackend: AnimationBackend {
     }
 
     private func start(_ entry: (spec: AnimationSpec, frames: [SKTexture]), state: AnimState?, once: Bool,
-                       completion: (() -> Void)?, phase: Int = 0) -> TimeInterval? {
+                       completion: (() -> Void)?, phase: Int = 0, eased: Bool = false) -> TimeInterval? {
         let fps = entry.spec.fps.isFinite ? max(entry.spec.fps, 1) : 1
         let frameDuration = 1 / fps
         let duration = Double(entry.frames.count) * frameDuration
@@ -144,7 +156,14 @@ final class FrameSequenceBackend: AnimationBackend {
         let animation = SKAction.animate(with: frames, timePerFrame: frameDuration,
                                          resize: false, restore: false)
         if once {
-            sprite.run(.sequence([animation, .run { [weak self] in
+            let move: SKAction
+            if eased {
+                let times = Self.easedTimes(count: frames.count, frameDuration: frameDuration)
+                move = .sequence(zip(frames, times).flatMap { [SKAction.setTexture($0.0, resize: false), .wait(forDuration: $0.1)] })
+            } else {
+                move = animation
+            }
+            sprite.run(.sequence([move, .run { [weak self] in
                 guard self?.playbackID == id else { return }
                 completion?()
             }]), withKey: "frames")

@@ -261,4 +261,16 @@ final class TransitionTests: XCTestCase {
         XCTAssertEqual(m.resolve(.eatEmpty)?.state, .eat)
         XCTAssertEqual(m.postures[.eatHalf], .stand)        // follows the pack's override for eat
     }
+
+    func testRoamingToTheCursorAlsoRoutesAndHoldsStill() throws {
+        let b = TimelineBackend()
+        let p = AnimationPlayback(backend: b, graph: TransitionGraph(bridges: ["stand>sit", "enter:beg"]))
+        p.update(.roam, mode: .roaming)
+        p.update(.beg, mode: .roaming)
+        XCTAssertEqual(b.bridges, ["stand>sit"])
+        XCTAssertTrue(p.holdsGroundedMotion(in: .roaming))
+        p.update(.fall, mode: .airborne)
+        XCTAssertNil(p.transitionTarget)
+        XCTAssertFalse(p.holdsGroundedMotion(in: .airborne))
+    }
 }

@@ -51,6 +51,9 @@ public final class AnimationPlayback {
     /// Called with each routing decision, for debugging.
     public var trace: ((String) -> Void)?
 
+    /// Standing or roaming toward the cursor, poses go through bridges; in the air, held or clinging they switch directly.
+    static func routes(_ mode: BodyMode) -> Bool { mode == .grounded || mode == .roaming }
+
     public init(backend: any AnimationPlaybackBackend, graph: TransitionGraph = .init()) {
         self.backend = backend
         self.graph = graph
@@ -122,8 +125,8 @@ public final class AnimationPlayback {
     /// Pause only the grounded behavior clock and its locomotion command, never gravity.
     /// Also true while a one-shot step (sitting down, getting up, a yawn) plays, so it doesn't slide.
     public func holdsGroundedMotion(in mode: BodyMode) -> Bool {
-        guard mode == .grounded else { return false }
-        if reaction?.mode == .grounded { return true }
+        guard mode == .grounded || mode == .roaming else { return false }
+        if mode == .grounded && reaction?.mode == .grounded { return true }
         switch transition?.current {
         case .once?, .bridge?: return true
         default: return false
@@ -141,7 +144,7 @@ public final class AnimationPlayback {
         } else if state == currentState {
             return
         }
-        let steps = mode == .grounded ? currentState.map { graph.plan(from: $0, to: state) } ?? [] : []
+        let steps = Self.routes(mode) ? currentState.map { graph.plan(from: $0, to: state) } ?? [] : []
         trace?("\(currentState?.rawValue ?? "nil") -> \(state.rawValue) mode=\(mode) steps=\(steps)")
         guard !steps.isEmpty else {
             currentState = state
@@ -197,7 +200,7 @@ public final class AnimationPlayback {
 
     private func reconcile(mode: BodyMode) {
         if let reaction, reaction.mode != mode { cancelReaction() }
-        if transition != nil && mode != .grounded { transition = nil }
+        if transition != nil && !Self.routes(mode) { transition = nil }
     }
 
     private func finish(id: UInt64) {

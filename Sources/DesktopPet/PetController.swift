@@ -501,6 +501,7 @@ final class PetController {
         stepBall(dt: dt)
         if playback.holdsGroundedMotion(in: body.mode) {
             body.stop()
+            body.hover()
         } else if executor.step(brain.current, body: body, world: world, cursor: cursor) {
             stepFinished()
         }

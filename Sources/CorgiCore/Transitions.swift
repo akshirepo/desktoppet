@@ -13,6 +13,7 @@ public enum Posture: String, Codable {
         .wave: .sit, .refreshed: .sit,
         .sleep: .lie, .eat: .lie, .drink: .lie, .watch: .lie,
         .eatHalf: .lie, .eatEmpty: .lie, .drinkHalf: .lie, .drinkEmpty: .lie,
+        .roam: .stand,
     ]
 }
 
