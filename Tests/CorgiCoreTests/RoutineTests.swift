@@ -119,4 +119,30 @@ final class RoutineTests: XCTestCase {
         XCTAssertEqual(b.update(dt: 2, ctx()), .sit)
         XCTAssertFalse(Behavior.autonomous.contains(.drink))
     }
+
+    func testAfterBeingPutDownItDoesNotHeadHome() {
+        var c = ctx(sinceInteraction: 900, atHome: false)
+        c.secondsAwayFromHome = 3600
+        XCTAssertGreaterThan(brain().weights(c)[.goHome]!, 5)
+        c.stayPut = true
+        XCTAssertEqual(brain().weights(c)[.goHome], 0)
+    }
+
+    func testLeashedWalksStayNearTheDropSpot() {
+        let provider = FakeWindows()
+        let world = World(provider: provider, screens: [CGRect(x: 0, y: 0, width: 3000, height: 900)])
+        world.refresh()
+        for seed in UInt64(1)...30 {
+            let e = BehaviorExecutor(rng: SeededRandom(seed: seed))
+            e.leash = (center: 500, radius: 300)
+            let body = Body(position: CGPoint(x: 500, y: 0))
+            body.step(dt: 0.01, world: world)
+            e.begin(.walk, body: body, world: world, cursor: .zero)
+            for _ in 0..<1500 {
+                if e.step(.walk, body: body, world: world, cursor: .zero) { break }
+                _ = body.step(dt: 0.02, world: world)
+            }
+            XCTAssertLessThanOrEqual(abs(body.position.x - 500), 305)
+        }
+    }
 }

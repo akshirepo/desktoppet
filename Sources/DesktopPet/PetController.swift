@@ -14,6 +14,11 @@ final class PetController {
 
     private let playback: AnimationPlayback
     private var saidRefreshed = false
+    /// After you drop it somewhere it stays around that spot (x) until `stayUntil`.
+    static let stayPutSeconds: CFTimeInterval = 10 * 60
+    private var stayUntil: CFTimeInterval = 0
+    private var stayX: CGFloat = 0
+
     /// When the eating or drinking loop first showed, and when that meal ends.
     private var mealStart: CFTimeInterval?
     private var mealEnd: CFTimeInterval = 0
@@ -546,8 +551,10 @@ final class PetController {
         let ctx = BrainContext(needs: needs.state, lowThreshold: needs.config.lowThreshold, canHop: canHop,
                                atHome: home.isHome(body.position), secondsAwayFromHome: home.secondsAway,
                                bored: boredom.isBored(needs.state),
-                               secondsSinceInteraction: boredom.secondsSinceInteraction)
+                               secondsSinceInteraction: boredom.secondsSinceInteraction,
+                               stayPut: now < stayUntil)
         // Do not call update with dt=0: the brain can still change behaviors at zero elapsed time.
+        executor.leash = now < stayUntil ? (center: stayX, radius: 300) : nil
         if !playback.holdsGroundedMotion(in: body.mode), let next = brain.update(dt: dt, ctx) {
             beginBehavior(next)
         }
@@ -568,6 +575,8 @@ final class PetController {
         if let event = body.step(dt: dt, world: world) {
             if executor.handle(event, behavior: brain.current, body: body) { stepFinished() }
             if event == .landed {
+                // Landing after being dropped: that's the spot to stay around.
+                if now < stayUntil && stayUntil - now > Self.stayPutSeconds - 6 { stayX = body.position.x }
                 sounds.play(.land)
                 playback.requestReaction(.land, mode: body.mode)
                 if brain.current == .fall { brain.finishCurrent() }
@@ -819,7 +828,9 @@ extension PetController: SceneInputHandler {
                 brain.interrupt(with: .cling, duration: Double.random(in: 180...360))
                 beginBehavior(.cling)
             } else {
-                // Stay where dropped. Home still pulls it back slowly via the brain's goHome weight.
+                // Stay where dropped: this spot is its home for a while.
+                stayUntil = CACurrentMediaTime() + Self.stayPutSeconds
+                stayX = body.position.x
                 brain.interrupt(with: .fall, duration: 5)
                 beginBehavior(.fall)
             }

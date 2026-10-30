@@ -30,6 +30,8 @@ public final class BehaviorExecutor {
     private var travelTarget: CGPoint?
     /// Chance a walk heads over to a neighbouring display when one is reachable.
     public var crossScreenChance: CGFloat = 0.25
+    /// While set, walks and zoomies stay within `radius` of `center` (x) and don't leave for another display.
+    public var leash: (center: CGFloat, radius: CGFloat)?
 
     public init(rng: any RandomNumberGenerator = SystemRandomNumberGenerator()) {
         self.rng = rng
@@ -54,10 +56,14 @@ public final class BehaviorExecutor {
         switch b {
         case .walk:
             if let s = segment {
-                let lo = s.minX + 20, hi = max(lo, s.maxX - 20)
+                var lo = s.minX + 20, hi = max(lo, s.maxX - 20)
+                if let l = leash {
+                    lo = max(lo, l.center - l.radius)
+                    hi = max(lo, min(hi, l.center + l.radius))
+                }
                 targetX = lo + random() * (hi - lo)
                 // Now and then it wanders over to the next display.
-                if random() < crossScreenChance {
+                if leash == nil, random() < crossScreenChance {
                     if let next = neighborFloor(of: s, body: body, world: world) {
                         targetX = next.minX + 40 + random() * max(0, next.width - 80)
                     } else if let here = world.display(at: body.position),
@@ -143,6 +149,8 @@ public final class BehaviorExecutor {
             let speed = b == .walk ? body.config.walkSpeed * speedScale : body.config.runSpeed
             body.walk(direction: dx, speed: speed)
         case .zoomies:
+            // Kept near where it was put down: turn back at the end of the leash.
+            if let l = leash, (body.position.x - l.center) * zoomDirection > l.radius { zoomDirection = -zoomDirection }
             body.walk(direction: zoomDirection, speed: body.config.runSpeed * 1.2)
         case .chaseCursor:
             if travel(toward: cursor, body: body, world: world) { return false }
