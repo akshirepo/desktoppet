@@ -833,5 +833,11 @@
       "fetch",
       "roam"
     ]
-  ]
+  ],
+  "edgeWall": {
+    "folder": "edgeWall",
+    "width": 64,
+    "height": 272,
+    "faceColumn": 16
+  }
 }

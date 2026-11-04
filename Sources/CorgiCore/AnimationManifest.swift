@@ -1,3 +1,6 @@
+#if canImport(CoreGraphics)
+import CoreGraphics
+#endif
 import Foundation
 
 public enum AnimState: String, CaseIterable, Codable {
@@ -42,6 +45,30 @@ public struct AnimationSpec: Codable, Equatable {
     }
 }
 
+/// The wall a pet hides behind at a screen edge (see `EdgePeek`). Sizes are canvas pixels at the pack scale.
+/// The folder holds `cap.png` (the top) and `tile.png` (repeated below it down to the floor), both `width` wide,
+/// drawn for a LEFT screen edge (outer side on column 0, inner face on the right); the app mirrors them.
+public struct EdgeWallSpec: Codable, Equatable {
+    public var folder: String
+    /// From the screen edge to the wall's inner face.
+    public var width: Double
+    /// How far the top of the wall is above the pet's feet.
+    public var height: Double
+    /// The column of the peek frames (`peekEdge`, `holdEdge` and their bridges) that sits on the wall's inner
+    /// face. The body is cut there; paws drawn left of it hook over the wall.
+    public var faceColumn: Double
+
+    public init(folder: String, width: Double, height: Double, faceColumn: Double) {
+        self.folder = folder
+        self.width = width
+        self.height = height
+        self.faceColumn = faceColumn
+    }
+
+    /// Points (before the display scale) from the screen edge to column 0 of the peek frames.
+    public func inset(packScale: Double) -> CGFloat { CGFloat((width - faceColumn) * packScale) }
+}
+
 public enum AnimationManifestError: Error, Equatable {
     case missingIdle
 }
@@ -70,6 +97,8 @@ public struct AnimationManifest: Codable, Equatable {
     public var bridges: [String: AnimationSpec]?
     /// Activities drawn from the same view (e.g. a side-on walk, run and kick) that switch into each other directly.
     public var directGroups: [[String]]?
+    /// The wall it hides behind when peeking round a screen edge. Without one it peeks round the bare edge.
+    public var edgeWall: EdgeWallSpec?
 
     /// Every ordered pair inside a direct group.
     public var directPairs: Set<[AnimState]> {

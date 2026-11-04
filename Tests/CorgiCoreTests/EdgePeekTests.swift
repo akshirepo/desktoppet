@@ -34,7 +34,8 @@ final class EdgePeekTests: XCTestCase {
         // Canvas column 0 sits exactly on the screen edge.
         XCTAssertEqual(spot.feetX(bounds: canvas) + canvas.minX, 0, accuracy: 1e-9)
         // It walks to the end of the floor, which is where the feet go anyway at full scale.
-        XCTAssertEqual(try XCTUnwrap(spot.standX), spot.feetX(bounds: canvas), accuracy: 1e-9)
+        XCTAssertEqual(try XCTUnwrap(spot.standX(bounds: canvas)), spot.feetX(bounds: canvas), accuracy: 1e-9)
+        XCTAssertEqual(try XCTUnwrap(spot.floorEnd), spot.feetX(bounds: canvas), accuracy: 1e-9)
     }
 
     func testRightEdgeIsMirrored() throws {
@@ -44,7 +45,7 @@ final class EdgePeekTests: XCTestCase {
         XCTAssertFalse(spot.facingRight)
         // Mirrored, column 0 lands on the right edge.
         XCTAssertEqual(spot.feetX(bounds: canvas) - canvas.minX, 1440, accuracy: 1e-9)
-        XCTAssertEqual(try XCTUnwrap(spot.standX), 1440 + canvas.minX, accuracy: 1e-9)
+        XCTAssertEqual(try XCTUnwrap(spot.floorEnd), 1440 + canvas.minX, accuracy: 1e-9)
     }
 
     func testHigherUpItHoldsOnAtThatHeight() throws {
@@ -54,7 +55,8 @@ final class EdgePeekTests: XCTestCase {
         XCTAssertEqual(spot.animState, .holdEdge)
         XCTAssertEqual(spot.y, 400)
         XCTAssertNil(spot.floor)
-        XCTAssertNil(spot.standX)
+        XCTAssertNil(spot.floorEnd)
+        XCTAssertNil(spot.standX(bounds: canvas))
     }
 
     func testHoldStaysBelowTheTopOfTheScreen() throws {
@@ -115,8 +117,9 @@ final class EdgePeekTests: XCTestCase {
         let spot = try XCTUnwrap(find(CGPoint(x: 70, y: 20), in: w, scale: 0.86))
         XCTAssertEqual(spot.kind, .floor)
         XCTAssertEqual(spot.feetX(bounds: canvas, scale: 0.86) + canvas.minX * 0.86, 0, accuracy: 1e-9)
-        // The floor still ends where an unscaled pet stands; the body glides the rest of the way.
-        XCTAssertEqual(try XCTUnwrap(spot.standX), -canvas.minX, accuracy: 1e-9)
+        // The floor still ends where an unscaled pet stands: it walks there and the body glides the rest.
+        XCTAssertEqual(try XCTUnwrap(spot.floorEnd), -canvas.minX, accuracy: 1e-9)
+        XCTAssertEqual(try XCTUnwrap(spot.standX(bounds: canvas, scale: 0.86)), -canvas.minX, accuracy: 1e-9)
     }
 
     func testWindowTopThatDoesNotReachTheEdgeMeansHolding() throws {
@@ -131,7 +134,7 @@ final class EdgePeekTests: XCTestCase {
         let spot = try XCTUnwrap(find(CGPoint(x: 80, y: 330), in: w))
         XCTAssertEqual(spot.kind, .floor)
         XCTAssertEqual(spot.y, 300)
-        XCTAssertEqual(try XCTUnwrap(spot.standX), -canvas.minX, accuracy: 1e-9)
+        XCTAssertEqual(try XCTUnwrap(spot.floorEnd), -canvas.minX, accuracy: 1e-9)
         XCTAssertEqual(spot.floor?.windowID, 1)
     }
 
@@ -223,20 +226,76 @@ final class EdgePeekTests: XCTestCase {
         XCTAssertNil(body.peekTarget)
     }
 
-    func testPeekBehaviorWalksToTheEndOfTheFloor() throws {
+    func testPeekBehaviorWalksUpToTheSpotByTheWall() throws {
         let w = world([laptop])
         let body = Body(position: CGPoint(x: 150, y: floorY))
         body.step(dt: 0.01, world: w)
         let exec = BehaviorExecutor(rng: SeededRandom(seed: 1))
-        let end = try XCTUnwrap(w.segment(under: body.position)).minX
+        let end = try XCTUnwrap(w.segment(under: body.position)).minX + 9
         exec.peekStandX = end
         exec.begin(.peek, body: body, world: w, cursor: .zero)
         for _ in 0..<200 {
             XCTAssertFalse(exec.step(.peek, body: body, world: w, cursor: .zero))
             if let e = body.step(dt: 1.0 / 30, world: w) { _ = exec.handle(e, behavior: .peek, body: body) }
         }
-        XCTAssertEqual(body.position.x, end)
+        XCTAssertEqual(body.position.x, end, accuracy: 1, "stops on the spot, the glide does the last point")
         XCTAssertFalse(body.isMoving)
+    }
+
+    // MARK: wall
+
+    /// The pack wall: 44 px wide, inner face on frame column 16, top 272 px above the feet.
+    let wall = EdgeWallSpec(folder: "edgeWall", width: 44, height: 272, faceColumn: 16)
+    let packScale = 0.2971
+
+    func testWithAWallTheFaceColumnSitsOnTheWallsInnerFace() throws {
+        let w = world([laptop])
+        let inset = wall.inset(packScale: packScale)
+        XCTAssertEqual(inset, 28 * 0.2971, accuracy: 1e-9)
+        let spot = try XCTUnwrap(EdgePeekFinder.find(feet: CGPoint(x: 80, y: 20), screens: w.screens, seams: w.seams,
+                                                     floors: w.segments, bounds: canvas, inset: inset))
+        XCTAssertEqual(spot.kind, .floor)
+        XCTAssertEqual(spot.inset, inset)
+        let column0 = spot.feetX(bounds: canvas) + canvas.minX
+        XCTAssertEqual(column0 + 16 * 0.2971, 44 * 0.2971, accuracy: 1e-9, "face column on the inner face")
+        // It walks right up to that spot: inside the floor, so coming out needs no snap.
+        XCTAssertEqual(try XCTUnwrap(spot.standX(bounds: canvas)), spot.feetX(bounds: canvas), accuracy: 1e-9)
+        XCTAssertGreaterThan(spot.feetX(bounds: canvas), try XCTUnwrap(spot.floorEnd))
+    }
+
+    func testWallMirrorsAtTheRightEdgeAndScales() throws {
+        let w = world([laptop])
+        let inset = wall.inset(packScale: packScale)
+        let spot = try XCTUnwrap(EdgePeekFinder.find(feet: CGPoint(x: 1360, y: 20), screens: w.screens, seams: w.seams,
+                                                     floors: w.segments, bounds: canvas, scale: 0.86, inset: inset))
+        XCTAssertEqual(spot.side, .right)
+        XCTAssertEqual(spot.feetX(bounds: canvas, scale: 0.86) - canvas.minX * 0.86, 1440 - inset * 0.86, accuracy: 1e-9)
+        let f = spot.wallFrame(width: CGFloat(wall.width * packScale), height: CGFloat(wall.height * packScale),
+                               scale: 0.86, groundY: floorY)
+        XCTAssertEqual(f.maxX, 1440, accuracy: 1e-9)
+        XCTAssertEqual(f.width, 44 * 0.2971 * 0.86, accuracy: 1e-9)
+        XCTAssertEqual(f.minY, floorY, accuracy: 1e-9)
+        XCTAssertEqual(f.maxY, floorY + 272 * 0.2971 * 0.86, accuracy: 1e-9)
+    }
+
+    func testHoldWallStandsOnTheDisplayFloorAndRisesPastTheHead() throws {
+        let spot = EdgePeek(screen: 0, side: .left, kind: .hold, edgeX: 0, y: 400, inset: 8)
+        let f = spot.wallFrame(width: 13, height: 80, groundY: floorY)
+        XCTAssertEqual(f.minX, 0)
+        XCTAssertEqual(f.width, 13)
+        XCTAssertEqual(f.minY, floorY)
+        XCTAssertEqual(f.maxY, 480)
+    }
+
+    func testManifestReadsTheWall() throws {
+        let json = #"""
+        {"states": {"idle": {"folder": "idle", "fps": 4, "loop": true, "anchor": [0.5, 0.075]}},
+         "edgeWall": {"folder": "edgeWall", "width": 44, "height": 272, "faceColumn": 16}}
+        """#
+        let m = try JSONDecoder().decode(AnimationManifest.self, from: Data(json.utf8))
+        XCTAssertEqual(m.edgeWall, wall)
+        let old = try JSONDecoder().decode(AnimationManifest.self, from: Data(#"{"states": {}}"#.utf8))
+        XCTAssertNil(old.edgeWall)
     }
 
     // MARK: packs
@@ -248,6 +307,14 @@ final class EdgePeekTests: XCTestCase {
             let dir = packs.appendingPathComponent(pack)
             let m = try AnimationManifest.load(from: dir.appendingPathComponent("manifest.json"))
             let idle = try XCTUnwrap(m.states["idle"])
+            // The wall to hide behind: cap and tile, and a face column inside the wall.
+            let wall = try XCTUnwrap(m.edgeWall, pack)
+            XCTAssertGreaterThan(wall.width, wall.faceColumn)
+            XCTAssertGreaterThan(wall.faceColumn, 0)
+            for f in ["cap.png", "tile.png"] {
+                XCTAssertTrue(FileManager.default.fileExists(atPath: dir.appendingPathComponent(wall.folder)
+                    .appendingPathComponent(f).path), "\(pack) \(f)")
+            }
             for state in [AnimState.peekEdge, .holdEdge] {
                 let spec = try XCTUnwrap(m.states[state.rawValue], "\(pack) \(state)")
                 // Same anchor as idle: canvas column 0 is the edge and the exit ends on the idle frame in place.

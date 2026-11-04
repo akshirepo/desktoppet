@@ -84,10 +84,12 @@ final class OverlayManager {
         }
     }
 
-    /// Puts any node (the ball) on the overlay of the screen containing the global point `p`.
-    func place(_ node: SKNode, global p: CGPoint) {
-        guard let target = overlays.first(where: { $0.frame.contains(p) })
-            ?? overlays.first(where: { $0.frame.minX <= p.x && p.x < $0.frame.maxX }) ?? overlays.first
+    /// Puts any node (the ball) on the overlay of the screen containing the global point `p`
+    /// (or `inside`, for a node anchored right on a display's edge).
+    func place(_ node: SKNode, global p: CGPoint, inside: CGPoint? = nil) {
+        let q = inside ?? p
+        guard let target = overlays.first(where: { $0.frame.contains(q) })
+            ?? overlays.first(where: { $0.frame.minX <= q.x && q.x < $0.frame.maxX }) ?? overlays.first
         else { return }
         if node.scene !== target.scene {
             node.removeFromParent()

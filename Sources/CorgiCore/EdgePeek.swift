@@ -15,10 +15,11 @@ public enum EdgePeekKind: String, Codable, Equatable {
 
 /// A spot just past a display's outer left or right edge where the pet hides and peeks back in.
 ///
-/// Art convention for `peekEdge`, `holdEdge` and their bridges: frames face right, peeking in from the LEFT edge,
-/// and canvas column 0 (the canvas's left border) is the screen edge, so nothing can be drawn on the hidden side.
-/// The anchor is the same as idle's, so the exit art can end on the exact idle frame. At a right edge the sprite
-/// is mirrored, which puts column 0 on the right edge instead.
+/// Art convention for `peekEdge`, `holdEdge` and their bridges: frames face right, peeking in from the LEFT edge.
+/// With no wall, canvas column 0 (the canvas's left border) is the screen edge, so nothing can be drawn on the
+/// hidden side. With a wall (`EdgeWallSpec`) the wall stands at the edge and the frames' `faceColumn` sits on its
+/// inner face: the body is cut there, paws left of it hook over the bricks. The anchor is the same as idle's and
+/// the bridges start and end on the hub pose at its normal place. At a right edge everything is mirrored.
 public struct EdgePeek: Equatable {
     public var screen: Int
     public var side: EdgeSide
@@ -29,14 +30,19 @@ public struct EdgePeek: Equatable {
     public var y: CGFloat
     /// The floor it peeks from (`.floor` only).
     public var floor: FloorSegment?
+    /// Points (before the display scale) from the screen edge to canvas column 0: the wall width minus its face
+    /// column (`EdgeWallSpec.inset`), 0 without a wall.
+    public var inset: CGFloat
 
-    public init(screen: Int, side: EdgeSide, kind: EdgePeekKind, edgeX: CGFloat, y: CGFloat, floor: FloorSegment? = nil) {
+    public init(screen: Int, side: EdgeSide, kind: EdgePeekKind, edgeX: CGFloat, y: CGFloat,
+                floor: FloorSegment? = nil, inset: CGFloat = 0) {
         self.screen = screen
         self.side = side
         self.kind = kind
         self.edgeX = edgeX
         self.y = y
         self.floor = floor
+        self.inset = inset
     }
 
     public var animState: AnimState { kind == .floor ? .peekEdge : .holdEdge }
@@ -44,19 +50,36 @@ public struct EdgePeek: Equatable {
     /// Faces into the screen.
     public var facingRight: Bool { side == .left }
 
-    /// Feet x that puts canvas column 0 on the edge. `bounds` is the peek pose's canvas relative to the feet,
-    /// facing right and unscaled (`bounds.minX` < 0); `scale` is the draw scale on that display.
+    /// Feet x that puts canvas column 0 `inset` points in from the edge. `bounds` is the peek pose's canvas relative
+    /// to the feet, facing right and unscaled (`bounds.minX` < 0); `scale` is the draw scale on that display.
     public func feetX(bounds: CGRect, scale: CGFloat = 1) -> CGFloat {
-        side == .left ? edgeX - bounds.minX * scale : edgeX + bounds.minX * scale
+        let d = (inset - bounds.minX) * scale
+        return side == .left ? edgeX + d : edgeX - d
     }
 
     public func feet(bounds: CGRect, scale: CGFloat = 1) -> CGPoint {
         CGPoint(x: feetX(bounds: bounds, scale: scale), y: y)
     }
 
-    /// The end of the floor next to the edge, where a floor peek walks to before it hides.
-    public var standX: CGFloat? {
+    /// The end of the floor next to the edge (`.floor` only).
+    public var floorEnd: CGFloat? {
         floor.map { side == .left ? $0.minX : $0.maxX }
+    }
+
+    /// Where a floor peek walks to before it hides: the peek spot, or the end of the floor if that's as far as
+    /// it can walk (a small draw scale puts the spot a little past it; the body glides the rest).
+    public func standX(bounds: CGRect, scale: CGFloat = 1) -> CGFloat? {
+        guard let f = floor else { return nil }
+        return f.clampX(feetX(bounds: bounds, scale: scale))
+    }
+
+    /// The wall it hides behind: from the screen edge in by `width`, up to `height` above the feet (both points
+    /// before the display scale). It stands on the floor it peeks from, or for a hold on `groundY` (the display's floor).
+    public func wallFrame(width: CGFloat, height: CGFloat, scale: CGFloat = 1, groundY: CGFloat) -> CGRect {
+        let w = width * scale
+        let bottom = kind == .floor ? y : min(groundY, y)
+        let top = y + height * scale
+        return CGRect(x: side == .left ? edgeX : edgeX - w, y: bottom, width: w, height: max(0, top - bottom))
     }
 }
 
@@ -68,8 +91,9 @@ public enum EdgePeekFinder {
     /// - bounds: the peek canvas relative to the feet (facing right, unscaled); `scale` is the display's draw scale.
     /// - reach: how far from the peek spot the feet may be (default one sprite width).
     /// - floorReach: how high above a floor still counts as on it (default three quarters of the sprite height).
+    /// - inset: points from the edge to canvas column 0 (a wall's width minus its face column), 0 without a wall.
     public static func find(feet p: CGPoint, screens: [CGRect], seams: [ScreenSeam], floors: [FloorSegment],
-                            bounds: CGRect, scale: CGFloat = 1,
+                            bounds: CGRect, scale: CGFloat = 1, inset: CGFloat = 0,
                             reach: CGFloat? = nil, floorReach: CGFloat? = nil) -> EdgePeek? {
         guard bounds.width > 0, bounds.height > 0, bounds.minX < 0, scale > 0 else { return nil }
         let reach = reach ?? bounds.width * scale
@@ -79,7 +103,7 @@ public enum EdgePeekFinder {
         for (i, s) in screens.enumerated() where p.x >= s.minX && p.x <= s.maxX && p.y >= s.minY - 2 && p.y <= s.maxY {
             for side in [EdgeSide.left, .right] {
                 let edge = side == .left ? s.minX : s.maxX
-                var spot = EdgePeek(screen: i, side: side, kind: .hold, edgeX: edge, y: p.y)
+                var spot = EdgePeek(screen: i, side: side, kind: .hold, edgeX: edge, y: p.y, inset: inset)
                 let distance = abs(p.x - spot.feetX(bounds: bounds, scale: scale))
                 guard distance <= reach else { continue }
                 let bottom = p.y + bounds.minY * scale, top = p.y + bounds.maxY * scale

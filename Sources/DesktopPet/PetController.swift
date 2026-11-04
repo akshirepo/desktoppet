@@ -20,6 +20,8 @@ final class PetController {
     private var stayX: CGFloat = 0
     /// Hiding behind a screen edge after being dropped next to it.
     private var peek: EdgePeekSession?
+    /// The brick wall it hides behind (when the pack has one).
+    private let edgeWall = EdgeWall()
 
     /// When the eating or drinking loop first showed, and when that meal ends.
     private var mealStart: CFTimeInterval?
@@ -768,18 +770,27 @@ final class PetController {
         let bounds = backend.bounds(for: .peekEdge)
         let scale = world.display(at: body.position).map(targetScale(on:)) ?? drawScale
         guard let spot = EdgePeekFinder.find(feet: body.position, screens: world.screens, seams: world.seams,
-                                             floors: world.segments, bounds: bounds, scale: scale),
+                                             floors: world.segments, bounds: bounds, scale: scale,
+                                             inset: backend.edgeWall?.inset ?? 0),
               backend.available.contains(spot.animState) else { return nil }
         return spot
     }
 
     private func startPeek(_ spot: EdgePeek) {
         peek = EdgePeekSession(spot: spot, stay: .random(in: EdgePeekSession.stay))
-        executor.peekStandX = spot.standX
+        let scale = targetScale(on: spot.screen)
+        executor.peekStandX = spot.standX(bounds: backend.bounds(for: spot.animState), scale: scale)
         brain.interrupt(with: .peek, duration: .infinity)
         beginBehavior(.peek)
         TransitionLog.append("peek \(spot.kind.rawValue) \(spot.side.rawValue) edge x=\(Int(spot.edgeX)) y=\(Int(spot.y)) "
-            + "screen \(spot.screen) from \(Int(body.position.x)),\(Int(body.position.y)) for \(Int(peek!.remaining))s")
+            + "screen \(spot.screen) from \(Int(body.position.x)),\(Int(body.position.y)) for \(Int(peek!.remaining))s"
+            + (backend.edgeWall == nil ? " (no wall art)" : ""))
+        // The wall slides out from behind the edge first, so there's something to hide behind.
+        if let art = backend.edgeWall {
+            let ground = world.ground(of: spot.screen)?.y ?? world.screens[spot.screen].minY
+            edgeWall.show(art, frame: spot.wallFrame(width: art.width, height: art.height, scale: scale, groundY: ground),
+                          side: spot.side, scale: scale, overlays: overlays)
+        }
         if spot.kind == .hold { hide(spot) }
     }
 
@@ -799,8 +810,10 @@ final class PetController {
         }
         switch p.phase {
         case .approaching:
-            // Walking up to the end of the floor; there it turns to face the screen and hides.
-            guard body.mode == .grounded, playback.reactionState == nil, let x = spot.standX,
+            // Walking up to the wall (the end of the floor without one); there it turns to face the screen and hides.
+            let target = spot.standX(bounds: backend.bounds(for: spot.animState), scale: drawScale)
+            executor.peekStandX = target
+            guard body.mode == .grounded, playback.reactionState == nil, let x = target,
                   abs(body.position.x - x) < 1, abs(body.position.y - spot.y) <= 2 else { break }
             p.arrived()
             hide(spot)
@@ -812,7 +825,7 @@ final class PetController {
             }
             // Keep the edge column on the edge while the draw scale eases.
             body.movePeek(to: spot.feet(bounds: backend.bounds(for: spot.animState), scale: drawScale))
-            if spot.kind == .floor, world.segment(under: CGPoint(x: spot.standX ?? body.position.x, y: spot.y)) == nil {
+            if spot.kind == .floor, world.segment(under: CGPoint(x: spot.floorEnd ?? body.position.x, y: spot.y)) == nil {
                 endPeek(reason: "floor went away")
                 brain.finishCurrent()
                 return
@@ -830,7 +843,8 @@ final class PetController {
     private func comeOut(_ p: EdgePeekSession) {
         TransitionLog.append("peek over (\(p.spot.kind.rawValue))")
         executor.peekStandX = nil
-        if p.spot.kind == .floor, let x = p.spot.standX,
+        edgeWall.hide()
+        if p.spot.kind == .floor, let x = p.spot.floorEnd,
            let floor = world.segment(under: CGPoint(x: x, y: p.spot.y)) {
             body.stopPeeking(onto: floor)
             brain.finishCurrent()
@@ -847,8 +861,9 @@ final class PetController {
         peek = nil
         executor.peekStandX = nil
         TransitionLog.append("peek ended: \(reason)")
+        edgeWall.hide()
         guard body.mode == .peeking else { return }
-        if p.spot.kind == .floor, let x = p.spot.standX,
+        if p.spot.kind == .floor, let x = p.spot.floorEnd,
            let floor = world.segment(under: CGPoint(x: x, y: p.spot.y)) {
             body.stopPeeking(onto: floor)
         } else {

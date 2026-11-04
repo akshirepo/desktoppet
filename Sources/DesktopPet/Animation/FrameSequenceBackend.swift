@@ -32,6 +32,8 @@ final class FrameSequenceBackend: AnimationBackend {
     private var loopCycle: TimeInterval = 0
     private var loopState: AnimState?
     private var loopFrameCount: Int?
+    /// The wall to hide behind at a screen edge, from the pack's `edgeWall`.
+    private(set) var edgeWall: EdgeWallArt?
 
     init(packURL: URL) throws {
         let manifest = try AnimationManifest.load(from: packURL.appendingPathComponent("manifest.json"))
@@ -60,6 +62,11 @@ final class FrameSequenceBackend: AnimationBackend {
         }
         self.animations = animations
         scale = CGFloat(manifest.scale ?? 1)
+        if let w = manifest.edgeWall {
+            let art = EdgeWallArt(pack: packURL, spec: w, packScale: CGFloat(manifest.scale ?? 1))
+            if art == nil { NSLog("DesktopPet: edge wall art missing in \(w.folder), peeking without a wall") }
+            edgeWall = art
+        }
         postures = manifest.postures
         available = manifest.available
         directPairs = manifest.directPairs
