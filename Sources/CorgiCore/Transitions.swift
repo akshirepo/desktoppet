@@ -22,6 +22,8 @@ public enum Posture: String, Codable {
 /// - into and out of an activity from its hub: `enter:watch`, `exit:watch`. A pack without an exit can
 ///   point it at the entry's frames played backwards;
 /// - straight between two activities drawn in the same view: `pair:walk>fetch`.
+/// - into and out of hiding behind a screen edge: `enter:peekEdge`, `exit:peekEdge`, `enter:holdEdge`,
+///   `exit:holdEdge` (see `TransitionGraph.edgeEntries`).
 public enum Bridge {
     public static func hop(_ a: AnimState, _ b: AnimState) -> String { "\(hubName(a))>\(hubName(b))" }
     public static func enter(_ s: AnimState) -> String { "enter:\(s.rawValue)" }
@@ -61,6 +63,10 @@ public struct TransitionGraph {
     public var direct: Set<[AnimState]> = []
     /// Bridge animations this pet has art for (see `Bridge`).
     public var bridges: Set<String>
+    /// Hiding spots behind a screen edge, and the pose their art starts from and ends in: the floor peek is
+    /// entered from and left to standing; the hold is entered straight from the dropped (held) pose and ends in it,
+    /// then the pet drops. They're only ever entered and left through their own `enter:`/`exit:` bridges.
+    public static let edgeEntries: [AnimState: AnimState] = [.peekEdge: .idle, .holdEdge: .scared]
 
     public init(postures: [AnimState: Posture] = Posture.defaults, bridges: Set<String> = [],
                 direct extra: Set<[AnimState]> = []) {
@@ -82,7 +88,9 @@ public struct TransitionGraph {
     /// Steps to show before `to` starts looping. Empty means switch straight away.
     /// Poses without a posture (falling, clinging, reactions) always switch directly.
     public func plan(from: AnimState, to: AnimState) -> [TransitionStep] {
-        guard from != to, postures[from] != nil, postures[to] != nil else { return [] }
+        guard from != to else { return [] }
+        if Self.edgeEntries[from] != nil || Self.edgeEntries[to] != nil { return edgePlan(from: from, to: to) }
+        guard postures[from] != nil, postures[to] != nil else { return [] }
         // Bowl versions of one loop swap in place.
         if from.base == to.base { return [] }
         if bridges.contains(Bridge.pair(from, to)) {
@@ -124,6 +132,26 @@ public struct TransitionGraph {
         if !art && Set([a, b]) == [.stand, .lie] && !steps.contains(.once(.yawn)) {
             steps.append(.hold(.sit, bridgeHold))
         }
+        return steps
+    }
+
+    /// Out of an edge hiding spot through its exit art, and in through the entry art. A pose with a posture first
+    /// goes to the entry pose the normal way (a walk finishes its step, a sit stands up).
+    private func edgePlan(from: AnimState, to: AnimState) -> [TransitionStep] {
+        var steps: [TransitionStep] = []
+        var at = from
+        if let out = Self.edgeEntries[from] {
+            // Exit art starts on the loop's first frame, so the loop finishes its cycle first.
+            if bridges.contains(Bridge.exit(from)) { steps += [.finish(from), .bridge(Bridge.exit(from), endsAt: out)] }
+            at = out
+        }
+        guard let start = Self.edgeEntries[to] else { return steps + plan(from: at, to: to) }
+        if postures[at] != nil && postures[start] != nil {
+            steps += plan(from: at, to: start)
+        } else if at != start, finishParts[at.base] != nil {
+            steps.append(.finish(at))
+        }
+        if bridges.contains(Bridge.enter(to)) { steps.append(.bridge(Bridge.enter(to), endsAt: to)) }
         return steps
     }
 }

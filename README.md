@@ -33,6 +33,8 @@ To start it automatically, turn on **Launch at Login** in the menu. This only wo
   - next to a side edge: clings to the side
 
   It rides along when you move the window and lets go after a few minutes, or when the window closes.
+
+  Drop it next to the left or right edge of a display and it hides behind the edge and peeks back in: near the floor it walks to the edge, ducks behind it and pokes its head and a front leg back out; higher up it hangs on to the edge with its paws, head peeking in. After 2 to 5 minutes it comes back out. Pick it up to end it early. Where two displays meet side by side there's no edge to hide behind, so it doesn't peek there.
 - **Home:** the bottom-right corner of your desktop. It hangs out there reading, listening to music, watching TV and playing with its ball.
 - **Idle:** leave the Mac alone for 90 seconds, or watch something full screen, and it falls asleep.
 - **Needs:** they drop slowly, even while the app is closed. A thought bubble shows what it wants.
@@ -62,6 +64,8 @@ The corgi and sheep art is built into the app. To use your own, put a pack folde
 A pack is one folder per animation state with numbered PNG frames, plus a `manifest.json`. See `Assets/Packs/CorgiPack/manifest.json` for the format and the full list of states. Frames should face right; the app mirrors them when the pet walks left. Missing states fall back to `idle`.
 
 A pack can also have `bridges`: one-shot transition animations between poses, like `stand>sit`, `sit>sleep`, `enter:watch` (getting into an activity from the standing or sitting pose) and `pair:walk>fetch`. Set `"reversed": true` to play a folder backwards, for example `sit>stand` from the `stand>sit` frames. Without bridges the pet switches poses directly. A state can set `"posture"` (`stand`, `sit` or `lie`) and `"scale"` (a size correction for a pose drawn bigger or smaller than the rest).
+
+Edge peeking uses the states `peekEdge` (on the floor) and `holdEdge` (hanging on higher up) with the bridges `enter:peekEdge`, `exit:peekEdge`, `enter:holdEdge` and `exit:holdEdge`. Draw them facing right, peeking in from the **left** screen edge, with **canvas column 0 (the left border of the frame) as the screen edge**: the hidden side is off the canvas, so nothing can show past the edge. Use the same canvas size and anchor as `idle`. The app puts column 0 exactly on the display edge (mirrored at a right edge). `enter:peekEdge` starts on the idle frame and ends on the first `peekEdge` frame; `enter:holdEdge` starts on the first `scared` frame (the pose it has while you carry it) and ends on the first `holdEdge` frame. The exits can be the entries reversed. A pack without these states just lands normally when dropped by an edge.
 
 ## Development
 

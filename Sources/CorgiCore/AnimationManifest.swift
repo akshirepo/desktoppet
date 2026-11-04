@@ -6,6 +6,9 @@ public enum AnimState: String, CaseIterable, Codable {
     case clingSit, clingHang, clingPeek, clingLeft, clingRight, letGo, drink, thirsty, refreshed
     /// The same eating and drinking loops with the bowl half empty and empty.
     case eatHalf, eatEmpty, drinkHalf, drinkEmpty
+    /// Hiding behind a display's left or right edge and peeking back in: on the floor (head and front paws round
+    /// the edge) and hanging on to the edge higher up. See `EdgePeek` for the art convention.
+    case peekEdge, holdEdge
 
     /// The loop a variant is drawn from (eatHalf -> eat); itself for everything else.
     public var base: AnimState {
@@ -103,6 +106,7 @@ public func animState(for behavior: Behavior, mode: BodyMode, isMoving: Bool,
     case .airborne: return .fall
     case .roaming: return carrying ? .holdBall : .roam
     case .clinging: return .clingSit   // callers with the spot use ClingSpot.animState
+    case .peeking: return .peekEdge    // callers with the session use EdgePeekSession.animState
     case .grounded: break
     }
     if isMoving {

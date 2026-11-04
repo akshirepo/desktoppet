@@ -346,6 +346,24 @@
         0.5,
         0.075
       ]
+    },
+    "peekEdge": {
+      "folder": "peekEdge",
+      "fps": 5.0,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "holdEdge": {
+      "folder": "holdEdge",
+      "fps": 5.0,
+      "loop": true,
+      "anchor": [
+        0.5,
+        0.075
+      ]
     }
   },
   "bridges": {
@@ -760,6 +778,44 @@
     },
     "exit:roam": {
       "folder": "bridges/enter-walk",
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ],
+      "reversed": true
+    },
+    "enter:peekEdge": {
+      "folder": "bridges/enter-peekEdge",
+      "fps": 9,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "exit:peekEdge": {
+      "folder": "bridges/enter-peekEdge",
+      "fps": 10,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ],
+      "reversed": true
+    },
+    "enter:holdEdge": {
+      "folder": "bridges/enter-holdEdge",
+      "fps": 9,
+      "loop": false,
+      "anchor": [
+        0.5,
+        0.075
+      ]
+    },
+    "exit:holdEdge": {
+      "folder": "bridges/enter-holdEdge",
       "fps": 10,
       "loop": false,
       "anchor": [

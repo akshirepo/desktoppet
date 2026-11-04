@@ -8,6 +8,8 @@ public enum Behavior: String, CaseIterable {
     /// Came to the cursor to ask for something it needs (food, a bath, play or a nap).
     case askCare
     case cling
+    /// Hiding behind a display edge and peeking back in, after being dropped next to it (see `EdgePeekSession`).
+    case peek
 
     /// Behaviors the brain picks on its own. The rest only happen through `interrupt`.
     public static let autonomous: [Behavior] = [

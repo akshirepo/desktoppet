@@ -18,6 +18,8 @@ final class PetController {
     static let stayPutSeconds: CFTimeInterval = 10 * 60
     private var stayUntil: CFTimeInterval = 0
     private var stayX: CGFloat = 0
+    /// Hiding behind a screen edge after being dropped next to it.
+    private var peek: EdgePeekSession?
 
     /// When the eating or drinking loop first showed, and when that meal ends.
     private var mealStart: CFTimeInterval?
@@ -228,6 +230,7 @@ final class PetController {
     private func refreshScreenBounds() {
         let frames = NSScreen.screens.map(\.visibleFrame)
         guard frames != world.screens else { return }
+        if peek != nil { endPeek(reason: "screens changed") }
         world.setScreens(frames, fullFrames: NSScreen.screens.map(\.frame))
         displayScales = Self.physicalScales()
         updateHome()
@@ -237,6 +240,8 @@ final class PetController {
     private func clampBody() {
         // A pet on a floor, or falling onto one, is where it should be; only rescue it when it's truly lost.
         if body.mode == .grounded, world.segment(under: body.position) != nil { return }
+        // Hiding behind a screen edge is meant to be past the normal area; `updatePeek` checks the spot.
+        if body.mode == .peeking { return }
         if body.mode == .airborne, world.hasFloor(below: body.position) { return }
         let areas = body.cling.map { placementRects(world.screens, bounds: backend.bounds(for: $0.animState)) }
             ?? world.movementScreens
@@ -284,6 +289,7 @@ final class PetController {
             askingFor = nil
             Effects.floatDoodle("teardrop", fallback: "💧", on: backend.node, height: backend.size.height)
         }
+        if b != .peek && peek != nil { endPeek(reason: "now \(b.rawValue)") }
         if body.mode == .clinging && b != .cling && b != .dangle {
             body.letGo()
             sounds.play(.letGo)
@@ -483,7 +489,7 @@ final class PetController {
 
     /// A nap or a doze over the book is already rest; idle sleep must not yawn over it.
     private var restBusy: Bool {
-        dragging || chaseMe || body.mode == .held || body.mode == .roaming || body.mode == .clinging
+        dragging || chaseMe || body.mode == .held || body.mode == .roaming || body.mode == .clinging || peek != nil
             || brain.current == .ballChase
             || brain.current == .sleep || brain.current == .readSleep
     }
@@ -520,7 +526,7 @@ final class PetController {
     }
 
     private func updateHover(dt: TimeInterval, cursor: CGPoint) {
-        let blocked = dragging || pressPoint != nil || (body.mode != .grounded && body.mode != .clinging)
+        let blocked = dragging || pressPoint != nil || (body.mode != .grounded && body.mode != .clinging && body.mode != .peeking)
             || brain.current.countsAsSleep || brain.current == .yawn
             || CACurrentMediaTime() - lastClickPet < hover.repeatEvery
         if hover.update(dt: dt, hovering: hitRect.contains(cursor), blocked: blocked) { hoverPet() }
@@ -583,6 +589,7 @@ final class PetController {
             }
             if event == .startedFalling { fell() }
         }
+        updatePeek(dt: dt)
         clampBody()
         updateMovementSounds(dt: dt)
         updateDrawScale(dt: dt)
@@ -660,7 +667,8 @@ final class PetController {
         careCheckElapsed += dt
         guard careCheckElapsed >= 2 else { return }
         careCheckElapsed = 0
-        let busy: Set<Behavior> = [.eat, .drink, .bath, .fetch, .ballChase, .greet, .yawn, .dangle, .fall, .cling, .chaseMe, .askCare]
+        let busy: Set<Behavior> = [.eat, .drink, .bath, .fetch, .ballChase, .greet, .yawn, .dangle, .fall, .cling, .chaseMe, .askCare,
+                                   .peek]
         let fullScreen = isFullScreen(frontWindow: world.windows.first?.frame,
                                       screenFrames: NSScreen.screens.map(\.frame))
         let blocked = !askForCare || chaseMe || dragging || body.mode != .grounded || brain.current.countsAsSleep
@@ -748,8 +756,110 @@ final class PetController {
         petSound = profile.character == .sheep ? .petSheep : .petCorgi
     }
 
+    // MARK: Hiding behind a screen edge
+
+    /// The draw scale the pet will have on display `i` (it eases there; see `updateDrawScale`).
+    private func targetScale(on i: Int) -> CGFloat {
+        displayScales.indices.contains(i) ? displayScales[i] : 1
+    }
+
+    /// Where to hide if it was just let go next to a display's outer left or right edge, when the pack has the art.
+    private func edgePeekSpot() -> EdgePeek? {
+        let bounds = backend.bounds(for: .peekEdge)
+        let scale = world.display(at: body.position).map(targetScale(on:)) ?? drawScale
+        guard let spot = EdgePeekFinder.find(feet: body.position, screens: world.screens, seams: world.seams,
+                                             floors: world.segments, bounds: bounds, scale: scale),
+              backend.available.contains(spot.animState) else { return nil }
+        return spot
+    }
+
+    private func startPeek(_ spot: EdgePeek) {
+        peek = EdgePeekSession(spot: spot, stay: .random(in: EdgePeekSession.stay))
+        executor.peekStandX = spot.standX
+        brain.interrupt(with: .peek, duration: .infinity)
+        beginBehavior(.peek)
+        TransitionLog.append("peek \(spot.kind.rawValue) \(spot.side.rawValue) edge x=\(Int(spot.edgeX)) y=\(Int(spot.y)) "
+            + "screen \(spot.screen) from \(Int(body.position.x)),\(Int(body.position.y)) for \(Int(peek!.remaining))s")
+        if spot.kind == .hold { hide(spot) }
+    }
+
+    /// Goes behind the edge: no gravity, feet on the spot that puts the art's edge column on the screen edge.
+    private func hide(_ spot: EdgePeek) {
+        body.startPeeking(at: spot.feet(bounds: backend.bounds(for: spot.animState), scale: drawScale),
+                          facingRight: spot.facingRight)
+    }
+
+    private func updatePeek(dt: TimeInterval) {
+        guard var p = peek else { return }
+        let spot = p.spot
+        if p.update(dt: dt) {
+            endPeek(reason: "didn't reach the edge")
+            brain.finishCurrent()
+            return
+        }
+        switch p.phase {
+        case .approaching:
+            // Walking up to the end of the floor; there it turns to face the screen and hides.
+            guard body.mode == .grounded, playback.reactionState == nil, let x = spot.standX,
+                  abs(body.position.x - x) < 1, abs(body.position.y - spot.y) <= 2 else { break }
+            p.arrived()
+            hide(spot)
+        case .peeking, .leaving:
+            guard body.mode == .peeking else {
+                // Picked up or knocked off; the caller already moved on.
+                peek = nil
+                return
+            }
+            // Keep the edge column on the edge while the draw scale eases.
+            body.movePeek(to: spot.feet(bounds: backend.bounds(for: spot.animState), scale: drawScale))
+            if spot.kind == .floor, world.segment(under: CGPoint(x: spot.standX ?? body.position.x, y: spot.y)) == nil {
+                endPeek(reason: "floor went away")
+                brain.finishCurrent()
+                return
+            }
+            if p.isOut(currentState: playback.currentState, transitionTarget: playback.transitionTarget) {
+                peek = nil
+                comeOut(p)
+                return
+            }
+        }
+        peek = p
+    }
+
+    /// The exit art has played: back to normal, standing at the end of the floor or dropping from the hold.
+    private func comeOut(_ p: EdgePeekSession) {
+        TransitionLog.append("peek over (\(p.spot.kind.rawValue))")
+        executor.peekStandX = nil
+        if p.spot.kind == .floor, let x = p.spot.standX,
+           let floor = world.segment(under: CGPoint(x: x, y: p.spot.y)) {
+            body.stopPeeking(onto: floor)
+            brain.finishCurrent()
+        } else {
+            body.stopPeeking(onto: nil)
+            brain.interrupt(with: .fall, duration: 5)
+            beginBehavior(.fall)
+        }
+    }
+
+    /// Cut short (picked up, fed, displays changed): out at once, without the exit art.
+    private func endPeek(reason: String) {
+        guard let p = peek else { return }
+        peek = nil
+        executor.peekStandX = nil
+        TransitionLog.append("peek ended: \(reason)")
+        guard body.mode == .peeking else { return }
+        if p.spot.kind == .floor, let x = p.spot.standX,
+           let floor = world.segment(under: CGPoint(x: x, y: p.spot.y)) {
+            body.stopPeeking(onto: floor)
+        } else {
+            body.stopPeeking(onto: nil)
+            sounds.play(.letGo)
+            playback.requestReaction(.letGo, mode: body.mode)
+        }
+    }
+
     private func updateAnimation() {
-        var state = body.cling?.animState
+        var state = peek?.animState ?? body.cling?.animState
             ?? animState(for: brain.current, mode: body.mode, isMoving: body.isMoving,
                          isRunning: body.isRunning, carrying: executor.carryingBall)
         if (body.mode == .grounded || body.mode == .roaming), brain.current == .askCare && !body.isMoving {
@@ -827,6 +937,11 @@ extension PetController: SceneInputHandler {
                 body.startClinging(spot, at: contact)
                 brain.interrupt(with: .cling, duration: Double.random(in: 180...360))
                 beginBehavior(.cling)
+            } else if let spot = edgePeekSpot() {
+                // Dropped by a screen edge: it hides behind it and peeks back in for a few minutes.
+                stayUntil = CACurrentMediaTime() + Self.stayPutSeconds
+                stayX = body.position.x
+                startPeek(spot)
             } else {
                 // Stay where dropped: this spot is its home for a while.
                 stayUntil = CACurrentMediaTime() + Self.stayPutSeconds

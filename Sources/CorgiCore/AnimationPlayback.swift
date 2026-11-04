@@ -51,8 +51,9 @@ public final class AnimationPlayback {
     /// Called with each routing decision, for debugging.
     public var trace: ((String) -> Void)?
 
-    /// Standing or roaming toward the cursor, poses go through bridges; in the air, held or clinging they switch directly.
-    static func routes(_ mode: BodyMode) -> Bool { mode == .grounded || mode == .roaming }
+    /// Standing, roaming toward the cursor or hiding behind a screen edge, poses go through bridges;
+    /// in the air, held or clinging they switch directly.
+    static func routes(_ mode: BodyMode) -> Bool { mode == .grounded || mode == .roaming || mode == .peeking }
 
     public init(backend: any AnimationPlaybackBackend, graph: TransitionGraph = .init()) {
         self.backend = backend
@@ -67,6 +68,10 @@ public final class AnimationPlayback {
         default: return false
         }
         if reaction?.state == state { return true }
+        // Hiding behind a screen edge it doesn't pop out for a wiggle; the caller still shows hearts.
+        if mode != .airborne, let shown = transition?.target ?? currentState, TransitionGraph.edgeEntries[shown] != nil {
+            return false
+        }
         // Hover/click feedback must not cut a landing short.
         if reaction?.state == .land { return false }
         transition = nil

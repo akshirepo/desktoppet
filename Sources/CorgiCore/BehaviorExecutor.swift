@@ -32,6 +32,8 @@ public final class BehaviorExecutor {
     public var crossScreenChance: CGFloat = 0.25
     /// While set, walks and zoomies stay within `radius` of `center` (x) and don't leave for another display.
     public var leash: (center: CGFloat, radius: CGFloat)?
+    /// Feet x that `peek` walks to: the end of the floor next to the screen edge it hides behind. Set by the caller.
+    public var peekStandX: CGFloat?
 
     public init(rng: any RandomNumberGenerator = SystemRandomNumberGenerator()) {
         self.rng = rng
@@ -126,6 +128,12 @@ public final class BehaviorExecutor {
         }
         guard body.mode == .grounded else { return false }
         switch b {
+        case .peek:
+            // Walks up to the edge; once there the caller hides it. It never finishes by itself.
+            guard let x = peekStandX else { return true }
+            let dx = x - body.position.x
+            if abs(dx) < 1 { body.stop() } else { body.walk(direction: dx, speed: body.config.walkSpeed) }
+            return false
         case .goHome:
             return stepHome(body: body, world: world)
         case .walk, .fetch:

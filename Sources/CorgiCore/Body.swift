@@ -13,11 +13,17 @@ public struct BodyConfig {
     public var maxFallSpeed: CGFloat = 1800
     /// Room kept free above a roaming corgi's feet so it never slides under the menu bar.
     public var roamHeadroom: CGFloat = 80
+    /// How fast a peeking pet slides onto its spot at the display edge (points per second).
+    public var peekGlideSpeed: CGFloat = 500
 
     public init() {}
 }
 
-public enum BodyMode: Equatable { case grounded, airborne, held, roaming, clinging }
+public enum BodyMode: Equatable {
+    case grounded, airborne, held, roaming, clinging
+    /// Hidden behind a display edge, peeking back in (`EdgePeek`). No gravity: the feet stay on the spot.
+    case peeking
+}
 
 public enum BodyEvent: Equatable { case landed, hitEdge, startedFalling }
 
@@ -33,6 +39,8 @@ public final class Body {
     /// Set while `mode == .clinging`.
     public private(set) var cling: ClingSpot?
     private var walkVelocity: CGFloat = 0
+    /// Where a peeking pet's feet belong. It glides there, so snapping to the edge doesn't jump.
+    public private(set) var peekTarget: CGPoint?
 
     public init(position: CGPoint, config: BodyConfig = .init()) {
         self.position = position
@@ -156,9 +164,40 @@ public final class Body {
         return startFalling()
     }
 
+    /// Hide behind a display edge with the feet at `target` (see `EdgePeek.feet`). No gravity until `stopPeeking`.
+    public func startPeeking(at target: CGPoint, facingRight: Bool) {
+        guard mode != .held else { return }
+        mode = .peeking
+        peekTarget = target
+        cling = nil
+        standingOn = nil
+        velocity = .zero
+        walkVelocity = 0
+        self.facingRight = facingRight
+    }
+
+    /// Moves the peek spot, e.g. when the draw scale changes the sprite's width.
+    public func movePeek(to target: CGPoint) {
+        guard mode == .peeking else { return }
+        peekTarget = target
+    }
+
+    /// Comes out from behind the edge: standing on `floor` (snapped onto it) or, with no floor, falling.
+    @discardableResult
+    public func stopPeeking(onto floor: FloorSegment?) -> BodyEvent? {
+        guard mode == .peeking else { return nil }
+        peekTarget = nil
+        guard let floor else { return startFalling() }
+        position = CGPoint(x: floor.clampX(position.x), y: floor.y)
+        standingOn = floor
+        mode = .grounded
+        return nil
+    }
+
     public func pickUp() {
         mode = .held
         cling = nil
+        peekTarget = nil
         standingOn = nil
         velocity = .zero
         walkVelocity = 0
@@ -193,6 +232,11 @@ public final class Body {
         let dt = CGFloat(dt)
         switch mode {
         case .clinging:
+            return nil
+        case .peeking:
+            guard let t = peekTarget else { return nil }
+            let dx = t.x - position.x, dy = t.y - position.y, d = hypot(dx, dy), stepLength = config.peekGlideSpeed * dt
+            position = d <= stepLength ? t : CGPoint(x: position.x + dx / d * stepLength, y: position.y + dy / d * stepLength)
             return nil
         case .held:
             return nil
@@ -269,8 +313,9 @@ public final class Body {
         guard !areas.isEmpty, !rects(areas, contain: position) else { return nil }
         position = nearestPoint(to: position, in: areas)
         switch mode {
-        case .grounded, .airborne, .clinging:
+        case .grounded, .airborne, .clinging, .peeking:
             cling = nil
+            peekTarget = nil
             return startFalling()
         case .held, .roaming:
             velocity = .zero
