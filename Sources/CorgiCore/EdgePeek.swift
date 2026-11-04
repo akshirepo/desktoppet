@@ -73,11 +73,17 @@ public struct EdgePeek: Equatable {
         return f.clampX(feetX(bounds: bounds, scale: scale))
     }
 
-    /// The wall it hides behind: from the screen edge in by `width`, up to `height` above the feet (both points
-    /// before the display scale). It stands on the floor it peeks from, or for a hold on `groundY` (the display's floor).
-    public func wallFrame(width: CGFloat, height: CGFloat, scale: CGFloat = 1, groundY: CGFloat) -> CGRect {
+    /// The wall it hides behind: from the screen edge in by `width`, up to `height` above the feet (points before
+    /// the display scale). On the floor it stands on the floor it peeks from. Hanging on, it's a short section
+    /// reaching `holdDepth` below the feet, or with no `holdDepth` a wall from `groundY` (the display's floor).
+    public func wallFrame(width: CGFloat, height: CGFloat, scale: CGFloat = 1, holdDepth: CGFloat? = nil,
+                          groundY: CGFloat) -> CGRect {
         let w = width * scale
-        let bottom = kind == .floor ? y : min(groundY, y)
+        let bottom: CGFloat
+        switch kind {
+        case .floor: bottom = y
+        case .hold: bottom = holdDepth.map { y - $0 * scale } ?? min(groundY, y)
+        }
         let top = y + height * scale
         return CGRect(x: side == .left ? edgeX : edgeX - w, y: bottom, width: w, height: max(0, top - bottom))
     }

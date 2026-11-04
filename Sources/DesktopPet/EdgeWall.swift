@@ -10,12 +10,16 @@ struct EdgeWallArt {
     let spec: EdgeWallSpec
     let cap: CGImage
     let tile: CGImage
+    /// Optional footing drawn at the bottom, so a short wall section ends finished instead of cut off.
+    let base: CGImage?
     let packScale: CGFloat
 
     /// Points before the display scale.
     var width: CGFloat { CGFloat(spec.width) * packScale }
     var height: CGFloat { CGFloat(spec.height) * packScale }
     var inset: CGFloat { spec.inset(packScale: Double(packScale)) }
+    /// How far below the feet a hold's wall section reaches (points before the display scale), nil for floor-to-grip.
+    var holdDepth: CGFloat? { spec.holdDepth.map { CGFloat($0) * packScale } }
 
     init?(pack: URL, spec: EdgeWallSpec, packScale: CGFloat) {
         let dir = pack.appendingPathComponent(spec.folder)
@@ -25,6 +29,8 @@ struct EdgeWallArt {
         self.spec = spec
         self.cap = cap
         self.tile = tile
+        let base = Self.image(dir.appendingPathComponent("base.png"))
+        self.base = base?.width == cap.width ? base : nil
         self.packScale = packScale
     }
 
@@ -33,7 +39,7 @@ struct EdgeWallArt {
         return CGImageSourceCreateImageAtIndex(src, 0, nil)
     }
 
-    /// The cap on top and the tile repeated below it, `heightPx` canvas pixels tall (cut at the bottom).
+    /// The cap on top, the footing (if any) at the bottom and the tile repeated between, `heightPx` canvas pixels tall.
     func texture(heightPx: Int) -> SKTexture? {
         let w = cap.width
         guard heightPx > 0,
@@ -43,11 +49,16 @@ struct EdgeWallArt {
         ctx.interpolationQuality = .none
         // Core Graphics counts up from the bottom: the cap goes at the top, tiles below it down past y = 0.
         var top = heightPx
+        let footing = base.map { min($0.height, max(0, heightPx - cap.height)) } ?? 0
         ctx.draw(cap, in: CGRect(x: 0, y: top - cap.height, width: w, height: cap.height))
         top -= cap.height
-        while top > 0 {
+        while top > footing {
             ctx.draw(tile, in: CGRect(x: 0, y: top - tile.height, width: w, height: tile.height))
             top -= tile.height
+        }
+        if let base, footing > 0 {
+            // Drawn last, over the cut end of the last tile; its bottom row sits on the wall's bottom edge.
+            ctx.draw(base, in: CGRect(x: 0, y: footing - base.height, width: w, height: base.height))
         }
         guard let image = ctx.makeImage() else { return nil }
         let texture = SKTexture(cgImage: image)

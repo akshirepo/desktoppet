@@ -788,8 +788,9 @@ final class PetController {
         // The wall slides out from behind the edge first, so there's something to hide behind.
         if let art = backend.edgeWall {
             let ground = world.ground(of: spot.screen)?.y ?? world.screens[spot.screen].minY
-            edgeWall.show(art, frame: spot.wallFrame(width: art.width, height: art.height, scale: scale, groundY: ground),
-                          side: spot.side, scale: scale, overlays: overlays)
+            let frame = spot.wallFrame(width: art.width, height: art.height, scale: scale, holdDepth: art.holdDepth,
+                                       groundY: ground)
+            edgeWall.show(art, frame: frame, side: spot.side, scale: scale, overlays: overlays)
         }
         if spot.kind == .hold { hide(spot) }
     }

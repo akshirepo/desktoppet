@@ -46,8 +46,9 @@ public struct AnimationSpec: Codable, Equatable {
 }
 
 /// The wall a pet hides behind at a screen edge (see `EdgePeek`). Sizes are canvas pixels at the pack scale.
-/// The folder holds `cap.png` (the top) and `tile.png` (repeated below it down to the floor), both `width` wide,
-/// drawn for a LEFT screen edge (outer side on column 0, inner face on the right); the app mirrors them.
+/// The folder holds `cap.png` (the top), `tile.png` (repeated below it) and optionally `base.png` (a footing at the
+/// bottom), all `width` wide, drawn for a LEFT screen edge (outer side on column 0, inner face on the right);
+/// the app mirrors them.
 public struct EdgeWallSpec: Codable, Equatable {
     public var folder: String
     /// From the screen edge to the wall's inner face.
@@ -57,12 +58,16 @@ public struct EdgeWallSpec: Codable, Equatable {
     /// The column of the peek frames (`peekEdge`, `holdEdge` and their bridges) that sits on the wall's inner
     /// face. The body is cut there; paws drawn left of it hook over the wall.
     public var faceColumn: Double
+    /// Hanging on (`holdEdge`), how far below the feet the wall section reaches; it's a short piece of wall around
+    /// the grip, not a wall from the floor. Without it the hold wall runs down to the display's floor.
+    public var holdDepth: Double?
 
-    public init(folder: String, width: Double, height: Double, faceColumn: Double) {
+    public init(folder: String, width: Double, height: Double, faceColumn: Double, holdDepth: Double? = nil) {
         self.folder = folder
         self.width = width
         self.height = height
         self.faceColumn = faceColumn
+        self.holdDepth = holdDepth
     }
 
     /// Points (before the display scale) from the screen edge to column 0 of the peek frames.

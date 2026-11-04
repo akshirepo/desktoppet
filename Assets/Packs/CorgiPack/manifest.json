@@ -645,7 +645,8 @@
   "edgeWall": {
     "folder": "edgeWall",
     "width": 64,
-    "height": 272,
-    "faceColumn": 16
+    "height": 258,
+    "faceColumn": 16,
+    "holdDepth": 4
   }
 }

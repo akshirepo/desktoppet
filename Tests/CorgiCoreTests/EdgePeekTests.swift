@@ -278,22 +278,31 @@ final class EdgePeekTests: XCTestCase {
         XCTAssertEqual(f.maxY, floorY + 272 * 0.2971 * 0.86, accuracy: 1e-9)
     }
 
-    func testHoldWallStandsOnTheDisplayFloorAndRisesPastTheHead() throws {
+    func testHoldWallIsAShortSectionAroundTheGrip() throws {
         let spot = EdgePeek(screen: 0, side: .left, kind: .hold, edgeX: 0, y: 400, inset: 8)
-        let f = spot.wallFrame(width: 13, height: 80, groundY: floorY)
+        let f = spot.wallFrame(width: 13, height: 80, scale: 0.86, holdDepth: 1.2, groundY: floorY)
         XCTAssertEqual(f.minX, 0)
-        XCTAssertEqual(f.width, 13)
-        XCTAssertEqual(f.minY, floorY)
-        XCTAssertEqual(f.maxY, 480)
+        XCTAssertEqual(f.width, 13 * 0.86, accuracy: 1e-9)
+        XCTAssertEqual(f.minY, 400 - 1.2 * 0.86, accuracy: 1e-9, "just below the feet, not down to the floor")
+        XCTAssertEqual(f.maxY, 400 + 80 * 0.86, accuracy: 1e-9)
+        // Without a depth the old behaviour stays: a wall from the display's floor.
+        let tall = spot.wallFrame(width: 13, height: 80, groundY: floorY)
+        XCTAssertEqual(tall.minY, floorY)
+        XCTAssertEqual(tall.maxY, 480)
+    }
+
+    func testFloorWallIgnoresTheHoldDepth() {
+        let spot = EdgePeek(screen: 0, side: .left, kind: .floor, edgeX: 0, y: floorY)
+        XCTAssertEqual(spot.wallFrame(width: 13, height: 77, holdDepth: 1.2, groundY: 0).minY, floorY)
     }
 
     func testManifestReadsTheWall() throws {
         let json = #"""
         {"states": {"idle": {"folder": "idle", "fps": 4, "loop": true, "anchor": [0.5, 0.075]}},
-         "edgeWall": {"folder": "edgeWall", "width": 44, "height": 272, "faceColumn": 16}}
+         "edgeWall": {"folder": "edgeWall", "width": 44, "height": 272, "faceColumn": 16, "holdDepth": 4}}
         """#
         let m = try JSONDecoder().decode(AnimationManifest.self, from: Data(json.utf8))
-        XCTAssertEqual(m.edgeWall, wall)
+        XCTAssertEqual(m.edgeWall, EdgeWallSpec(folder: "edgeWall", width: 44, height: 272, faceColumn: 16, holdDepth: 4))
         let old = try JSONDecoder().decode(AnimationManifest.self, from: Data(#"{"states": {}}"#.utf8))
         XCTAssertNil(old.edgeWall)
     }
