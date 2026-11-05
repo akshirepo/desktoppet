@@ -67,12 +67,15 @@ public struct BrainContext {
     public var secondsSinceInteraction: TimeInterval
     /// Just put down somewhere by the user: stay around there instead of heading home.
     public var stayPut: Bool
+    /// Ask for Care is on: it may beg for food or water. Off, it never begs.
+    public var asksForCare: Bool
 
     public init(needs: NeedsState, lowThreshold: Double, canHop: Bool,
                 atHome: Bool = false, secondsAwayFromHome: TimeInterval = 0, bored: Bool = false,
-                secondsSinceInteraction: TimeInterval = 0, stayPut: Bool = false) {
+                secondsSinceInteraction: TimeInterval = 0, stayPut: Bool = false, asksForCare: Bool = true) {
         self.secondsSinceInteraction = secondsSinceInteraction
         self.stayPut = stayPut
+        self.asksForCare = asksForCare
         self.needs = needs
         self.lowThreshold = lowThreshold
         self.canHop = canHop
@@ -147,6 +150,7 @@ public final class Brain {
             for b in Behavior.hobbies { w[b]! *= 0.3 }
         }
         if ctx.stayPut { w[.goHome] = 0 }
+        if !ctx.asksForCare { w[.beg] = 0 }
         // Only naps when it's actually getting tired.
         w[.sleep] = n.energy < 50 ? (50 - n.energy) / 5 : 0
         if n.energy < ctx.lowThreshold {

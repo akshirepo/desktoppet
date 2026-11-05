@@ -145,4 +145,11 @@ final class RoutineTests: XCTestCase {
             XCTAssertLessThanOrEqual(abs(body.position.x - 500), 305)
         }
     }
+
+    func testWithAskForCareOffItNeverBegs() {
+        var c = ctx(hunger: 5, thirst: 5)
+        XCTAssertGreaterThan(brain().weights(c)[.beg]!, 5)
+        c.asksForCare = false
+        XCTAssertEqual(brain().weights(c)[.beg], 0)
+    }
 }

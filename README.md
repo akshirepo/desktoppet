@@ -53,7 +53,7 @@ Click the menu bar icon or right-click the pet:
 - **Stats:** need levels and how long you've been together
 - **Rename:** give the current pet a name
 - **Character:** switch between the corgi and the sheep. Each pet has its own name and stats.
-- **Ask for Care:** let it come to your cursor when it needs something. On by default.
+- **Ask for Care:** let it ask for what it needs: coming to your cursor, begging, and "I'm hungry" bubbles. Turn it off and it stops asking; its needs still show in **Stats**. On by default.
 - **Sounds:** cartoony sound effects for petting, eating, baths, snoring, footsteps, hops and the ball. Off by default.
 - **Launch at Login**
 

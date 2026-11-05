@@ -560,7 +560,7 @@ final class PetController {
                                atHome: home.isHome(body.position), secondsAwayFromHome: home.secondsAway,
                                bored: boredom.isBored(needs.state),
                                secondsSinceInteraction: boredom.secondsSinceInteraction,
-                               stayPut: now < stayUntil)
+                               stayPut: now < stayUntil, asksForCare: askForCare)
         // Do not call update with dt=0: the brain can still change behaviors at zero elapsed time.
         executor.leash = now < stayUntil ? (center: stayX, radius: 300) : nil
         if !playback.holdsGroundedMotion(in: body.mode), let next = brain.update(dt: dt, ctx) {
@@ -627,7 +627,8 @@ final class PetController {
 
     /// A thought bubble for the lowest low need, about once a minute.
     private func updateMoodBubble(dt: TimeInterval) {
-        let blocked = needs.state.isAsleep || brain.current.countsAsSleep
+        // "I want something" bubbles and lines are asking for care too.
+        let blocked = !askForCare || needs.state.isAsleep || brain.current.countsAsSleep
             || body.mode == .held || body.mode == .roaming
         guard let need = moodBubbles.update(dt: dt, needs: needs.state, blocked: blocked) else { return }
         sadVariant += 1
@@ -754,6 +755,11 @@ final class PetController {
     func applyProfile(_ profile: PetProfile) {
         character = profile.character
         askForCare = profile.askForCare
+        // Switched off mid-request: stop asking right away.
+        if !askForCare && (brain.current == .askCare || brain.current == .beg) {
+            askingFor = nil
+            brain.finishCurrent()
+        }
         sounds.enabled = profile.soundsOn
         petSound = profile.character == .sheep ? .petSheep : .petCorgi
     }
