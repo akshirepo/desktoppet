@@ -72,6 +72,8 @@ enum Effects {
     }
 
     private static let bubbleName = "bubble"
+    /// Speech bubbles are drawn at this size relative to their artwork layout.
+    private static let bubbleScale: CGFloat = 0.8
 
     /// One bubble at a time: when a new one appears, whatever is showing fades out quickly.
     /// Bubbles still waiting on their delay are left alone.
@@ -120,19 +122,19 @@ enum Effects {
             container.addChild(a)
         }
 
-        // Put the tail tip just above the pet's head.
+        // Put the tail tip just above the pet's head (the container is drawn at `bubbleScale`).
         let tip = CGPoint(x: geo.tailTip.x * s - w / 2, y: h / 2 - geo.tailTip.y * s)
-        container.position = CGPoint(x: -tip.x, y: height + 2 - tip.y)
+        container.position = CGPoint(x: -tip.x * bubbleScale, y: height + 2 - tip.y * bubbleScale)
         container.zPosition = 50
         container.alpha = 0
-        container.setScale(0.85)
+        container.setScale(bubbleScale * 0.85)
         node.addChild(container)
         container.name = bubbleName
         container.run(.sequence([
             .wait(forDuration: delay),
             replaceOtherBubbles(container, on: node),
-            .group([.fadeIn(withDuration: 0.22), .scale(to: 1, duration: 0.22)]),
-            .wait(forDuration: 4.2),
+            .group([.fadeIn(withDuration: 0.2), .scale(to: bubbleScale, duration: 0.2)]),
+            .wait(forDuration: 2.4),
             .fadeOut(withDuration: 0.32),
             .removeFromParent(),
         ]))
@@ -145,12 +147,12 @@ enum Effects {
             speech(fallback, on: node, height: height, thought: true)
             return
         }
-        let bubble = SKSpriteNode(texture: cloud, size: CGSize(width: 54, height: 54))
-        let symbol = SKSpriteNode(texture: inner, size: CGSize(width: 22, height: 22))
-        symbol.position = CGPoint(x: 0, y: 6)
+        let bubble = SKSpriteNode(texture: cloud, size: CGSize(width: 44, height: 44))
+        let symbol = SKSpriteNode(texture: inner, size: CGSize(width: 18, height: 18))
+        symbol.position = CGPoint(x: 0, y: 5)
         symbol.zPosition = 1
         bubble.addChild(symbol)
-        show(bubble, on: node, at: CGPoint(x: 0, y: height + 30), delay: 0)
+        show(bubble, on: node, at: CGPoint(x: 0, y: height + 25), delay: 0)
     }
 
     private static func show(_ bubble: SKNode, on node: SKNode, at position: CGPoint, delay: TimeInterval) {
@@ -163,7 +165,7 @@ enum Effects {
             .wait(forDuration: delay),
             replaceOtherBubbles(bubble, on: node),
             .fadeIn(withDuration: 0.15),
-            .wait(forDuration: 2.2),
+            .wait(forDuration: 1.6),
             .fadeOut(withDuration: 0.15),
             .removeFromParent(),
         ]))
@@ -220,7 +222,7 @@ enum Effects {
             .wait(forDuration: delay),
             replaceOtherBubbles(bubble, on: node),
             .fadeIn(withDuration: 0.15),
-            .wait(forDuration: 2.2),
+            .wait(forDuration: 1.6),
             .fadeOut(withDuration: 0.15),
             .removeFromParent(),
         ]))

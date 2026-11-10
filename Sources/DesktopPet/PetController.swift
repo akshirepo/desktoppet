@@ -660,7 +660,7 @@ final class PetController {
     /// Now and then a low need sends it to your cursor to ask for help; click it to give it what it wants.
     private func updateCareRequest(dt: TimeInterval, now: CFTimeInterval) {
         if brain.current == .askCare, let need = askingFor {
-            if !body.isMoving && now - lastCareBubble > 4.8 {
+            if !body.isMoving && now - lastCareBubble > 3.2 {
                 if lastCareBubble == 0 {
                     sounds.play(petSound)
                     sadVariant += 1
