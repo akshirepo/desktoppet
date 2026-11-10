@@ -147,7 +147,7 @@ public struct EdgePeekSession: Equatable {
     }
 
     /// How long it stays behind the edge.
-    public static let stay: ClosedRange<TimeInterval> = 120...300
+    public static let stay: ClosedRange<TimeInterval> = 30 * 60...40 * 60
     /// A floor peek that hasn't reached the edge by then gives up.
     public static let approachTimeout: TimeInterval = 12
 

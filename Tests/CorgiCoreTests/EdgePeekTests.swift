@@ -178,8 +178,8 @@ final class EdgePeekTests: XCTestCase {
     }
 
     func testStayIsAFewMinutes() {
-        XCTAssertEqual(EdgePeekSession.stay.lowerBound, 120)
-        XCTAssertEqual(EdgePeekSession.stay.upperBound, 300)
+        XCTAssertEqual(EdgePeekSession.stay.lowerBound, 30 * 60)
+        XCTAssertEqual(EdgePeekSession.stay.upperBound, 40 * 60)
     }
 
     // MARK: body
