@@ -165,10 +165,12 @@ public final class Body {
     }
 
     /// Hide behind a display edge with the feet at `target` (see `EdgePeek.feet`). No gravity until `stopPeeking`.
-    public func startPeeking(at target: CGPoint, facingRight: Bool) {
+    public func startPeeking(at target: CGPoint, facingRight: Bool, snap: Bool = false) {
         guard mode != .held else { return }
         mode = .peeking
         peekTarget = target
+        // Snapping is for when it starts out of sight behind the wall, so there's nothing to glide.
+        if snap { position = target }
         cling = nil
         standingOn = nil
         velocity = .zero

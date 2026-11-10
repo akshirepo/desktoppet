@@ -203,4 +203,11 @@ final class MultiScreenTests: XCTestCase {
         }
         XCTAssertEqual(w.display(at: body.position), 1)
     }
+
+    func testPeekingCanSnapStraightToTheSpot() {
+        let body = Body(position: CGPoint(x: 300, y: 500))
+        body.startPeeking(at: CGPoint(x: 40, y: 0), facingRight: true, snap: true)
+        XCTAssertEqual(body.mode, .peeking)
+        XCTAssertEqual(body.position, CGPoint(x: 40, y: 0))
+    }
 }

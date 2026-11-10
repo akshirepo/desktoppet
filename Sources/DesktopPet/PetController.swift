@@ -535,6 +535,8 @@ final class PetController {
     }
 
     private func hoverPet() {
+        // Hiding behind the wall: no hearts, wiggles or sounds.
+        if peek != nil { return }
         boredom.noteInteraction()
         if needs.pet() {
             sounds.play(petSound)
@@ -628,7 +630,7 @@ final class PetController {
     /// A thought bubble for the lowest low need, about once a minute.
     private func updateMoodBubble(dt: TimeInterval) {
         // "I want something" bubbles and lines are asking for care too.
-        let blocked = !askForCare || needs.state.isAsleep || brain.current.countsAsSleep
+        let blocked = !askForCare || peek != nil || needs.state.isAsleep || brain.current.countsAsSleep
             || body.mode == .held || body.mode == .roaming
         guard let need = moodBubbles.update(dt: dt, needs: needs.state, blocked: blocked) else { return }
         sadVariant += 1
@@ -726,7 +728,8 @@ final class PetController {
 
     @discardableResult
     private func say(_ line: SpeechLibrary.Line, delay: TimeInterval = 0) -> Bool {
-        Effects.say(line.text, bubble: line.bubble, icon: line.icon, tailRight: tailRight,
+        if peek != nil { return false }                // quiet while hiding behind the wall
+        return Effects.say(line.text, bubble: line.bubble, icon: line.icon, tailRight: tailRight,
                     on: backend.node, height: backend.bubbleHeight, delay: delay)
     }
 
@@ -788,6 +791,9 @@ final class PetController {
         executor.peekStandX = spot.standX(bounds: backend.bounds(for: spot.animState), scale: scale)
         brain.interrupt(with: .peek, duration: .infinity)
         beginBehavior(.peek)
+        // Put down at the edge: go straight behind the wall, with no fall, landing, walk or glide to watch.
+        peek?.arrived()
+        hide(spot, snap: true)
         TransitionLog.append("peek \(spot.kind.rawValue) \(spot.side.rawValue) edge x=\(Int(spot.edgeX)) y=\(Int(spot.y)) "
             + "screen \(spot.screen) from \(Int(body.position.x)),\(Int(body.position.y)) for \(Int(peek!.remaining))s"
             + (backend.edgeWall == nil ? " (no wall art)" : ""))
@@ -802,9 +808,9 @@ final class PetController {
     }
 
     /// Goes behind the edge: no gravity, feet on the spot that puts the art's edge column on the screen edge.
-    private func hide(_ spot: EdgePeek) {
+    private func hide(_ spot: EdgePeek, snap: Bool = false) {
         body.startPeeking(at: spot.feet(bounds: backend.bounds(for: spot.animState), scale: drawScale),
-                          facingRight: spot.facingRight)
+                          facingRight: spot.facingRight, snap: snap)
     }
 
     private func updatePeek(dt: TimeInterval) {
@@ -981,6 +987,7 @@ extension PetController: SceneInputHandler {
     }
 
     func pet() {
+        if peek != nil { return }
         boredom.noteInteraction()
         lastClickPet = CACurrentMediaTime()
         if brain.current == .askCare, let need = askingFor {
