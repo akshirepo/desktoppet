@@ -23,6 +23,9 @@ final class PetController {
     /// The brick wall it hides behind (when the pack has one).
     private let edgeWall = EdgeWall()
 
+    /// The current click started on a bubble, so its release isn't a pet.
+    private var bubbleTapped = false
+
     /// When the eating or drinking loop first showed, and when that meal ends.
     private var mealStart: CFTimeInterval?
     private var mealEnd: CFTimeInterval = 0
@@ -623,7 +626,8 @@ final class PetController {
             n.isHidden = true   // the holdBall sprite already has the ball in its mouth
         }
         debug.update(world: world, hitRect: hitRect, behavior: brain.current, overlays: overlays)
-        overlays.setClickThrough(!(body.mode == .held || hitRect.contains(cursor)))
+        let overBubble = visibleBubble()?.rect.contains(cursor) ?? false
+        overlays.setClickThrough(!(body.mode == .held || hitRect.contains(cursor) || overBubble))
         setRate(body.isMoving || body.mode == .held || playback.reactionState != nil || playback.transitionTarget != nil || ball != nil ? 30 : 15)
     }
 
@@ -640,6 +644,7 @@ final class PetController {
         }
         Effects.thought(icon: Self.icon(for: need), fallback: MoodBubbles.bubbleText(for: need), on: backend.node,
                         height: backend.bubbleHeight)
+        tagNewestBubble(need: need)
     }
 
     private static func icon(for need: Need) -> String {
@@ -662,9 +667,10 @@ final class PetController {
                     careLine = speech?.line(for: SpeechLibrary.category(for: need, variant: sadVariant), pet: character)
                 }
                 lastCareBubble = now
-                if !(careLine.map { say($0) } ?? false) {
+                if !(careLine.map { say($0, need: need) } ?? false) {
                     Effects.thought(icon: Self.icon(for: need), fallback: MoodBubbles.bubbleText(for: need),
                                     on: backend.node, height: backend.bubbleHeight)
+                    tagNewestBubble(need: need)
                 }
             }
             return
@@ -726,18 +732,52 @@ final class PetController {
         return body.position.x > world.screens[i].midX
     }
 
+    /// Shows `line`. A bubble asking for `need` can be clicked to give the pet that.
     @discardableResult
-    private func say(_ line: SpeechLibrary.Line, delay: TimeInterval = 0) -> Bool {
+    private func say(_ line: SpeechLibrary.Line, delay: TimeInterval = 0, need: Need? = nil) -> Bool {
         if peek != nil { return false }                // quiet while hiding behind the wall
-        return Effects.say(line.text, bubble: line.bubble, icon: line.icon, tailRight: tailRight,
-                    on: backend.node, height: backend.bubbleHeight, delay: delay)
+        let shown = Effects.say(line.text, bubble: line.bubble, icon: line.icon, tailRight: tailRight,
+                                on: backend.node, height: backend.bubbleHeight, delay: delay)
+        if shown { tagNewestBubble(need: need) }
+        return shown
     }
 
     /// A line from the given mood, if the bundled messages have one.
     @discardableResult
     private func say(mood: String, delay: TimeInterval = 0) -> Bool {
         guard let line = speech?.line(for: mood, pet: character) else { return false }
-        return say(line, delay: delay)
+        return say(line, delay: delay, need: SpeechLibrary.need(forCategory: mood))
+    }
+
+    /// Remembers what the bubble just added asks for, so clicking it can give the pet that.
+    private func tagNewestBubble(need: Need?) {
+        guard let bubble = backend.node.children.last(where: { $0.name == "bubble" }) else { return }
+        bubble.userData = NSMutableDictionary(dictionary: ["need": need?.rawValue ?? ""])
+    }
+
+    /// The bubble showing right now and where it is on screen, with the need it asks about (nil: just chatting).
+    private func visibleBubble() -> (node: SKNode, rect: CGRect, need: Need?)? {
+        guard let b = backend.node.children.last(where: { $0.name == "bubble" && $0.alpha > 0.3 }) else { return nil }
+        let f = b.calculateAccumulatedFrame(), s = drawScale
+        let rect = CGRect(x: body.position.x + f.minX * s, y: body.position.y + f.minY * s,
+                          width: f.width * s, height: f.height * s).insetBy(dx: -4, dy: -4)
+        return (b, rect, (b.userData?["need"] as? String).flatMap(Need.init(rawValue:)))
+    }
+
+    /// Clicked a bubble: give the pet what it asked for, or just pet it for a chatty one.
+    private func tapBubble(_ b: (node: SKNode, rect: CGRect, need: Need?)) {
+        b.node.name = nil
+        b.node.removeAllActions()
+        b.node.run(.sequence([.fadeOut(withDuration: 0.12), .removeFromParent()]))
+        guard let need = b.need else {
+            pet()
+            return
+        }
+        boredom.noteInteraction()
+        if askingFor == need { askingFor = nil }
+        fulfill(need)
+        say(mood: "happy", delay: 1.2)
+        lastAutoLine = CACurrentMediaTime()
     }
 
     private func sayNow(mood: String, now: CFTimeInterval) {
@@ -921,6 +961,12 @@ final class PetController {
 
 extension PetController: SceneInputHandler {
     func mouseDown(at global: CGPoint) {
+        // A click on a speech or thought bubble answers it.
+        if !hitRect.contains(global), let b = visibleBubble(), b.rect.contains(global) {
+            bubbleTapped = true
+            tapBubble(b)
+            return
+        }
         // The panel takes clicks while the cursor was over the corgi last tick; a roaming corgi may have moved off.
         guard hitRect.contains(global) else {
             pressPoint = nil
@@ -951,6 +997,10 @@ extension PetController: SceneInputHandler {
         defer {
             pressPoint = nil
             dragging = false
+        }
+        if bubbleTapped {
+            bubbleTapped = false
+            return
         }
         if dragging {
             body.release()

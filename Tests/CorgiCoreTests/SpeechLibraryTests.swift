@@ -60,4 +60,12 @@ final class SpeechLibraryTests: XCTestCase {
             }
         }
     }
+
+    func testAskingLinesMapBackToTheirNeed() {
+        for need in Need.allCases {
+            for v in 0..<2 { XCTAssertEqual(SpeechLibrary.need(forCategory: SpeechLibrary.category(for: need, variant: v)), need) }
+        }
+        XCTAssertNil(SpeechLibrary.need(forCategory: "company"))
+        XCTAssertNil(SpeechLibrary.need(forCategory: "happy"))
+    }
 }

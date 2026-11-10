@@ -49,6 +49,18 @@ public struct SpeechLibrary {
     }
 
     /// Which mood speaks for a low need. `variant` alternates the two moods a sad pet can be in.
+    /// The need a mood line asks about ("hungry" -> hunger), or nil for lines that don't ask for anything.
+    public static func need(forCategory category: String) -> Need? {
+        switch category {
+        case "hungry": return .hunger
+        case "dirty": return .cleanliness
+        case "thirsty": return .thirst
+        case "sleepy": return .energy
+        case "affection", "bored": return .happiness
+        default: return nil
+        }
+    }
+
     public static func category(for need: Need, variant: Int) -> String {
         switch need {
         case .hunger: return "hungry"
