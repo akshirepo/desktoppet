@@ -309,21 +309,15 @@ final class EdgePeekTests: XCTestCase {
 
     // MARK: packs
 
-    func testBothPacksHaveTheEdgeArtWithTheIdleAnchor() throws {
+    func testBothPacksHaveThePeekArtWithTheIdleAnchorAndNoWall() throws {
         let packs = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Assets/Packs")
         for pack in ["CorgiPack", "SheepPack"] {
             let dir = packs.appendingPathComponent(pack)
             let m = try AnimationManifest.load(from: dir.appendingPathComponent("manifest.json"))
             let idle = try XCTUnwrap(m.states["idle"])
-            // The wall to hide behind: cap and tile, and a face column inside the wall.
-            let wall = try XCTUnwrap(m.edgeWall, pack)
-            XCTAssertGreaterThan(wall.width, wall.faceColumn)
-            XCTAssertGreaterThan(wall.faceColumn, 0)
-            for f in ["cap.png", "tile.png"] {
-                XCTAssertTrue(FileManager.default.fileExists(atPath: dir.appendingPathComponent(wall.folder)
-                    .appendingPathComponent(f).path), "\(pack) \(f)")
-            }
+            // No wall: the pet peeks straight from the screen edge.
+            XCTAssertNil(m.edgeWall, pack)
             for state in [AnimState.peekEdge, .holdEdge] {
                 let spec = try XCTUnwrap(m.states[state.rawValue], "\(pack) \(state)")
                 // Same anchor as idle: canvas column 0 is the edge and the exit ends on the idle frame in place.
