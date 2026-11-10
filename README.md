@@ -34,7 +34,7 @@ To start it automatically, turn on **Launch at Login** in the menu. This only wo
 
   It rides along when you move the window and lets go after a few minutes, or when the window closes.
 
-  Drop it next to the left or right edge of a display and a brick pillar slides out from behind the edge, and it goes straight behind it. Near the floor it pokes its head and a front leg back out, one paw on the bricks. Higher up it hangs on behind a short section of wall with both paws hooked over the bricks. While it's hidden it stays quiet: no bubbles, hearts or walking around. It comes back out after 30 to 40 minutes and the pillar slides away; pick it up to end it early. Where two displays meet side by side there's no edge to hide behind, so it doesn't peek there.
+  Drop it next to the left or right edge of a display and it slips just past the edge of the screen and peeks back in. Near the floor it pokes its head and a front leg back out; higher up it hangs on to the screen edge with both paws, head peeking in. While it's hidden it stays quiet: no bubbles, hearts or walking around. It comes back out after 30 to 40 minutes; pick it up to end it early. Where two displays meet side by side there's no edge to hide behind, so it doesn't peek there.
 - **Home:** the bottom-right corner of your desktop. It hangs out there reading, listening to music, watching TV and playing with its ball.
 - **Idle:** leave the Mac alone for 90 seconds, or watch something full screen, and it falls asleep.
 - **Needs:** they drop slowly, even while the app is closed. A thought bubble shows what it wants.
