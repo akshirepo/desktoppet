@@ -23,6 +23,11 @@ final class PetController {
     /// The brick wall it hides behind (when the pack has one).
     private let edgeWall = EdgeWall()
 
+    /// Each display's current Space, to tell which way a switch went (`Spaces`).
+    private var spaces: [String: Int] = [:]
+    /// The display it's running in on after a Space switch, while it's still past the edge.
+    private var enteringScreen: Int?
+
     /// The current click started on a bubble, so its release isn't a pet.
     private var bubbleTapped = false
 
@@ -152,7 +157,7 @@ final class PetController {
     }
 
     private func updateDrawScale(dt: TimeInterval) {
-        let target = world.display(at: body.position).flatMap { displayScales.indices.contains($0) ? displayScales[$0] : nil } ?? 1
+        let target = (world.display(at: body.position) ?? enteringScreen).flatMap { displayScales.indices.contains($0) ? displayScales[$0] : nil } ?? 1
         drawScale += (target - drawScale) * min(1, CGFloat(dt) * 5)
         if abs(drawScale - target) < 0.002 { drawScale = target }
         if backend.node.xScale != drawScale { backend.node.setScale(drawScale) }
@@ -167,6 +172,10 @@ final class PetController {
         NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
         ) { [weak self] _ in self?.screensChanged() }
+        spaces = Spaces.current()
+        NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main
+        ) { [weak self] _ in self?.spaceChanged() }
         setRate(30)
         let distributed = DistributedNotificationCenter.default()
         distributed.addObserver(forName: NSNotification.Name("com.apple.screenIsLocked"), object: nil, queue: .main) { [weak self] _ in
@@ -246,7 +255,7 @@ final class PetController {
         // A pet on a floor, or falling onto one, is where it should be; only rescue it when it's truly lost.
         if body.mode == .grounded, world.segment(under: body.position) != nil { return }
         // Hiding behind a screen edge is meant to be past the normal area; `updatePeek` checks the spot.
-        if body.mode == .peeking { return }
+        if body.mode == .peeking || body.mode == .entering { return }
         if body.mode == .airborne, world.hasFloor(below: body.position) { return }
         let areas = body.cling.map { placementRects(world.screens, bounds: backend.bounds(for: $0.animState)) }
             ?? world.movementScreens
@@ -277,6 +286,32 @@ final class PetController {
         clampBody()
         overlays.place(globalFeet: body.position)
         overlays.mirror(backend.spriteNode, globalFeet: body.position, scale: drawScale)
+    }
+
+    /// Switched to another Space (a three-finger swipe, Ctrl-arrow, Mission Control). The overlay is on every Space,
+    /// so instead of just being there it runs in from the side the old Space slid off to.
+    private func spaceChanged() {
+        let before = spaces
+        spaces = Spaces.current()
+        defer { refreshWorld() }
+        guard let i = world.display(at: body.position), NSScreen.screens.indices.contains(i),
+              let floor = world.ground(of: i) else { return }
+        let key = Spaces.key(of: NSScreen.screens[i], in: spaces)
+        let step = key.flatMap { k in before[k].flatMap { b in spaces[k].map { $0 - b } } }
+        let busy: Set<Behavior> = [.eat, .drink, .bath, .greet, .dangle, .fall, .cling, .peek, .chaseMe, .askCare, .ballChase]
+        guard !paused, !dragging, pressPoint == nil, peek == nil, ball == nil, body.mode == .grounded,
+              !brain.current.countsAsSleep, !busy.contains(brain.current) else { return }
+        let b = backend.bounds(for: .run)
+        guard let plan = SpaceArrival.plan(step: step, screen: world.screens[i], floor: floor, feetX: body.position.x,
+                                           reach: max(abs(b.minX), abs(b.maxX)) * targetScale(on: i) + 8,
+                                           depth: .random(in: 0.2...0.45)) else { return }
+        TransitionLog.append("space switch (step \(step.map(String.init) ?? "?")): run in from the "
+            + (plan.fromLeft ? "left" : "right") + " on screen \(i) to x=\(Int(plan.stopX))")
+        brain.interrupt(with: .arrive, duration: .infinity)
+        beginBehavior(.arrive)
+        executor.arriveX = plan.stopX
+        enteringScreen = i
+        body.startEntering(onto: floor, from: plan.startX)
     }
 
     /// Called when the floor disappears under the corgi.
@@ -596,6 +631,11 @@ final class PetController {
             }
             if event == .startedFalling { fell() }
         }
+        if enteringScreen != nil && body.mode != .entering {
+            enteringScreen = nil
+            // Something else started while it ran in (fed, say): it stops once it's on the floor.
+            if brain.current != .arrive { body.stop() }
+        }
         updatePeek(dt: dt)
         clampBody()
         updateMovementSounds(dt: dt)
@@ -606,8 +646,14 @@ final class PetController {
         needs.exert(effort, seconds: dt)
         if effort == .hard { lastHardExercise = now }
 
-        overlays.place(globalFeet: body.position)
-        overlays.mirror(backend.spriteNode, globalFeet: body.position, scale: drawScale)
+        if let i = enteringScreen {
+            // Still past the edge: drawn only on its own display, which hides the part not in yet.
+            overlays.place(globalFeet: body.position, screen: i)
+            overlays.hideMirrors()
+        } else {
+            overlays.place(globalFeet: body.position)
+            overlays.mirror(backend.spriteNode, globalFeet: body.position, scale: drawScale)
+        }
         // Cling sprites are drawn for their side already, so they are never mirrored.
         backend.setFacing(right: body.mode == .clinging ? true : body.facingRight)
         updateAnimation()

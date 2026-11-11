@@ -23,6 +23,9 @@ public enum BodyMode: Equatable {
     case grounded, airborne, held, roaming, clinging
     /// Hidden behind a display edge, peeking back in (`EdgePeek`). No gravity: the feet stay on the spot.
     case peeking
+    /// Running in from past a display's side edge after a switch to another Space (`startEntering`). No gravity
+    /// until the feet reach the floor, then it's grounded and still running.
+    case entering
 }
 
 public enum BodyEvent: Equatable { case landed, hitEdge, startedFalling }
@@ -41,6 +44,8 @@ public final class Body {
     private var walkVelocity: CGFloat = 0
     /// Where a peeking pet's feet belong. It glides there, so snapping to the edge doesn't jump.
     public private(set) var peekTarget: CGPoint?
+    /// The floor an entering pet is running onto, and which way (+1 right, -1 left).
+    private var entry: (floor: FloorSegment, direction: CGFloat)?
 
     public init(position: CGPoint, config: BodyConfig = .init()) {
         self.position = position
@@ -48,11 +53,11 @@ public final class Body {
     }
 
     public var isMoving: Bool {
-        mode == .airborne || walkVelocity != 0 || (mode == .roaming && velocity != .zero)
+        mode == .airborne || mode == .entering || walkVelocity != 0 || (mode == .roaming && velocity != .zero)
     }
 
     /// True when walking faster than a stroll, so the animation should be `run`.
-    public var isRunning: Bool { abs(walkVelocity) > config.walkSpeed * 1.6 }
+    public var isRunning: Bool { mode == .entering || abs(walkVelocity) > config.walkSpeed * 1.6 }
 
     public func walk(direction: CGFloat, speed: CGFloat) {
         guard mode == .grounded else { return }
@@ -196,8 +201,24 @@ public final class Body {
         return nil
     }
 
+    /// Starts at `x`, out of sight past one end of `floor`, and runs in along it at run speed.
+    public func startEntering(onto floor: FloorSegment, from x: CGFloat) {
+        guard mode != .held else { return }
+        let direction: CGFloat = x < floor.minX ? 1 : -1
+        mode = .entering
+        entry = (floor, direction)
+        position = CGPoint(x: x, y: floor.y)
+        cling = nil
+        peekTarget = nil
+        standingOn = nil
+        velocity = .zero
+        walkVelocity = direction * config.runSpeed
+        facingRight = direction > 0
+    }
+
     public func pickUp() {
         mode = .held
+        entry = nil
         cling = nil
         peekTarget = nil
         standingOn = nil
@@ -241,6 +262,15 @@ public final class Body {
             position = d <= stepLength ? t : CGPoint(x: position.x + dx / d * stepLength, y: position.y + dy / d * stepLength)
             return nil
         case .held:
+            return nil
+        case .entering:
+            guard let (floor, direction) = entry else { return startFalling() }
+            position.x += direction * config.runSpeed * dt
+            guard floor.contains(x: position.x) else { return nil }
+            entry = nil
+            standingOn = floor
+            mode = .grounded
+            walkVelocity = direction * config.runSpeed
             return nil
         case .grounded:
             guard let segment = world.segment(under: position) else { return startFalling() }
@@ -319,7 +349,7 @@ public final class Body {
             cling = nil
             peekTarget = nil
             return startFalling()
-        case .held, .roaming:
+        case .held, .roaming, .entering:
             velocity = .zero
             return nil
         }
@@ -328,6 +358,7 @@ public final class Body {
     @discardableResult
     private func startFalling() -> BodyEvent {
         mode = .airborne
+        entry = nil
         standingOn = nil
         velocity = .zero
         walkVelocity = 0

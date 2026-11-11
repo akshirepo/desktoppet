@@ -141,6 +141,7 @@ public func animState(for behavior: Behavior, mode: BodyMode, isMoving: Bool,
     case .roaming: return carrying ? .holdBall : .roam
     case .clinging: return .clingSit   // callers with the spot use ClingSpot.animState
     case .peeking: return .peekEdge    // callers with the session use EdgePeekSession.animState
+    case .entering: return .run
     case .grounded: break
     }
     if isMoving {

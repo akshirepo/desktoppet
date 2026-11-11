@@ -37,8 +37,10 @@ final class OverlayManager {
         return CGPoint(x: global.x - o.frame.minX, y: global.y - o.frame.minY)
     }
 
-    func place(globalFeet p: CGPoint) {
-        guard let target = overlays.first(where: { $0.frame.contains(p) })
+    /// Puts the pet on the overlay of the display its feet are on, or on display `screen` when given.
+    func place(globalFeet p: CGPoint, screen: Int? = nil) {
+        guard let target = screen.flatMap({ overlays.indices.contains($0) ? overlays[$0] : nil })
+            ?? overlays.first(where: { $0.frame.contains(p) })
             ?? overlays.first(where: { $0.frame.minX <= p.x && p.x < $0.frame.maxX }) ?? overlays.first
         else { return }
         if corgiNode.scene !== target.scene {
@@ -82,6 +84,10 @@ final class OverlayManager {
             m.zPosition = corgiNode.zPosition + sprite.zPosition
             m.position = CGPoint(x: p.x - o.frame.minX + sprite.position.x * scale, y: p.y - o.frame.minY + sprite.position.y * scale)
         }
+    }
+
+    func hideMirrors() {
+        mirrors.values.forEach { $0.isHidden = true }
     }
 
     /// Puts any node (the ball) on the overlay of the screen containing the global point `p`

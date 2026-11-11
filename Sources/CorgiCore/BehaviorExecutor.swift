@@ -34,6 +34,8 @@ public final class BehaviorExecutor {
     public var leash: (center: CGFloat, radius: CGFloat)?
     /// Feet x that `peek` walks to: the end of the floor next to the screen edge it hides behind. Set by the caller.
     public var peekStandX: CGFloat?
+    /// Feet x that `arrive` runs on to after coming in from the screen edge. Set by the caller.
+    public var arriveX: CGFloat?
 
     public init(rng: any RandomNumberGenerator = SystemRandomNumberGenerator()) {
         self.rng = rng
@@ -134,6 +136,16 @@ public final class BehaviorExecutor {
             let dx = x - body.position.x
             if abs(dx) < 1 { body.stop() } else { body.walk(direction: dx, speed: body.config.walkSpeed) }
             return false
+        case .arrive:
+            guard let x = arriveX else { return true }
+            let dx = x - body.position.x
+            if abs(dx) < 4 {
+                body.stop()
+                arriveX = nil
+                return true
+            }
+            body.walk(direction: dx, speed: body.config.runSpeed)
+            return false
         case .goHome:
             return stepHome(body: body, world: world)
         case .walk, .fetch:
@@ -187,7 +199,7 @@ public final class BehaviorExecutor {
             // Body stops at an edge. Restore the reversed run before this tick chooses its animation.
             body.walk(direction: zoomDirection, speed: body.config.runSpeed * 1.2)
             return false
-        case (.walk, .hitEdge):
+        case (.walk, .hitEdge), (.arrive, .hitEdge):
             return true
         case (.hopToWindow, .landed):
             return true

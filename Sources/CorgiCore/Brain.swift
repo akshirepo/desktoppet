@@ -10,6 +10,8 @@ public enum Behavior: String, CaseIterable {
     case cling
     /// Hiding behind a display edge and peeking back in, after being dropped next to it (see `EdgePeekSession`).
     case peek
+    /// Running in from the screen edge after a switch to another Space, to a spot set by the caller.
+    case arrive
 
     /// Behaviors the brain picks on its own. The rest only happen through `interrupt`.
     public static let autonomous: [Behavior] = [
@@ -27,7 +29,7 @@ public enum Behavior: String, CaseIterable {
     public var exertion: Exertion {
         switch self {
         case .zoomies, .chaseMe, .ballChase, .fetch, .chaseCursor: return .hard
-        case .walk, .hopToWindow, .goHome, .playBallHome, .greet, .askCare: return .light
+        case .walk, .hopToWindow, .goHome, .playBallHome, .greet, .askCare, .arrive: return .light
         default: return .rest
         }
     }
