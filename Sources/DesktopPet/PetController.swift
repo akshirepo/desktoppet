@@ -314,6 +314,11 @@ final class PetController {
         body.startEntering(onto: floor, from: plan.startX)
     }
 
+    /// A one-off line that isn't about its needs, like a new version being out. Quiet while hiding at an edge.
+    func announce(_ text: String) {
+        _ = say(SpeechLibrary.Line(text: text, bubble: .speech, icon: "sparkles"))
+    }
+
     /// Called when the floor disappears under the corgi.
     func fell() {
         TransitionLog.append("fell at \(Int(body.position.x)),\(Int(body.position.y)) during \(brain.current.rawValue)")

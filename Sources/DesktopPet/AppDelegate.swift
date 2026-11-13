@@ -14,6 +14,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var awaySeconds: TimeInterval = 0
     private var saveTimer: Timer?
     private var popover: NSPopover?
+    let updater = Updater()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         StateStore.migrateAppFolder()          // settings from when the app was called DesktopCorgi
@@ -65,6 +66,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             PetMenu.populate(popup, self.makeMenuActions())
             NSMenu.popUpContextMenu(popup, with: event, for: view)
         }
+
+        updater.onChange = { [weak self] in self?.showUpdateBadge() }
+        updater.onFound = { [weak self] _ in self?.controller.announce("I have an update! It's in my menu") }
+        updater.start()
 
         save()
         saveTimer = Timer.scheduledTimer(timeInterval: 60, target: self, selector: #selector(saveTimerFired),
@@ -132,6 +137,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     NSApp.terminate(nil)
                 }
             }
+        }
+    }
+
+    /// A little arrow next to the menu bar icon while an update is waiting.
+    private func showUpdateBadge() {
+        guard let button = statusItem?.button else { return }
+        let waiting = updater.update != nil
+        let base = button.image == nil ? (profile.character == .sheep ? "🐑" : "🐶") : ""
+        button.title = waiting ? base + "↓" : base
+        button.imagePosition = .imageLeading
+        button.toolTip = waiting ? "DesktopPet: update available" : nil
+    }
+
+    func showUpdate() {
+        guard let u = updater.update else { return }
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = u.count == 1 ? "There's an update for DesktopPet" : "There are \(u.count) updates for DesktopPet"
+        let shown = u.titles.prefix(8).map { "• \($0)" }
+        alert.informativeText = (shown + (u.titles.count > 8 ? ["and \(u.titles.count - 8) more"] : [])).joined(separator: "\n")
+        enum Choice { case install, changes, later }
+        var choices: [Choice] = []
+        if updater.canInstall {
+            alert.addButton(withTitle: "Update and Restart")
+            choices.append(.install)
+        } else {
+            alert.informativeText += "\n\nThe folder this copy was built from is gone, so pull and rebuild it yourself."
+        }
+        alert.addButton(withTitle: "See Changes")
+        alert.addButton(withTitle: "Later")
+        choices += [.changes, .later]
+        let index = alert.runModal().rawValue - NSApplication.ModalResponse.alertFirstButtonReturn.rawValue
+        switch choices.indices.contains(index) ? choices[index] : .later {
+        case .install:
+            updater.install { [weak self] ok in
+                if ok { self?.relaunch() } else { self?.controller.announce("The update didn't work. The log's in my menu") }
+            }
+        case .changes:
+            NSWorkspace.shared.open(Updater.changesURL)
+        case .later:
+            break
         }
     }
 
@@ -225,7 +271,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 p.character = c
                 return AppDelegate.canUse(p)
             },
-            setCharacter: { [weak self] c in DispatchQueue.main.async { self?.switchCharacter(to: c) } }
+            setCharacter: { [weak self] c in DispatchQueue.main.async { self?.switchCharacter(to: c) } },
+            update: updater.state,
+            showUpdate: { [weak self] in DispatchQueue.main.async { self?.showUpdate() } },
+            showUpdateLog: { NSWorkspace.shared.open(Updater.logURL) }
         )
     }
 }

@@ -4,6 +4,9 @@ cd "$(dirname "$0")/.."
 # Use the Command Line Tools when present, so a freshly installed Xcode with an unaccepted license doesn't block the build.
 if [ -z "${DEVELOPER_DIR:-}" ] && [ -d /Library/Developer/CommandLineTools ]; then export DEVELOPER_DIR=/Library/Developer/CommandLineTools; fi
 swift build -c release
+# The commit and clone it was built from, so the app can tell when GitHub has something newer and update itself.
+COMMIT="${DP_COMMIT:-$(git rev-parse HEAD 2>/dev/null || true)}"
+SOURCE_DIR="$(pwd)"
 APP=build/DesktopPet.app
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
@@ -34,6 +37,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleVersion</key><string>1</string>
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>LSUIElement</key><true/>
+  <key>DPCommit</key><string>$COMMIT</string>
+  <key>DPSourceDir</key><string>$SOURCE_DIR</string>
 </dict>
 </plist>
 PLIST

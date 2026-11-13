@@ -38,11 +38,29 @@ struct PetMenuActions {
     var character: Character
     var characterAvailable: (Character) -> Bool
     var setCharacter: (Character) -> Void
+    var update: Updater.State
+    var showUpdate: () -> Void
+    var showUpdateLog: () -> Void
 }
 
 enum PetMenu {
     static func populate(_ menu: NSMenu, _ a: PetMenuActions) {
         menu.removeAllItems()
+        switch a.update {
+        case .upToDate:
+            break
+        case .available(let u), .failed(let u):
+            let item = ClosureMenuItem("Update Available (\(u.count) new)…", handler: a.showUpdate)
+            item.image = NSImage(systemSymbolName: "arrow.down.circle.fill", accessibilityDescription: "Update")
+            menu.addItem(item)
+            if case .failed = a.update { menu.addItem(ClosureMenuItem("Update Failed: Show Log", handler: a.showUpdateLog)) }
+            menu.addItem(.separator())
+        case .updating:
+            let item = NSMenuItem(title: "Updating…", action: nil, keyEquivalent: "")
+            item.isEnabled = false
+            menu.addItem(item)
+            menu.addItem(.separator())
+        }
         menu.addItem(ClosureMenuItem("Feed", icon: "feed", handler: a.feed))
         menu.addItem(ClosureMenuItem("Water", icon: "water", handler: a.water))
         menu.addItem(ClosureMenuItem("Play Ball", icon: "play", handler: a.play))
