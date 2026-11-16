@@ -125,15 +125,11 @@ enum Effects {
     }
 
     private static func bubbleLabel(_ text: String, color: NSColor, outlined: Bool) -> SKLabelNode {
-        let font = NSFont(name: "Avenir Next Demi Bold", size: 10) ?? .systemFont(ofSize: 10, weight: .semibold)
+        let size: CGFloat = outlined ? 11 : 10
+        let font = NSFont(name: "Avenir Next Demi Bold", size: size) ?? .systemFont(ofSize: size, weight: .semibold)
         let style = NSMutableParagraphStyle()
         style.alignment = .center
         var attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color, .paragraphStyle: style]
-        if outlined {
-            // A dark edge so the words read on any wallpaper or window.
-            attributes[.strokeColor] = NSColor(white: 0.1, alpha: 0.9)
-            attributes[.strokeWidth] = -3.5
-        }
         let label = SKLabelNode(attributedText: NSAttributedString(string: text, attributes: attributes))
         label.numberOfLines = 2
         label.preferredMaxLayoutWidth = 104
@@ -141,6 +137,21 @@ enum Effects {
         label.horizontalAlignmentMode = .center
         label.verticalAlignmentMode = .center
         label.zPosition = 1
+        if outlined {
+            // Dark copies just behind it, so the words read on any wallpaper or window.
+            attributes[.foregroundColor] = NSColor(white: 0.08, alpha: 0.9)
+            for (dx, dy) in [(-1, 0), (1, 0), (0, -1), (0, 1), (-0.7, -0.7), (0.7, 0.7), (-0.7, 0.7), (0.7, -0.7)] as [(CGFloat, CGFloat)] {
+                let edge = SKLabelNode(attributedText: NSAttributedString(string: text, attributes: attributes))
+                edge.numberOfLines = 2
+                edge.preferredMaxLayoutWidth = 104
+                edge.lineBreakMode = .byWordWrapping
+                edge.horizontalAlignmentMode = .center
+                edge.verticalAlignmentMode = .center
+                edge.position = CGPoint(x: dx, y: dy)
+                edge.zPosition = -1
+                label.addChild(edge)
+            }
+        }
         return label
     }
 

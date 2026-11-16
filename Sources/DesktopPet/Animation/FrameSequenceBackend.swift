@@ -94,6 +94,8 @@ final class FrameSequenceBackend: AnimationBackend {
     let size: CGSize
     private(set) var movementBounds: CGRect = .zero
     var spriteBounds: CGRect { sprite.frame }
+    /// Bubbles start just above the top of the current pose, so they sit close over a pet that's lying down too.
+    var bubbleHeight: CGFloat { sprite.frame.maxY + 3 }
     private var poseBounds: [AnimState: CGRect] = [:]
     private let sprite = SKSpriteNode()
     /// The pet sprite itself, so a neighbouring display can mirror it while the pet straddles a seam.
