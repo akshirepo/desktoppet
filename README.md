@@ -85,7 +85,7 @@ With Xcode installed, `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer 
 Debugging aids:
 
 - **Debug Overlay:** open the menu with Option held to get it.
-- **Recorder:** `kill -USR1 $(pgrep -x DesktopPet)` saves what the pet draws for the next 12 seconds, one PNG per tick with timings, in `~/Library/Logs/DesktopPet/recording`. `kill -USR2` replays the pet coming over to ask for food and being fed.
+- **Recorder:** `kill -USR1 $(pgrep -x DesktopPet)` saves what the pet draws for the next 12 seconds, one PNG per tick with timings, in `~/Library/Logs/DesktopPet/recording`. `kill -USR2` replays a moment worth recording, taking turns: the pet coming over to ask for food and being fed, then being put down at the left screen edge to peek. Each line of `frames.tsv` ends with the left and right edge of what's drawn, in screen points.
 - **Logs:** `~/Library/Logs/DesktopPet/transitions.log` has every animation change, late ticks and update checks.
 - **Update from a terminal:** `open -g /Applications/DesktopPet.app --args --update-now` checks GitHub straight away and installs what it finds.
 - **Icons:** `scripts/soft_icons.py` redraws the hearts, drops, Zzz and need icons (needs Pillow).
