@@ -79,7 +79,7 @@ public enum BubbleColor: String, Codable, CaseIterable {
 
     public init(from decoder: Decoder) throws {
         let raw = try decoder.singleValueContainer().decode(String.self)
-        self = BubbleColor(rawValue: raw) ?? .sky
+        self = BubbleColor(rawValue: raw) ?? .lavender
     }
 }
 
@@ -130,7 +130,7 @@ public struct PetProfile: Codable, Equatable {
     public var askForCare = true
     public var bubbleStyle = BubbleStyle.sticker
     public var bubbleFont = BubbleFont.bubbly
-    public var bubbleColor = BubbleColor.sky
+    public var bubbleColor = BubbleColor.lavender
 
     public init(name: String? = nil, soundsOn: Bool = false, askedForName: Bool = false,
                 character: Character = .corgi) {
@@ -164,7 +164,7 @@ public struct PetProfile: Codable, Equatable {
         askForCare = (try? c.decodeIfPresent(Bool.self, forKey: .askForCare)) ?? true
         bubbleStyle = (try? c.decodeIfPresent(BubbleStyle.self, forKey: .bubbleStyle)) ?? .sticker
         bubbleFont = (try? c.decodeIfPresent(BubbleFont.self, forKey: .bubbleFont)) ?? .bubbly
-        bubbleColor = (try? c.decodeIfPresent(BubbleColor.self, forKey: .bubbleColor)) ?? .sky
+        bubbleColor = (try? c.decodeIfPresent(BubbleColor.self, forKey: .bubbleColor)) ?? .lavender
         let stored = (try? c.decodeIfPresent([String: String].self, forKey: .names)) ?? [:]
         for (key, value) in stored {
             guard let pet = Character(rawValue: key) else { continue }

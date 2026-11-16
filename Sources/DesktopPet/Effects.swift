@@ -91,7 +91,7 @@ enum Effects {
     /// How bubbles are drawn and lettered; the user picks both in the menu.
     static var bubbleStyle = BubbleStyle.sticker
     static var bubbleFont = BubbleFont.bubbly
-    static var bubbleColor = BubbleColor.sky
+    static var bubbleColor = BubbleColor.lavender
     private static var tint: NSColor {
         let (r, g, b) = bubbleColor.rgb
         return NSColor(srgbRed: r, green: g, blue: b, alpha: 1)
