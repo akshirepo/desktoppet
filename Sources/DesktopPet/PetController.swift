@@ -28,6 +28,7 @@ final class PetController {
     /// The display it's running in on after a Space switch, while it's still past the edge.
     private var enteringScreen: Int?
 
+    private let recorder = FrameRecorder()
     /// The current click started on a bubble, so its release isn't a pet.
     private var bubbleTapped = false
 
@@ -173,6 +174,7 @@ final class PetController {
         NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
         ) { [weak self] _ in self?.screensChanged() }
+        recorder.listen()
         spaces = Spaces.current()
         NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main
@@ -592,8 +594,14 @@ final class PetController {
 
     func tick() {
         let now = CACurrentMediaTime()
-        let dt = min(now - lastTick, 0.1)
+        let gap = now - lastTick
+        let dt = min(gap, 0.1)
         lastTick = now
+        // A tick that came late is a visible hitch (decoding an animation's frames, say).
+        if timerFPS > 0, gap > 2.5 / Double(timerFPS), gap < 5 {
+            TransitionLog.append("slow tick \(Int(gap * 1000))ms at \(timerFPS)fps state=\(playback.currentState?.rawValue ?? "nil") "
+                + "target=\(playback.transitionTarget?.rawValue ?? "-") behavior=\(brain.current.rawValue)")
+        }
         refreshScreenBounds()
         clampBody()
         playback.advance(dt: dt, mode: body.mode)
@@ -678,6 +686,9 @@ final class PetController {
             n.position = carryPoint
             n.isHidden = true   // the holdBall sprite already has the ball in its mouth
         }
+        recorder.capture(scene: backend.node.scene, feet: backend.node.position, global: body.position,
+                         info: "\(playback.currentState?.rawValue ?? "nil")\t\(playback.transitionTarget?.rawValue ?? "-")\t"
+                             + "\(brain.current.rawValue)\t\(body.mode)\t\(body.facingRight ? "R" : "L")\t\(timerFPS)")
         debug.update(world: world, hitRect: hitRect, behavior: brain.current, overlays: overlays)
         let overBubble = visibleBubble()?.rect.contains(cursor) ?? false
         overlays.setClickThrough(!(body.mode == .held || hitRect.contains(cursor) || overBubble))
