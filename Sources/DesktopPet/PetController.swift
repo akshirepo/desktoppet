@@ -329,21 +329,26 @@ final class PetController {
         _ = say(SpeechLibrary.Line(text: "How's this one?", bubble: .speech, icon: "heart"))
     }
 
-    /// Debug (SIGUSR2): a sample bubble in every font, then every style, then back to the chosen ones.
+    /// Debug (SIGUSR2): sample bubbles across colors, fonts and styles, then back to the chosen look.
     private func demoBubbleStyles() {
-        let chosen = (Effects.bubbleStyle, Effects.bubbleFont)
-        let looks: [(BubbleStyle, BubbleFont)] = BubbleFont.allCases.map { (.pill, $0) }
-            + [(.pixel, .pixel), (.pixel, .pixelCaps), (.pixel, .terminal), (.dark, .pixel), (.dark, .rounded), (.text, .pixel)]
+        let chosen = (Effects.bubbleStyle, Effects.bubbleFont, Effects.bubbleColor)
+        let looks: [(BubbleStyle, BubbleFont, BubbleColor)] = BubbleColor.allCases.map { (.sticker, .bubbly, $0) }
+            + [.chubby, .soft, .neat, .rounded, .note].map { (.sticker, $0, .sky) }
+            + [(.pill, .bubbly, .pink), (.pill, .soft, .mint), (.icon, .bubbly, .lavender), (.dark, .bubbly, .sky)]
         for (i, look) in looks.enumerated() {
             DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 1.6) { [weak self] in
                 guard let self else { return }
-                (Effects.bubbleStyle, Effects.bubbleFont) = look
-                _ = self.say(SpeechLibrary.Line(text: i % 3 == 2 ? "I missed you so much today!" : "A little nibble?",
-                                                bubble: .speech, icon: "heart"))
+                (Effects.bubbleStyle, Effects.bubbleFont, Effects.bubbleColor) = look
+                if i == 6 {
+                    Effects.thought(icon: Self.icon(for: .hunger), fallback: "hungry", on: self.backend.node, height: self.backend.bubbleHeight)
+                } else {
+                    _ = self.say(SpeechLibrary.Line(text: i % 3 == 2 ? "I missed you so much today!" : "A little nibble?",
+                                                    bubble: .speech, icon: "heart"))
+                }
             }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + Double(looks.count) * 1.6 + 0.5) {
-            (Effects.bubbleStyle, Effects.bubbleFont) = chosen
+            (Effects.bubbleStyle, Effects.bubbleFont, Effects.bubbleColor) = chosen
         }
     }
 
@@ -895,6 +900,7 @@ final class PetController {
         sounds.enabled = profile.soundsOn
         Effects.bubbleStyle = profile.bubbleStyle
         Effects.bubbleFont = profile.bubbleFont
+        Effects.bubbleColor = profile.bubbleColor
         petSound = profile.character == .sheep ? .petSheep : .petCorgi
     }
 

@@ -89,8 +89,15 @@ enum Effects {
     }
 
     /// How bubbles are drawn and lettered; the user picks both in the menu.
-    static var bubbleStyle = BubbleStyle.pill
-    static var bubbleFont = BubbleFont.pixel
+    static var bubbleStyle = BubbleStyle.sticker
+    static var bubbleFont = BubbleFont.bubbly
+    static var bubbleColor = BubbleColor.sky
+    private static var tint: NSColor {
+        let (r, g, b) = bubbleColor.rgb
+        return NSColor(srgbRed: r, green: g, blue: b, alpha: 1)
+    }
+    /// #4b3f55, the lettering on the pastel bubbles.
+    private static let plum = NSColor(srgbRed: 0.29, green: 0.25, blue: 0.33, alpha: 1)
 
     /// The pixel fonts that ship with the app (Assets/Fonts, SIL Open Font License), made available to this process.
     private static let bundledFonts: Void = {
@@ -106,6 +113,10 @@ enum Effects {
         _ = bundledFonts
         let (names, size): ([String], CGFloat)
         switch choice {
+        case .bubbly: (names, size) = (["Fredoka"], 11)
+        case .chubby: (names, size) = (["Sniglet-Regular", "Sniglet"], 11)
+        case .soft: (names, size) = (["VarelaRound-Regular", "Varela Round"], 10.5)
+        case .neat: (names, size) = (["PatrickHand-Regular", "Patrick Hand"], 12)
         case .pixel: (names, size) = (["PixelifySans-Regular", "Pixelify Sans"], 11)
         case .pixelCaps: (names, size) = (["Silkscreen-Regular", "Silkscreen"], 8)
         case .terminal: (names, size) = (["VT323-Regular", "VT323"], 13)
@@ -119,7 +130,14 @@ enum Effects {
         case .serif: (names, size) = (["Georgia"], 10)
         }
         for name in names {
-            if let f = NSFont(name: name, size: size + bump) { return f }
+            let found = NSFont(name: name, size: size + bump)
+                ?? NSFont(descriptor: NSFontDescriptor(fontAttributes: [.family: name]), size: size + bump)
+            guard let f = found, f.familyName == name || f.fontName == name else { continue }
+            // Fredoka is one file with a weight dial ('wght'); semibold is the bubbly one.
+            if name == "Fredoka" {
+                return NSFont(descriptor: f.fontDescriptor.addingAttributes([.variation: [0x77676874: 600]]), size: size + bump) ?? f
+            }
+            return f
         }
         let system = NSFont.systemFont(ofSize: size + bump, weight: .semibold)
         return system.fontDescriptor.withDesign(.rounded).flatMap { NSFont(descriptor: $0, size: size + bump) } ?? system
@@ -127,8 +145,9 @@ enum Effects {
 
     private struct BubbleLook {
         var fill: NSColor, stroke: NSColor, ink: NSColor
-        static let light = BubbleLook(fill: NSColor(srgbRed: 1, green: 0.99, blue: 0.96, alpha: 0.97),
-                                      stroke: bubbleInk.withAlphaComponent(0.85), ink: bubbleInk)
+        static var light: BubbleLook {
+            BubbleLook(fill: tint.withAlphaComponent(0.97), stroke: plum.withAlphaComponent(0.75), ink: plum)
+        }
         static let dark = BubbleLook(fill: NSColor(white: 0.12, alpha: 0.82), stroke: NSColor(white: 1, alpha: 0.18),
                                      ink: NSColor(white: 0.97, alpha: 1))
     }
@@ -154,8 +173,8 @@ enum Effects {
             ])
             path.closeSubpath()
             let shape = SKShapeNode(path: path)
-            shape.fillColor = NSColor(srgbRed: 1, green: 0.97, blue: 0.88, alpha: 1)
-            shape.strokeColor = bubbleInk
+            shape.fillColor = tint
+            shape.strokeColor = plum
             shape.lineWidth = 2
             shape.lineJoin = .miter
             shape.isAntialiased = false
@@ -178,6 +197,56 @@ enum Effects {
         shape.lineWidth = 1
         shape.isAntialiased = true
         return shape
+    }
+
+    /// A puffy pastel sticker: thick white border, a faint edge and shadow so it holds up on any background, a
+    /// little shine, and two soft dots leading down to the pet instead of a pointed tail.
+    private static func sticker(size: CGSize, tailRight: Bool) -> SKNode {
+        let node = SKNode()
+        let lift: CGFloat = 9
+        let minX = tailRight ? 14 - size.width : -14
+        let box = CGRect(x: minX, y: lift, width: size.width, height: size.height)
+        let r = min(13, size.height / 2)
+        let dir: CGFloat = tailRight ? -1 : 1
+        let parts: [CGPath] = [
+            CGPath(roundedRect: box, cornerWidth: r, cornerHeight: r, transform: nil),
+            CGPath(ellipseIn: CGRect(x: dir * 1.5 - 3.2, y: lift - 6.4, width: 6.4, height: 6.4), transform: nil),
+            CGPath(ellipseIn: CGRect(x: -1.8, y: -0.5, width: 3.6, height: 3.6), transform: nil),
+        ]
+        func layer(_ fill: NSColor, _ stroke: NSColor, _ width: CGFloat, dy: CGFloat = 0, z: CGFloat) {
+            for path in parts {
+                let shape = SKShapeNode(path: path)
+                shape.fillColor = fill
+                shape.strokeColor = stroke
+                shape.lineWidth = width
+                shape.isAntialiased = true
+                shape.position = CGPoint(x: 0, y: dy)
+                shape.zPosition = z
+                node.addChild(shape)
+            }
+        }
+        let shade = NSColor(srgbRed: 0.2, green: 0.16, blue: 0.3, alpha: 1)
+        layer(shade.withAlphaComponent(0.16), .clear, 0, dy: -2, z: -0.3)             // soft shadow
+        layer(.clear, shade.withAlphaComponent(0.28), 4.6, z: -0.2)                    // faint edge outside the border
+        layer(tint, .white, 2.6, z: -0.1)                                              // the sticker
+        let shine = SKShapeNode(ellipseOf: CGSize(width: min(12, size.width * 0.3), height: 3))
+        shine.fillColor = NSColor(white: 1, alpha: 0.65)
+        shine.strokeColor = .clear
+        shine.position = CGPoint(x: box.minX + r + 3, y: box.maxY - 4.5)
+        shine.zPosition = 0
+        node.addChild(shine)
+        return node
+    }
+
+    /// The bubble body for a drawn style, with its tail tip on the origin.
+    private static func body(size: CGSize, tailRight: Bool, style: BubbleStyle) -> SKNode {
+        if style == .sticker { return sticker(size: size, tailRight: tailRight) }
+        return capsule(size: size, tailRight: tailRight, look: style == .dark ? .dark : .light, pixel: style == .pixel)
+    }
+
+    /// Where the body's box starts and how far it's lifted off the origin, to place things inside it.
+    private static func inset(_ style: BubbleStyle, width: CGFloat, tailRight: Bool) -> (minX: CGFloat, lift: CGFloat) {
+        style == .sticker ? (tailRight ? 14 - width : -14, 9) : (tailRight ? 12 - width : -12, 5)
     }
 
     private static func bubbleLabel(_ text: String, color: NSColor, outlined: Bool) -> SKLabelNode {
@@ -210,37 +279,39 @@ enum Effects {
         return label
     }
 
-    /// The drawn styles: a capsule fitted to the text, the words alone, or just the icon.
+    /// The drawn styles: a shape fitted to the text, the words alone, or just the icon.
     private static func drawnBubble(_ text: String, icon: String?, tailRight: Bool, style: BubbleStyle) -> SKNode {
         let container = SKNode()
-        let look = style == .dark ? BubbleLook.dark : .light
         let accent = icon.flatMap { bubbleTexture("accents/\($0).png") }
         if style == .icon, let accent {
             let d: CGFloat = 24
-            let shape = capsule(size: CGSize(width: d, height: d), tailRight: tailRight, look: look, pixel: style == .pixel)
+            let at = inset(.pill, width: d, tailRight: tailRight)
             let a = SKSpriteNode(texture: accent, size: CGSize(width: 15, height: 15))
-            a.position = CGPoint(x: (tailRight ? 12 - d : -12) + d / 2, y: 5 + d / 2)
+            a.position = CGPoint(x: at.minX + d / 2, y: at.lift + d / 2)
             a.zPosition = 1
-            container.addChild(shape)
+            container.addChild(body(size: CGSize(width: d, height: d), tailRight: tailRight, style: .pill))
             container.addChild(a)
             return container
         }
-        let label = bubbleLabel(text, color: style == .text ? .white : look.ink, outlined: style == .text)
+        let ink: NSColor = style == .text ? .white : style == .dark ? BubbleLook.dark.ink : plum
+        let label = bubbleLabel(text, color: ink, outlined: style == .text)
         let textSize = label.frame.size
         if style == .text {
             label.position = CGPoint(x: 0, y: 4 + textSize.height / 2)
             container.addChild(label)
             return container
         }
+        let roomy = style == .sticker
         let iconWidth: CGFloat = accent == nil ? 0 : 15
-        let size = CGSize(width: ceil(textSize.width) + iconWidth + 16, height: ceil(textSize.height) + 9)
-        let minX = tailRight ? 12 - size.width : -12
-        container.addChild(capsule(size: size, tailRight: tailRight, look: look, pixel: style == .pixel))
-        label.position = CGPoint(x: minX + 8 + iconWidth + textSize.width / 2, y: 5 + size.height / 2)
+        let pad: CGFloat = roomy ? 10 : 8
+        let size = CGSize(width: ceil(textSize.width) + iconWidth + pad * 2, height: ceil(textSize.height) + (roomy ? 12 : 9))
+        let at = inset(style, width: size.width, tailRight: tailRight)
+        container.addChild(body(size: size, tailRight: tailRight, style: style))
+        label.position = CGPoint(x: at.minX + pad + iconWidth + textSize.width / 2, y: at.lift + size.height / 2)
         container.addChild(label)
         if let accent {
             let a = SKSpriteNode(texture: accent, size: CGSize(width: 13, height: 13))
-            a.position = CGPoint(x: minX + 8 + 5, y: 5 + size.height / 2)
+            a.position = CGPoint(x: at.minX + pad + 5, y: at.lift + size.height / 2)
             a.zPosition = 1
             container.addChild(a)
         }
@@ -261,10 +332,15 @@ enum Effects {
             container.setScale(0.85)
             container.name = bubbleName
             node.addChild(container)
+            // The sticker pops in with a little bounce.
+            let appear: SKAction = bubbleStyle == .sticker
+                ? .group([.fadeIn(withDuration: 0.12), .sequence([.scale(to: 1.1, duration: 0.14), .scale(to: 1, duration: 0.1)])])
+                : .group([.fadeIn(withDuration: 0.2), .scale(to: 1, duration: 0.2)])
+            if bubbleStyle == .sticker { container.setScale(0.6) }
             container.run(.sequence([
                 .wait(forDuration: delay),
                 replaceOtherBubbles(container, on: node),
-                .group([.fadeIn(withDuration: 0.2), .scale(to: 1, duration: 0.2)]),
+                appear,
                 .wait(forDuration: 2.4),
                 .fadeOut(withDuration: 0.32),
                 .removeFromParent(),
@@ -324,13 +400,14 @@ enum Effects {
         if bubbleStyle != .classic, let inner = Doodles.texture(icon) {
             // The same need icon in a small round bubble (or alone, for the words-only style).
             let container = SKNode()
-            let d: CGFloat = 26
+            let d: CGFloat = bubbleStyle == .sticker ? 28 : 26
+            let at = inset(bubbleStyle, width: d, tailRight: false)
             if bubbleStyle != .text {
-                container.addChild(capsule(size: CGSize(width: d, height: d), tailRight: false,
-                                           look: bubbleStyle == .dark ? .dark : .light, pixel: bubbleStyle == .pixel))
+                container.addChild(body(size: CGSize(width: d, height: d), tailRight: false,
+                                        style: bubbleStyle == .icon ? .pill : bubbleStyle))
             }
             let symbol = SKSpriteNode(texture: inner, size: CGSize(width: 16, height: 16))
-            symbol.position = CGPoint(x: -12 + d / 2, y: 5 + d / 2)
+            symbol.position = CGPoint(x: at.minX + d / 2, y: at.lift + d / 2)
             symbol.zPosition = 1
             container.addChild(symbol)
             show(container, on: node, at: CGPoint(x: 0, y: height + 2), delay: 0)
