@@ -80,4 +80,43 @@ final class RoamingBodyTests: XCTestCase {
         body.walk(direction: 1, speed: body.config.runSpeed)
         XCTAssertTrue(body.isRunning)
     }
+
+    func testFloatingDownIsSlowerThanFallingAndEndsOnLanding() {
+        func descend(gently: Bool) -> (seconds: Double, floated: Bool) {
+            let world = World(provider: FakeWindows(), screens: [CGRect(x: 0, y: 0, width: 1440, height: 900)])
+            world.refresh()
+            let body = Body(position: CGPoint(x: 700, y: 0))
+            for _ in 0..<5 { body.step(dt: 1.0 / 60, world: world) }
+            body.startRoaming()
+            for _ in 0..<120 {
+                body.roam(toward: CGPoint(x: 700, y: 500), speed: 400)
+                body.step(dt: 1.0 / 60, world: world)
+            }
+            body.stopRoaming(gently: gently)
+            let floated = body.isFloatingDown
+            var t = 0.0
+            while body.mode == .airborne && t < 10 {
+                body.step(dt: 1.0 / 60, world: world)
+                t += 1.0 / 60
+            }
+            XCTAssertEqual(body.mode, .grounded)
+            XCTAssertFalse(body.isFloatingDown)
+            return (t, floated)
+        }
+        let fall = descend(gently: false), float = descend(gently: true)
+        XCTAssertFalse(fall.floated)
+        XCTAssertTrue(float.floated)
+        XCTAssertGreaterThan(float.seconds, fall.seconds * 1.5)
+        XCTAssertLessThan(float.seconds, 2.5, "still gets down promptly")
+    }
+
+    func testBeingPickedUpEndsTheFloat() {
+        let body = Body(position: CGPoint(x: 700, y: 400))
+        body.startRoaming()
+        body.stopRoaming(gently: true)
+        XCTAssertTrue(body.isFloatingDown)
+        body.pickUp()
+        body.release()
+        XCTAssertFalse(body.isFloatingDown, "let go after a drag, it's a real drop")
+    }
 }

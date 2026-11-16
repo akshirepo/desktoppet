@@ -54,7 +54,8 @@ public final class BehaviorExecutor {
         homeLeapDirection = nil
         carryingBall = false
         ballPhase = .chasing
-        if body.mode == .roaming && b != .chaseMe && b != .ballChase && b != .askCare { body.stopRoaming() }
+        // Done floating about: it comes down gently, it isn't being dropped.
+        if body.mode == .roaming && b != .chaseMe && b != .ballChase && b != .askCare { body.stopRoaming(gently: true) }
         body.stop()
         let segment = body.standingOn ?? world.segment(under: body.position)
         switch b {
@@ -362,7 +363,7 @@ public final class BehaviorExecutor {
             let requested = home.map { CGPoint(x: $0.x, y: $0.y + 60) } ?? body.position
             let target = nearestPoint(to: requested, in: world.roamingScreens(headroom: body.config.roamHeadroom))
             if hypot(target.x - body.position.x, target.y - body.position.y) < 10 {
-                body.stopRoaming()
+                body.stopRoaming(gently: true)
                 ballPhase = .dropping
             } else {
                 body.roam(toward: world.roamWaypoint(from: body.position, to: target, headroom: body.config.roamHeadroom),

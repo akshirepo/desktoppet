@@ -26,8 +26,11 @@ final class PetController {
     /// The display it's running in on after a Space switch, while it's still past the edge.
     private var enteringScreen: Int?
 
-    /// It was floating by the cursor and just got what it wanted: it comes down pleased, not flailing.
-    private var happyDrop = false
+    /// Coming down after floating by the cursor it's pleased, unless it asked for something and was ignored.
+    private var ignoredFloat = false
+    /// Whether it was floating down on the last tick, to tell a soft landing from a real one.
+    private var wasFloatingDown = false
+    private var pressTime: CFTimeInterval = 0
     private let recorder = FrameRecorder()
     /// The current click started on a bubble, so its release isn't a pet.
     private var bubbleTapped = false
@@ -378,10 +381,15 @@ final class PetController {
 
     func beginBehavior(_ b: Behavior) {
         playback.cancelReaction()
+        ignoredFloat = false
         if b != .askCare, askingFor != nil {
-            // Ignored: a little tear, then back to what it was doing. It asks again later.
             askingFor = nil
-            Effects.floatDoodle("teardrop", fallback: "💧", on: backend.node, height: backend.size.height)
+            // Ignored: a little tear, then back to what it was doing. It asks again later. Being picked up isn't
+            // being ignored.
+            if b != .dangle {
+                ignoredFloat = true
+                Effects.floatDoodle("teardrop", fallback: "💧", on: backend.node, height: backend.size.height)
+            }
         }
         if b != .peek && peek != nil { endPeek(reason: "now \(b.rawValue)") }
         if body.mode == .clinging && b != .cling && b != .dangle {
@@ -404,10 +412,10 @@ final class PetController {
             Effects.floatDoodle("sweat-drops", fallback: "💦", on: backend.node, height: backend.size.height * 0.9)
         }
         executor.speedScale = needs.isLow(.happiness) ? 0.6 : 1
-        // Fed, watered, bathed or tucked in while up by the cursor: the way down is a happy one.
-        happyDrop = body.mode == .roaming && [.eat, .drink, .bath, .sleep].contains(b)
+        let wasRoaming = body.mode == .roaming
         executor.begin(b, body: body, world: world, cursor: NSEvent.mouseLocation)
-        if happyDrop {
+        // Fed, watered, bathed or tucked in while up by the cursor: hearts on the way down.
+        if wasRoaming && body.isFloatingDown && [.eat, .drink, .bath, .sleep].contains(b) {
             Effects.floatDoodle("heart", fallback: "❤️", on: backend.node, height: backend.size.height, count: 3)
         }
         if b == .ballChase { spawnBall() }
@@ -685,15 +693,14 @@ final class PetController {
             stepFinished()
         }
         // Even a planted reaction must notice a vanished floor and start falling immediately.
+        wasFloatingDown = body.isFloatingDown
         if let event = body.step(dt: dt, world: world) {
             if executor.handle(event, behavior: brain.current, body: body) { stepFinished() }
             if event == .landed {
                 // Landing after being dropped: that's the spot to stay around.
                 if now < stayUntil && stayUntil - now > Self.stayPutSeconds - 6 { stayX = body.position.x }
-                // A happy drop skips the thud and the winded landing pose and gets straight to the treat.
-                if happyDrop {
-                    happyDrop = false
-                } else {
+                // Floating down ends in a soft landing: no thud and no winded landing pose.
+                if !wasFloatingDown {
                     sounds.play(.land)
                     playback.requestReaction(.land, mode: body.mode)
                 }
@@ -1044,9 +1051,8 @@ final class PetController {
         if (body.mode == .grounded || body.mode == .roaming), brain.current == .askCare && !body.isMoving {
             state = askingFor == .thirst ? .thirsty : .beg   // asking nicely
         }
-        if happyDrop {
-            if body.mode == .airborne { state = .happy } else if body.mode != .grounded { happyDrop = false }
-        }
+        // Coming down after floating by the cursor is something it does, not a fall: no flailing.
+        if body.isFloatingDown { state = ignoredFloat ? .roam : .happy }
         if body.mode == .grounded && brain.current == .beg && needs.state.thirst < needs.state.hunger { state = .thirsty }
         // The last two seconds of a drink are the happy "ahh".
         if (state == .eat && brain.current == .eat) || (state == .drink && brain.remaining >= Self.refreshedSeconds) {
@@ -1087,12 +1093,16 @@ extension PetController: SceneInputHandler {
             return
         }
         pressPoint = global
+        pressTime = CACurrentMediaTime()
         dragging = false
     }
 
     func mouseDragged(to global: CGPoint) {
         guard let start = pressPoint else { return }
-        if !dragging && hypot(global.x - start.x, global.y - start.y) > 4 {
+        // A click often comes with a little slip of the hand, more so when the pet is moving under the cursor. Only a
+        // clear pull, or a smaller one after holding on for a moment, picks it up.
+        let pulled = hypot(global.x - start.x, global.y - start.y)
+        if !dragging && (pulled > 14 || (pulled > 6 && CACurrentMediaTime() - pressTime > 0.3)) {
             dragging = true
             boredom.noteInteraction()
             body.pickUp()

@@ -11,6 +11,8 @@ public struct BodyConfig {
     public var maxJumpAcross: CGFloat = 520
     public var jumpClearance: CGFloat = 50
     public var maxFallSpeed: CGFloat = 1800
+    /// Top speed when floating down gently after roaming.
+    public var floatDownSpeed: CGFloat = 420
     /// Room kept free above a roaming corgi's feet so it never slides under the menu bar.
     public var roamHeadroom: CGFloat = 80
     /// How fast a peeking pet slides onto its spot at the display edge (points per second).
@@ -137,11 +139,17 @@ public final class Body {
         velocity = .zero
     }
 
-    /// Ends roaming. The body falls to whatever floor is below.
-    public func stopRoaming() {
+    /// Ends roaming. The body falls to whatever floor is below; `gently` it floats down instead, slowly enough to
+    /// read as coming down on purpose and not as being dropped.
+    public func stopRoaming(gently: Bool = false) {
         guard mode == .roaming else { return }
         startFalling()
+        gentle = gently
     }
+
+    /// Coming down softly after floating (see `stopRoaming(gently:)`), until it lands or something else happens.
+    public var isFloatingDown: Bool { gentle && mode == .airborne }
+    private var gentle = false
 
     /// Hold on to a window edge at `contact`. No gravity until `letGo()` or the window goes away.
     public func startClinging(_ spot: ClingSpot, at contact: CGPoint) {
@@ -222,6 +230,7 @@ public final class Body {
     }
 
     public func pickUp() {
+        gentle = false
         mode = .held
         entry = nil
         cling = nil
@@ -259,6 +268,7 @@ public final class Body {
     public func step(dt: TimeInterval, world: World) -> BodyEvent? {
         let dt = CGFloat(dt)
         if mode != .grounded { groundSpeed = 0 }
+        if mode != .airborne { gentle = false }
         switch mode {
         case .clinging:
             return nil
@@ -321,7 +331,8 @@ public final class Body {
             velocity = .zero
             return .hitEdge
         case .airborne:
-            velocity.dy = max(velocity.dy - config.gravity * dt, -config.maxFallSpeed)
+            velocity.dy = gentle ? max(velocity.dy - config.gravity * 0.3 * dt, -config.floatDownSpeed)
+                : max(velocity.dy - config.gravity * dt, -config.maxFallSpeed)
             // Falling with nothing below (off a display with no display under it): drift toward the nearest
             // floor, and if it has already dropped past every floor, put it on the closest one.
             if velocity.dy < 0, !world.hasFloor(below: position) {
@@ -349,6 +360,7 @@ public final class Body {
                 velocity = .zero
                 standingOn = landing
                 mode = .grounded
+                gentle = false
                 return .landed
             }
             position = next
