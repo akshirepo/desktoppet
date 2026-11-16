@@ -178,8 +178,8 @@ final class FrameSequenceBackend: AnimationBackend {
             }
         }
         budget.pinned = Set(Self.keptReady.compactMap { animations[$0]?.frames.name })
-        node.addChild(shadow)
         node.addChild(sprite)
+        node.addChild(shadow)                // drawn underneath (z -1)
         play(.idle)
         warm(Self.keptReady.compactMap { animations[$0]?.frames })
     }
