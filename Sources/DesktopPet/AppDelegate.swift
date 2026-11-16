@@ -272,21 +272,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 return AppDelegate.canUse(p)
             },
             setCharacter: { [weak self] c in DispatchQueue.main.async { self?.switchCharacter(to: c) } },
-            bubbleStyle: profile.bubbleStyle,
-            setBubbleStyle: { [weak self] style in
-                self?.updateProfile { $0.bubbleStyle = style }
-                self?.controller.previewBubble()
-            },
-            bubbleFont: profile.bubbleFont,
-            setBubbleFont: { [weak self] font in
-                self?.updateProfile { $0.bubbleFont = font }
-                self?.controller.previewBubble()
-            },
-            bubbleColor: profile.bubbleColor,
-            setBubbleColor: { [weak self] color in
-                self?.updateProfile { $0.bubbleColor = color }
-                self?.controller.previewBubble()
-            },
             update: updater.state,
             showUpdate: { [weak self] in DispatchQueue.main.async { self?.showUpdate() } },
             showUpdateLog: { NSWorkspace.shared.open(Updater.logURL) }

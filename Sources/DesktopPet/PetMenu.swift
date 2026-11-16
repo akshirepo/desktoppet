@@ -38,12 +38,6 @@ struct PetMenuActions {
     var character: Character
     var characterAvailable: (Character) -> Bool
     var setCharacter: (Character) -> Void
-    var bubbleStyle: BubbleStyle
-    var setBubbleStyle: (BubbleStyle) -> Void
-    var bubbleFont: BubbleFont
-    var setBubbleFont: (BubbleFont) -> Void
-    var bubbleColor: BubbleColor
-    var setBubbleColor: (BubbleColor) -> Void
     var update: Updater.State
     var showUpdate: () -> Void
     var showUpdateLog: () -> Void
@@ -95,33 +89,6 @@ enum PetMenu {
         let care = ClosureMenuItem("Ask for Care", icon: "help", handler: a.toggleAskForCare)
         care.state = a.askForCareOn ? .on : .off
         menu.addItem(care)
-        let bubbles = NSMenuItem(title: "Bubble Style", action: nil, keyEquivalent: "")
-        let bubbleMenu = NSMenu()
-        for style in BubbleStyle.allCases {
-            let item = ClosureMenuItem(style.displayName) { a.setBubbleStyle(style) }
-            item.state = style == a.bubbleStyle ? .on : .off
-            bubbleMenu.addItem(item)
-        }
-        bubbles.submenu = bubbleMenu
-        menu.addItem(bubbles)
-        let fonts = NSMenuItem(title: "Bubble Font", action: nil, keyEquivalent: "")
-        let fontMenu = NSMenu()
-        for font in BubbleFont.allCases {
-            let item = ClosureMenuItem(font.displayName) { a.setBubbleFont(font) }
-            item.state = font == a.bubbleFont ? .on : .off
-            fontMenu.addItem(item)
-        }
-        fonts.submenu = fontMenu
-        menu.addItem(fonts)
-        let colors = NSMenuItem(title: "Bubble Color", action: nil, keyEquivalent: "")
-        let colorMenu = NSMenu()
-        for color in BubbleColor.allCases {
-            let item = ClosureMenuItem(color.displayName) { a.setBubbleColor(color) }
-            item.state = color == a.bubbleColor ? .on : .off
-            colorMenu.addItem(item)
-        }
-        colors.submenu = colorMenu
-        menu.addItem(colors)
         let debug = ClosureMenuItem("Debug Overlay", handler: a.toggleDebug)
         debug.state = a.debugOn ? .on : .off
         menu.addItem(debug)

@@ -175,7 +175,6 @@ final class PetController {
             forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
         ) { [weak self] _ in self?.screensChanged() }
         recorder.listen()
-        recorder.onDemo = { [weak self] in self?.demoBubbleStyles() }
         spaces = Spaces.current()
         NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main
@@ -209,9 +208,7 @@ final class PetController {
         brain.interrupt(with: .greet, duration: lines.count > 1 ? 9 : 4.5)
         beginBehavior(.greet)
         for (i, line) in lines.enumerated() {
-            let shown = say(SpeechLibrary.Line(text: line, bubble: .speech, icon: i == 0 ? "hearts" : "heart"),
-                            delay: Double(i) * 4.6)
-            if !shown { Effects.speech(line, on: backend.node, height: backend.bubbleHeight, delay: Double(i) * 2.6) }
+            _ = say(SpeechLibrary.Line(text: line, bubble: .speech, icon: i == 0 ? "hearts" : "heart"), delay: Double(i) * 4.6)
         }
     }
 
@@ -322,34 +319,6 @@ final class PetController {
     /// A one-off line that isn't about its needs, like a new version being out. Quiet while hiding at an edge.
     func announce(_ text: String) {
         _ = say(SpeechLibrary.Line(text: text, bubble: .speech, icon: "sparkles"))
-    }
-
-    /// Shows a sample line in the current bubble style, right after it's picked in the menu.
-    func previewBubble() {
-        _ = say(SpeechLibrary.Line(text: "How's this one?", bubble: .speech, icon: "heart"))
-    }
-
-    /// Debug (SIGUSR2): sample bubbles across colors, fonts and styles, then back to the chosen look.
-    private func demoBubbleStyles() {
-        let chosen = (Effects.bubbleStyle, Effects.bubbleFont, Effects.bubbleColor)
-        let looks: [(BubbleStyle, BubbleFont, BubbleColor)] = BubbleColor.allCases.map { (.sticker, .bubbly, $0) }
-            + [.chubby, .soft, .neat, .rounded, .note].map { (.sticker, $0, .sky) }
-            + [(.pill, .bubbly, .pink), (.pill, .soft, .mint), (.icon, .bubbly, .lavender), (.dark, .bubbly, .sky)]
-        for (i, look) in looks.enumerated() {
-            DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 1.6) { [weak self] in
-                guard let self else { return }
-                (Effects.bubbleStyle, Effects.bubbleFont, Effects.bubbleColor) = look
-                if i == 6 {
-                    Effects.thought(icon: Self.icon(for: .hunger), fallback: "hungry", on: self.backend.node, height: self.backend.bubbleHeight)
-                } else {
-                    _ = self.say(SpeechLibrary.Line(text: i % 3 == 2 ? "I missed you so much today!" : "A little nibble?",
-                                                    bubble: .speech, icon: "heart"))
-                }
-            }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + Double(looks.count) * 1.6 + 0.5) {
-            (Effects.bubbleStyle, Effects.bubbleFont, Effects.bubbleColor) = chosen
-        }
     }
 
     /// Called when the floor disappears under the corgi.
@@ -830,10 +799,9 @@ final class PetController {
     @discardableResult
     private func say(_ line: SpeechLibrary.Line, delay: TimeInterval = 0, need: Need? = nil) -> Bool {
         if peek != nil { return false }                // quiet while hiding behind the wall
-        let shown = Effects.say(line.text, bubble: line.bubble, icon: line.icon, tailRight: tailRight,
-                                on: backend.node, height: backend.bubbleHeight, delay: delay)
-        if shown { tagNewestBubble(need: need) }
-        return shown
+        Effects.say(line.text, icon: line.icon, tailRight: tailRight, on: backend.node, height: backend.bubbleHeight, delay: delay)
+        tagNewestBubble(need: need)
+        return true
     }
 
     /// A line from the given mood, if the bundled messages have one.
@@ -898,9 +866,6 @@ final class PetController {
             brain.finishCurrent()
         }
         sounds.enabled = profile.soundsOn
-        Effects.bubbleStyle = profile.bubbleStyle
-        Effects.bubbleFont = profile.bubbleFont
-        Effects.bubbleColor = profile.bubbleColor
         petSound = profile.character == .sheep ? .petSheep : .petCorgi
     }
 
