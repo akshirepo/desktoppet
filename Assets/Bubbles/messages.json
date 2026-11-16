@@ -217,6 +217,96 @@
         "All cozy again.",
         "Fresh as a daisy."
       ]
+    },
+    {
+      "id": "thanksFood",
+      "icon": "hearts",
+      "bubble": {
+        "corgi": "speech",
+        "sheep": "speech"
+      },
+      "corgi": [
+        "Yum, thank you!",
+        "Best snack ever!",
+        "Crunch crunch ♡"
+      ],
+      "sheep": [
+        "Mm, thank you.",
+        "A lovely nibble.",
+        "So tasty ♡"
+      ]
+    },
+    {
+      "id": "thanksWater",
+      "icon": "water-droplet",
+      "bubble": {
+        "corgi": "speech",
+        "sheep": "speech"
+      },
+      "corgi": [
+        "Ahh, thanks!",
+        "Just what I needed!",
+        "Slurp ♡"
+      ],
+      "sheep": [
+        "Thank you, so fresh.",
+        "A lovely sip.",
+        "Just right ♡"
+      ]
+    },
+    {
+      "id": "thanksBath",
+      "icon": "refreshed-sparkle",
+      "bubble": {
+        "corgi": "speech",
+        "sheep": "speech"
+      },
+      "corgi": [
+        "Bubbles! Thank you!",
+        "Squeaky clean soon!",
+        "Splash time ♡"
+      ],
+      "sheep": [
+        "A soft wash, thank you.",
+        "Fluffy again soon.",
+        "Bubbles ♡"
+      ]
+    },
+    {
+      "id": "thanksPlay",
+      "icon": "star",
+      "bubble": {
+        "corgi": "speech",
+        "sheep": "speech"
+      },
+      "corgi": [
+        "Yay, ball!",
+        "Let's go!",
+        "Best game ever!"
+      ],
+      "sheep": [
+        "Oh, a game!",
+        "How fun, thank you.",
+        "Here I go ♡"
+      ]
+    },
+    {
+      "id": "thanksNap",
+      "icon": "moon-small",
+      "bubble": {
+        "corgi": "speech",
+        "sheep": "speech"
+      },
+      "corgi": [
+        "Nap time, thanks…",
+        "So cozy ♡",
+        "Wake me for snacks."
+      ],
+      "sheep": [
+        "Thank you, so sleepy…",
+        "So cozy ♡",
+        "Sweet dreams to me."
+      ]
     }
   ],
   "presentation": {

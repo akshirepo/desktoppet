@@ -61,6 +61,20 @@ final class SpeechLibraryTests: XCTestCase {
         }
     }
 
+    func testEveryNeedHasThanksForBothPetsThatDontAskForAnything() throws {
+        let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("../../Assets/Bubbles/messages.json")
+        var lib = try SpeechLibrary(data: Data(contentsOf: url))
+        for need in Need.allCases {
+            let category = SpeechLibrary.thanks(for: need)
+            XCTAssertNil(SpeechLibrary.need(forCategory: category), "\(category) is a thank-you, not a request")
+            for pet in Character.allCases {
+                let line = try XCTUnwrap(lib.line(for: category, pet: pet), "\(category) for \(pet)")
+                XCTAssertLessThanOrEqual(line.text.count, 26, "'\(line.text)' should fit a small bubble")
+            }
+        }
+    }
+
     func testAskingLinesMapBackToTheirNeed() {
         for need in Need.allCases {
             for v in 0..<2 { XCTAssertEqual(SpeechLibrary.need(forCategory: SpeechLibrary.category(for: need, variant: v)), need) }

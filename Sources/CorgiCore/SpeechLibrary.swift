@@ -61,6 +61,17 @@ public struct SpeechLibrary {
         }
     }
 
+    /// What it says when it's given the thing it needed.
+    public static func thanks(for need: Need) -> String {
+        switch need {
+        case .hunger: return "thanksFood"
+        case .thirst: return "thanksWater"
+        case .cleanliness: return "thanksBath"
+        case .happiness: return "thanksPlay"
+        case .energy: return "thanksNap"
+        }
+    }
+
     public static func category(for need: Need, variant: Int) -> String {
         switch need {
         case .hunger: return "hungry"

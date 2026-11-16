@@ -879,7 +879,7 @@ final class PetController {
         boredom.noteInteraction()
         if askingFor == need { askingFor = nil }
         fulfill(need)
-        say(mood: "happy", delay: 1.2)
+        say(mood: SpeechLibrary.thanks(for: need), delay: 1.2)
         lastAutoLine = CACurrentMediaTime()
     }
 
@@ -1149,7 +1149,7 @@ extension PetController: SceneInputHandler {
         if brain.current == .askCare, let need = askingFor {
             askingFor = nil
             fulfill(need)
-            say(mood: "happy", delay: 1.2)
+            say(mood: SpeechLibrary.thanks(for: need), delay: 1.2)
             lastAutoLine = CACurrentMediaTime()
             return
         }
