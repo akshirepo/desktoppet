@@ -277,6 +277,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 self?.updateProfile { $0.bubbleStyle = style }
                 self?.controller.previewBubble()
             },
+            bubbleFont: profile.bubbleFont,
+            setBubbleFont: { [weak self] font in
+                self?.updateProfile { $0.bubbleFont = font }
+                self?.controller.previewBubble()
+            },
             update: updater.state,
             showUpdate: { [weak self] in DispatchQueue.main.async { self?.showUpdate() } },
             showUpdateLog: { NSWorkspace.shared.open(Updater.logURL) }

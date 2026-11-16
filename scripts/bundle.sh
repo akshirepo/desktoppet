@@ -14,6 +14,7 @@ cp .build/release/DesktopPet "$APP/Contents/MacOS/DesktopPet"
 cp -R Assets/Doodles "$APP/Contents/Resources/Doodles"
 cp -R Assets/Sounds "$APP/Contents/Resources/Sounds"
 cp -R Assets/Bubbles "$APP/Contents/Resources/Bubbles"
+cp -R Assets/Fonts "$APP/Contents/Resources/Fonts"
 ICONSET=build/AppIcon.iconset
 rm -rf "$ICONSET" && mkdir -p "$ICONSET"
 for px in 16 32 128 256 512; do

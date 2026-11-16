@@ -329,22 +329,22 @@ final class PetController {
         _ = say(SpeechLibrary.Line(text: "How's this one?", bubble: .speech, icon: "heart"))
     }
 
-    /// Debug (SIGUSR2): a sample speech bubble and a thought bubble in every style, then back to the chosen one.
+    /// Debug (SIGUSR2): a sample bubble in every font, then every style, then back to the chosen ones.
     private func demoBubbleStyles() {
-        let chosen = Effects.bubbleStyle
-        for (i, style) in BubbleStyle.allCases.enumerated() {
-            DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 2.2) { [weak self] in
+        let chosen = (Effects.bubbleStyle, Effects.bubbleFont)
+        let looks: [(BubbleStyle, BubbleFont)] = BubbleFont.allCases.map { (.pill, $0) }
+            + [(.pixel, .pixel), (.pixel, .pixelCaps), (.pixel, .terminal), (.dark, .pixel), (.dark, .rounded), (.text, .pixel)]
+        for (i, look) in looks.enumerated() {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 1.6) { [weak self] in
                 guard let self else { return }
-                Effects.bubbleStyle = style
-                _ = self.say(SpeechLibrary.Line(text: i % 2 == 0 ? "A little nibble?" : "I missed you so much today!",
+                (Effects.bubbleStyle, Effects.bubbleFont) = look
+                _ = self.say(SpeechLibrary.Line(text: i % 3 == 2 ? "I missed you so much today!" : "A little nibble?",
                                                 bubble: .speech, icon: "heart"))
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 2.2 + 1.3) { [weak self] in
-                guard let self else { return }
-                Effects.thought(icon: Self.icon(for: .hunger), fallback: "hungry", on: self.backend.node, height: self.backend.bubbleHeight)
-            }
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + Double(BubbleStyle.allCases.count) * 2.2 + 0.5) { Effects.bubbleStyle = chosen }
+        DispatchQueue.main.asyncAfter(deadline: .now() + Double(looks.count) * 1.6 + 0.5) {
+            (Effects.bubbleStyle, Effects.bubbleFont) = chosen
+        }
     }
 
     /// Called when the floor disappears under the corgi.
@@ -894,6 +894,7 @@ final class PetController {
         }
         sounds.enabled = profile.soundsOn
         Effects.bubbleStyle = profile.bubbleStyle
+        Effects.bubbleFont = profile.bubbleFont
         petSound = profile.character == .sheep ? .petSheep : .petCorgi
     }
 

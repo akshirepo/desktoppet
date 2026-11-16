@@ -6,7 +6,7 @@ import SpriteKit
 /// timing next to it, in ~/Library/Logs/DesktopPet/recording. For checking motion without filming the screen.
 /// `kill -USR2 <pid>` runs `onDemo` (a sample bubble in each style).
 final class FrameRecorder {
-    static let seconds: CFTimeInterval = 12.5
+    static let seconds: CFTimeInterval = 30
     private let dir = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Library/Logs/DesktopPet/recording", isDirectory: true)
     private let queue = DispatchQueue(label: "DesktopPet.FrameRecorder")

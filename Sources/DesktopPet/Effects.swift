@@ -88,8 +88,42 @@ enum Effects {
         }
     }
 
-    /// How bubbles are drawn; the user picks it in the menu.
+    /// How bubbles are drawn and lettered; the user picks both in the menu.
     static var bubbleStyle = BubbleStyle.pill
+    static var bubbleFont = BubbleFont.pixel
+
+    /// The pixel fonts that ship with the app (Assets/Fonts, SIL Open Font License), made available to this process.
+    private static let bundledFonts: Void = {
+        guard let dir = Bundle.main.resourceURL?.appendingPathComponent("Fonts"),
+              let files = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) else { return }
+        for file in files where file.pathExtension.lowercased() == "ttf" {
+            CTFontManagerRegisterFontsForURL(file as CFURL, .process, nil)
+        }
+    }()
+
+    /// The chosen typeface at the size it reads best in a small bubble; `bump` makes it a little larger.
+    private static func font(_ choice: BubbleFont, bump: CGFloat = 0) -> NSFont {
+        _ = bundledFonts
+        let (names, size): ([String], CGFloat)
+        switch choice {
+        case .pixel: (names, size) = (["PixelifySans-Regular", "Pixelify Sans"], 11)
+        case .pixelCaps: (names, size) = (["Silkscreen-Regular", "Silkscreen"], 8)
+        case .terminal: (names, size) = (["VT323-Regular", "VT323"], 13)
+        case .rounded: (names, size) = ([], 10.5)
+        case .clean: (names, size) = (["AvenirNext-DemiBold"], 10)
+        case .handwritten: (names, size) = (["ChalkboardSE-Regular"], 10.5)
+        case .note: (names, size) = (["Noteworthy-Bold"], 10.5)
+        case .marker: (names, size) = (["MarkerFelt-Thin"], 11.5)
+        case .comic: (names, size) = (["ComicSansMS"], 10)
+        case .typewriter: (names, size) = (["AmericanTypewriter"], 10)
+        case .serif: (names, size) = (["Georgia"], 10)
+        }
+        for name in names {
+            if let f = NSFont(name: name, size: size + bump) { return f }
+        }
+        let system = NSFont.systemFont(ofSize: size + bump, weight: .semibold)
+        return system.fontDescriptor.withDesign(.rounded).flatMap { NSFont(descriptor: $0, size: size + bump) } ?? system
+    }
 
     private struct BubbleLook {
         var fill: NSColor, stroke: NSColor, ink: NSColor
@@ -101,10 +135,32 @@ enum Effects {
 
     /// A rounded box of `size` whose bottom edge sits `tail` above the origin, with a little tail down to the
     /// origin. The box starts 12pt to the side of the tail and opens right (or left with `tailRight`).
-    private static func capsule(size: CGSize, tailRight: Bool, look: BubbleLook) -> SKShapeNode {
+    private static func capsule(size: CGSize, tailRight: Bool, look: BubbleLook, pixel: Bool = false) -> SKShapeNode {
         let tail: CGFloat = 5, r = min(9, size.height / 2)
         let minX = tailRight ? 12 - size.width : -12
         let box = CGRect(x: minX, y: tail, width: size.width, height: size.height)
+        if pixel {
+            // Corners cut in one 2pt step and a thick edge, like the pets' outlines.
+            let c: CGFloat = 2
+            let path = CGMutablePath()
+            path.addLines(between: [
+                CGPoint(x: box.minX + c, y: box.minY), CGPoint(x: -3, y: box.minY), CGPoint(x: -3, y: box.minY - 2),
+                CGPoint(x: -1, y: box.minY - 2), CGPoint(x: -1, y: 0), CGPoint(x: 1, y: 0), CGPoint(x: 1, y: box.minY - 2),
+                CGPoint(x: 3, y: box.minY - 2), CGPoint(x: 3, y: box.minY),
+                CGPoint(x: box.maxX - c, y: box.minY), CGPoint(x: box.maxX - c, y: box.minY + c), CGPoint(x: box.maxX, y: box.minY + c),
+                CGPoint(x: box.maxX, y: box.maxY - c), CGPoint(x: box.maxX - c, y: box.maxY - c), CGPoint(x: box.maxX - c, y: box.maxY),
+                CGPoint(x: box.minX + c, y: box.maxY), CGPoint(x: box.minX + c, y: box.maxY - c), CGPoint(x: box.minX, y: box.maxY - c),
+                CGPoint(x: box.minX, y: box.minY + c), CGPoint(x: box.minX + c, y: box.minY + c),
+            ])
+            path.closeSubpath()
+            let shape = SKShapeNode(path: path)
+            shape.fillColor = NSColor(srgbRed: 1, green: 0.97, blue: 0.88, alpha: 1)
+            shape.strokeColor = bubbleInk
+            shape.lineWidth = 2
+            shape.lineJoin = .miter
+            shape.isAntialiased = false
+            return shape
+        }
         let path = CGMutablePath()
         path.move(to: CGPoint(x: box.minX + r, y: box.minY))
         path.addLine(to: CGPoint(x: -4, y: box.minY))
@@ -125,8 +181,7 @@ enum Effects {
     }
 
     private static func bubbleLabel(_ text: String, color: NSColor, outlined: Bool) -> SKLabelNode {
-        let size: CGFloat = outlined ? 11 : 10
-        let font = NSFont(name: "Avenir Next Demi Bold", size: size) ?? .systemFont(ofSize: size, weight: .semibold)
+        let font = Self.font(bubbleFont, bump: outlined ? 1 : 0)
         let style = NSMutableParagraphStyle()
         style.alignment = .center
         var attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color, .paragraphStyle: style]
@@ -162,7 +217,7 @@ enum Effects {
         let accent = icon.flatMap { bubbleTexture("accents/\($0).png") }
         if style == .icon, let accent {
             let d: CGFloat = 24
-            let shape = capsule(size: CGSize(width: d, height: d), tailRight: tailRight, look: look)
+            let shape = capsule(size: CGSize(width: d, height: d), tailRight: tailRight, look: look, pixel: style == .pixel)
             let a = SKSpriteNode(texture: accent, size: CGSize(width: 15, height: 15))
             a.position = CGPoint(x: (tailRight ? 12 - d : -12) + d / 2, y: 5 + d / 2)
             a.zPosition = 1
@@ -180,7 +235,7 @@ enum Effects {
         let iconWidth: CGFloat = accent == nil ? 0 : 15
         let size = CGSize(width: ceil(textSize.width) + iconWidth + 16, height: ceil(textSize.height) + 9)
         let minX = tailRight ? 12 - size.width : -12
-        container.addChild(capsule(size: size, tailRight: tailRight, look: look))
+        container.addChild(capsule(size: size, tailRight: tailRight, look: look, pixel: style == .pixel))
         label.position = CGPoint(x: minX + 8 + iconWidth + textSize.width / 2, y: 5 + size.height / 2)
         container.addChild(label)
         if let accent {
@@ -224,8 +279,9 @@ enum Effects {
         container.addChild(SKSpriteNode(texture: tex, size: CGSize(width: w, height: h)))
 
         let label = SKLabelNode(text: text)
-        label.fontName = NSFont(name: "Avenir Next Medium", size: 11) != nil ? "Avenir Next Medium" : NSFont.systemFont(ofSize: 11).fontName
-        label.fontSize = 11
+        let face = font(bubbleFont, bump: 1)
+        label.fontName = face.fontName
+        label.fontSize = face.pointSize
         label.fontColor = bubbleInk
         label.numberOfLines = 2
         label.preferredMaxLayoutWidth = geo.textBox.width * s
@@ -271,7 +327,7 @@ enum Effects {
             let d: CGFloat = 26
             if bubbleStyle != .text {
                 container.addChild(capsule(size: CGSize(width: d, height: d), tailRight: false,
-                                           look: bubbleStyle == .dark ? .dark : .light))
+                                           look: bubbleStyle == .dark ? .dark : .light, pixel: bubbleStyle == .pixel))
             }
             let symbol = SKSpriteNode(texture: inner, size: CGSize(width: 16, height: 16))
             symbol.position = CGPoint(x: -12 + d / 2, y: 5 + d / 2)

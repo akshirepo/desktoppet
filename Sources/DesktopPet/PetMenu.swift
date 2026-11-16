@@ -40,6 +40,8 @@ struct PetMenuActions {
     var setCharacter: (Character) -> Void
     var bubbleStyle: BubbleStyle
     var setBubbleStyle: (BubbleStyle) -> Void
+    var bubbleFont: BubbleFont
+    var setBubbleFont: (BubbleFont) -> Void
     var update: Updater.State
     var showUpdate: () -> Void
     var showUpdateLog: () -> Void
@@ -100,6 +102,15 @@ enum PetMenu {
         }
         bubbles.submenu = bubbleMenu
         menu.addItem(bubbles)
+        let fonts = NSMenuItem(title: "Bubble Font", action: nil, keyEquivalent: "")
+        let fontMenu = NSMenu()
+        for font in BubbleFont.allCases {
+            let item = ClosureMenuItem(font.displayName) { a.setBubbleFont(font) }
+            item.state = font == a.bubbleFont ? .on : .off
+            fontMenu.addItem(item)
+        }
+        fonts.submenu = fontMenu
+        menu.addItem(fonts)
         let debug = ClosureMenuItem("Debug Overlay", handler: a.toggleDebug)
         debug.state = a.debugOn ? .on : .off
         menu.addItem(debug)

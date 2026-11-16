@@ -33,6 +33,8 @@ public enum BubbleStyle: String, Codable, CaseIterable {
     case text
     /// Only the little icon in a round bubble; a line without an icon falls back to the capsule.
     case icon
+    /// A square-cornered box with a chunky edge, like the pets' pixel art.
+    case pixel
     /// The original hand-drawn bubble artwork, one size for every line.
     case classic
 
@@ -42,6 +44,7 @@ public enum BubbleStyle: String, Codable, CaseIterable {
         case .dark: return "Small Dark"
         case .text: return "Words Only"
         case .icon: return "Icon Only"
+        case .pixel: return "Pixel Box"
         case .classic: return "Classic (large)"
         }
     }
@@ -49,6 +52,32 @@ public enum BubbleStyle: String, Codable, CaseIterable {
     public init(from decoder: Decoder) throws {
         let raw = try decoder.singleValueContainer().decode(String.self)
         self = BubbleStyle(rawValue: raw) ?? .pill
+    }
+}
+
+/// The typeface for the words in a bubble.
+public enum BubbleFont: String, Codable, CaseIterable {
+    case pixel, pixelCaps, terminal, rounded, clean, handwritten, note, marker, comic, typewriter, serif
+
+    public var displayName: String {
+        switch self {
+        case .pixel: return "Pixel"
+        case .pixelCaps: return "Pixel Caps"
+        case .terminal: return "Retro Terminal"
+        case .rounded: return "Rounded"
+        case .clean: return "Clean"
+        case .handwritten: return "Chalkboard"
+        case .note: return "Handwritten Note"
+        case .marker: return "Marker"
+        case .comic: return "Comic"
+        case .typewriter: return "Typewriter"
+        case .serif: return "Storybook"
+        }
+    }
+
+    public init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        self = BubbleFont(rawValue: raw) ?? .pixel
     }
 }
 
@@ -67,6 +96,7 @@ public struct PetProfile: Codable, Equatable {
     /// Now and then, come to the cursor and ask for food, a bath, play or a nap when a need is low.
     public var askForCare = true
     public var bubbleStyle = BubbleStyle.pill
+    public var bubbleFont = BubbleFont.pixel
 
     public init(name: String? = nil, soundsOn: Bool = false, askedForName: Bool = false,
                 character: Character = .corgi) {
@@ -90,7 +120,7 @@ public struct PetProfile: Codable, Equatable {
         set { if newValue { askedNames.insert(character.rawValue) } else { askedNames.remove(character.rawValue) } }
     }
 
-    private enum CodingKeys: String, CodingKey { case names, askedNames, soundsOn, character, launchAtLogin, askForCare, bubbleStyle, name, askedForName }
+    private enum CodingKeys: String, CodingKey { case names, askedNames, soundsOn, character, launchAtLogin, askForCare, bubbleStyle, bubbleFont, name, askedForName }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -99,6 +129,7 @@ public struct PetProfile: Codable, Equatable {
         launchAtLogin = (try? c.decodeIfPresent(Bool.self, forKey: .launchAtLogin)) ?? false
         askForCare = (try? c.decodeIfPresent(Bool.self, forKey: .askForCare)) ?? true
         bubbleStyle = (try? c.decodeIfPresent(BubbleStyle.self, forKey: .bubbleStyle)) ?? .pill
+        bubbleFont = (try? c.decodeIfPresent(BubbleFont.self, forKey: .bubbleFont)) ?? .pixel
         let stored = (try? c.decodeIfPresent([String: String].self, forKey: .names)) ?? [:]
         for (key, value) in stored {
             guard let pet = Character(rawValue: key) else { continue }
@@ -121,6 +152,7 @@ public struct PetProfile: Codable, Equatable {
         try c.encode(launchAtLogin, forKey: .launchAtLogin)
         try c.encode(askForCare, forKey: .askForCare)
         try c.encode(bubbleStyle, forKey: .bubbleStyle)
+        try c.encode(bubbleFont, forKey: .bubbleFont)
     }
 
     public var packFolderName: String { character.packFolderName }
