@@ -17,13 +17,14 @@ enum Doodles {
         return img
     }
 
-    /// Scene texture. "heart", "zzz", ... come from effects/2x; "menu:feed" from the color menu icons.
+    /// Scene texture. The soft sticker-style icons (soft/, drawn by scripts/soft_icons.py) come first, so what floats
+    /// around the pet matches its speech bubble; anything not redrawn falls back to the pixel doodles
+    /// ("heart", "zzz", ... in effects/2x; "menu:feed" in the color menu icons).
     static func texture(_ name: String) -> SKTexture? {
         if let cached = textures[name] { return cached }
-        let path = name.hasPrefix("menu:")
-            ? "menu/color/48/\(name.dropFirst(5)).png"
-            : "effects/2x/\(name).png"
-        guard let img = image(path) else { return nil }
+        let plain = name.hasPrefix("menu:") ? String(name.dropFirst(5)) : name
+        let path = name.hasPrefix("menu:") ? "menu/color/48/\(plain).png" : "effects/2x/\(name).png"
+        guard let img = image("soft/\(plain).png") ?? image(path) else { return nil }
         let t = SKTexture(image: img)
         textures[name] = t
         return t

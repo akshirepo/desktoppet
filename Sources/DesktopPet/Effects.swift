@@ -48,8 +48,9 @@ enum Effects {
     private static let bubbleRoot = Bundle.main.resourceURL?.appendingPathComponent("Bubbles")
     private static var accentTextures: [String: SKTexture] = [:]
 
-    /// The little icon that goes with a line (Assets/Bubbles/accents).
+    /// The little icon that goes with a line: the soft set, else the pixel accents (Assets/Bubbles/accents).
     private static func accent(_ name: String) -> SKTexture? {
+        if let t = Doodles.texture(name) { return t }
         if let t = accentTextures[name] { return t }
         guard let url = bubbleRoot?.appendingPathComponent("accents/\(name).png"), let img = NSImage(contentsOf: url) else { return nil }
         let t = SKTexture(image: img)
