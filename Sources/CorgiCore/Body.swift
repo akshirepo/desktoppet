@@ -15,6 +15,9 @@ public struct BodyConfig {
     public var roamHeadroom: CGFloat = 80
     /// How fast a peeking pet slides onto its spot at the display edge (points per second).
     public var peekGlideSpeed: CGFloat = 500
+    /// How quickly walking speed catches up with what was asked for, per second (12 gets most of the way in a
+    /// tenth of a second). Nil changes speed at once.
+    public var walkEase: CGFloat?
 
     public init() {}
 }
@@ -41,7 +44,9 @@ public final class Body {
     public private(set) var facingRight = true
     /// Set while `mode == .clinging`.
     public private(set) var cling: ClingSpot?
+    /// The walking speed asked for, and the speed it's actually going (they differ while easing in or out).
     private var walkVelocity: CGFloat = 0
+    public private(set) var groundSpeed: CGFloat = 0
     /// Where a peeking pet's feet belong. It glides there, so snapping to the edge doesn't jump.
     public private(set) var peekTarget: CGPoint?
     /// The floor an entering pet is running onto, and which way (+1 right, -1 left).
@@ -253,6 +258,7 @@ public final class Body {
     @discardableResult
     public func step(dt: TimeInterval, world: World) -> BodyEvent? {
         let dt = CGFloat(dt)
+        if mode != .grounded { groundSpeed = 0 }
         switch mode {
         case .clinging:
             return nil
@@ -271,28 +277,39 @@ public final class Body {
             standingOn = floor
             mode = .grounded
             walkVelocity = direction * config.runSpeed
+            groundSpeed = walkVelocity
             return nil
         case .grounded:
             guard let segment = world.segment(under: position) else { return startFalling() }
             standingOn = segment
             position.y = segment.y
-            let nextX = position.x + walkVelocity * dt
+            if let ease = config.walkEase {
+                groundSpeed += (walkVelocity - groundSpeed) * min(1, ease * dt)
+                if abs(walkVelocity - groundSpeed) < 2 { groundSpeed = walkVelocity }
+            } else {
+                groundSpeed = walkVelocity
+            }
+            guard groundSpeed != 0 else { return nil }
+            let nextX = position.x + groundSpeed * dt
             if segment.contains(x: nextX) {
                 position.x = nextX
                 return nil
             }
             // At a display edge, carry on onto the next display's floor.
-            if let crossing = world.crossing(from: segment, direction: walkVelocity, maxJumpUp: config.maxJumpUp) {
+            if let crossing = world.crossing(from: segment, direction: groundSpeed, maxJumpUp: config.maxJumpUp) {
                 position.x = segment.clampX(nextX)
                 switch crossing {
-                case .drop: leap(direction: walkVelocity)
+                case .drop: leap(direction: groundSpeed)
                 case .jump(let target): jump(to: target)
                 }
                 return nil
             }
             position.x = segment.clampX(nextX)
+            let wasWalking = walkVelocity != 0
             walkVelocity = 0
-            return .hitEdge
+            groundSpeed = 0
+            // Sliding to a stop against the end of the floor isn't running into it.
+            return wasWalking ? .hitEdge : nil
         case .roaming:
             let area = world.roamingScreens(headroom: config.roamHeadroom)
             let next = CGPoint(x: position.x + velocity.dx * dt, y: position.y + velocity.dy * dt)

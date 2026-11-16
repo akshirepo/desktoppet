@@ -24,7 +24,8 @@ protocol AnimationBackend: AnimationPlaybackBackend {
     /// The size the sprite was last given, before the node's display scale.
     var expectedSpriteSize: CGSize { get }
     func play(_ state: AnimState)
-    func setFacing(right: Bool)
+    func setFacing(right: Bool, animated: Bool)
+    func setShadow(drop: CGFloat?)
     /// Where a carried ball sits, facing right, relative to the feet.
     var mouthPoint: CGPoint { get }
     /// Height above the feet where speech and thought bubbles start.
@@ -34,6 +35,7 @@ protocol AnimationBackend: AnimationPlaybackBackend {
 }
 
 extension AnimationBackend {
+    func setFacing(right: Bool) { setFacing(right: right, animated: false) }
     var mouthPoint: CGPoint { CGPoint(x: 26, y: 30) }
     var bubbleHeight: CGFloat { size.height }
     var edgeWall: EdgeWallArt? { nil }

@@ -185,6 +185,7 @@ final class FrameSequenceBackend: AnimationBackend {
             }
         }
         budget.pinned = Set(Self.keptReady.compactMap { animations[$0]?.frames.name })
+        node.addChild(shadow)
         node.addChild(sprite)
         play(.idle)
         warm(Self.keptReady.compactMap { animations[$0]?.frames })
@@ -287,6 +288,7 @@ final class FrameSequenceBackend: AnimationBackend {
         let k = scale * CGFloat(entry.spec.scale ?? 1)
         sprite.size = CGSize(width: t.width * k, height: t.height * k)
         expectedSpriteSize = sprite.size
+        applyTurn()                          // a turn in progress carries on from where it was
         lastSetSize = "\(Int(sprite.size.width))x\(Int(sprite.size.height)) k=\(k) eased=\(eased) once=\(once) state=\(state?.rawValue ?? "bridge")"
         // Keep the last displayed pose on completion/cancellation; do not restore an older texture.
         let animation = SKAction.animate(with: frames, timePerFrame: frameDuration,
@@ -328,9 +330,65 @@ final class FrameSequenceBackend: AnimationBackend {
         return left < 0.02 ? 0 : left
     }
 
-    func setFacing(right: Bool) {
+    /// Turns to face the other way. Animated, it squashes flat and opens out again over `turnSeconds`, like a card
+    /// turning round, and a turn reversed halfway just turns back.
+    func setFacing(right: Bool, animated: Bool) {
         facingRight = right
-        sprite.xScale = right ? 1 : -1
+        let target: CGFloat = right ? 0 : .pi
+        let now = CACurrentMediaTime()
+        let dt = CGFloat(min(max(now - lastTurnTime, 0), 0.05))
+        lastTurnTime = now
+        if animated {
+            let step = .pi / Self.turnSeconds * dt
+            turnAngle += max(-step, min(step, target - turnAngle))
+        } else {
+            turnAngle = target
+        }
+        applyTurn()
     }
+
+    private static let turnSeconds: CGFloat = 0.18
+    /// 0 facing right, pi facing left; in between it's mid-turn.
+    private var turnAngle: CGFloat = 0
+    private var lastTurnTime: CFTimeInterval = 0
+
+    /// The sprite's width follows its x scale, so this is all a turn needs. Never quite zero, so it has a size.
+    private func applyTurn() {
+        let x = cos(turnAngle)
+        sprite.xScale = abs(x) < 0.06 ? (facingRight ? 0.06 : -0.06) : x
+    }
+
+    /// A soft patch of shade on the floor under the pet: `drop` is how far below its feet the floor is (0 when
+    /// standing), nil for no floor to cast on. It shrinks and fades the higher the pet is.
+    func setShadow(drop: CGFloat?) {
+        guard let drop, expectedSpriteSize.width > 0 else {
+            shadow.isHidden = true
+            return
+        }
+        let near = max(0.3, 1 - drop / 420)
+        shadow.isHidden = false
+        shadow.size = CGSize(width: expectedSpriteSize.width * 0.66 * near, height: 9 * near)
+        shadow.alpha = 0.55 * near
+        // The pose's middle, whichever way it faces (the art isn't always centred on the feet).
+        let mid = sprite.anchorPoint.x * expectedSpriteSize.width
+        let offset = expectedSpriteSize.width / 2 - mid
+        shadow.position = CGPoint(x: offset * (facingRight ? 1 : -1), y: -drop - 1)
+    }
+
+    private let shadow: SKSpriteNode = {
+        // A blurred dark oval, drawn once.
+        let w = 96, h = 24
+        let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0,
+                            space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        ctx.translateBy(x: CGFloat(w) / 2, y: CGFloat(h) / 2)
+        ctx.scaleBy(x: CGFloat(w) / CGFloat(h), y: 1)
+        let colors = [NSColor(white: 0, alpha: 0.5).cgColor, NSColor(white: 0, alpha: 0.28).cgColor, NSColor(white: 0, alpha: 0).cgColor] as CFArray
+        let gradient = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB)!, colors: colors, locations: [0, 0.55, 1])!
+        ctx.drawRadialGradient(gradient, startCenter: .zero, startRadius: 0, endCenter: .zero, endRadius: CGFloat(h) / 2, options: [])
+        let node = SKSpriteNode(texture: SKTexture(cgImage: ctx.makeImage()!))
+        node.zPosition = -1
+        node.isHidden = true
+        return node
+    }()
 }
 #endif

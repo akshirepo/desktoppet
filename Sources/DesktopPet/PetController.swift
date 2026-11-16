@@ -98,7 +98,9 @@ final class PetController {
         displayScales = Self.physicalScales()
         let vf = HomeTracker.cornerScreenIndex(frames).map { frames[$0] } ?? .zero
         let initial = CGPoint(x: vf.maxX - 80, y: vf.maxY - 100)
-        body = Body(position: nearestPoint(to: initial, in: world.movementScreens))
+        var motion = BodyConfig()
+        motion.walkEase = 12             // eases into a walk and glides to a stop instead of snapping
+        body = Body(position: nearestPoint(to: initial, in: world.movementScreens), config: motion)
         overlays.input = self
         updateHome()
         executor.onBallCaught = { [weak self] in self?.ballCaught() }
@@ -332,6 +334,20 @@ final class PetController {
         brain.interrupt(with: .askCare, duration: 30)
         beginBehavior(.askCare)
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in self?.pet() }
+    }
+
+    /// How far below its feet the floor it would land on is, in the pet's own (unscaled) points. Nil when there's
+    /// nothing under it to cast a shadow on, or it's holding on to an edge.
+    private var shadowDrop: CGFloat? {
+        switch body.mode {
+        case .clinging, .peeking: return nil
+        case .grounded, .entering: return 0
+        case .airborne, .roaming, .held:
+            let p = body.position
+            guard let floor = world.segments.filter({ $0.contains(x: p.x) && $0.y <= p.y + 1 }).max(by: { $0.y < $1.y }),
+                  world.display(at: CGPoint(x: p.x, y: floor.y + 1)) == world.display(at: p) else { return nil }
+            return max(0, p.y - floor.y) / max(drawScale, 0.01)
+        }
     }
 
     /// Called when the floor disappears under the corgi.
@@ -691,7 +707,9 @@ final class PetController {
             overlays.mirror(backend.spriteNode, globalFeet: body.position, scale: drawScale)
         }
         // Cling sprites are drawn for their side already, so they are never mirrored.
-        backend.setFacing(right: body.mode == .clinging ? true : body.facingRight)
+        backend.setFacing(right: body.mode == .clinging ? true : body.facingRight,
+                          animated: body.mode == .grounded || body.mode == .roaming)
+        backend.setShadow(drop: shadowDrop)
         updateAnimation()
         if brain.current.countsAsSleep && now - lastZzz > 2 {
             lastZzz = now

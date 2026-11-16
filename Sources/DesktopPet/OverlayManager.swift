@@ -78,7 +78,9 @@ final class OverlayManager {
             m.anchorPoint = sprite.anchorPoint
             m.xScale = 1
             m.yScale = 1
-            m.size = CGSize(width: sprite.size.width * scale, height: sprite.size.height * scale)
+            // A sprite's size already includes its own scale (it's narrower mid-turn), so take that back out first.
+            m.size = CGSize(width: sprite.size.width / max(abs(sprite.xScale), 0.01) * scale,
+                            height: sprite.size.height / max(abs(sprite.yScale), 0.01) * scale)
             m.xScale = sprite.xScale
             m.yScale = sprite.yScale
             m.zPosition = corgiNode.zPosition + sprite.zPosition
