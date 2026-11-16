@@ -30,14 +30,11 @@ protocol AnimationBackend: AnimationPlaybackBackend {
     var mouthPoint: CGPoint { get }
     /// Height above the feet where speech and thought bubbles start.
     var bubbleHeight: CGFloat { get }
-    /// The wall it hides behind at a screen edge, if the pack has one.
-    var edgeWall: EdgeWallArt? { get }
 }
 
 extension AnimationBackend {
     func setFacing(right: Bool) { setFacing(right: right, animated: false) }
     var mouthPoint: CGPoint { CGPoint(x: 26, y: 30) }
     var bubbleHeight: CGFloat { size.height }
-    var edgeWall: EdgeWallArt? { nil }
 }
 #endif

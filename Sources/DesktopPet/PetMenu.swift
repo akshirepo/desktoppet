@@ -89,9 +89,12 @@ enum PetMenu {
         let care = ClosureMenuItem("Ask for Care", icon: "help", handler: a.toggleAskForCare)
         care.state = a.askForCareOn ? .on : .off
         menu.addItem(care)
-        let debug = ClosureMenuItem("Debug Overlay", handler: a.toggleDebug)
-        debug.state = a.debugOn ? .on : .off
-        menu.addItem(debug)
+        // A developer aid: only there when the menu is opened with Option held (or while it's switched on).
+        if a.debugOn || NSEvent.modifierFlags.contains(.option) {
+            let debug = ClosureMenuItem("Debug Overlay", handler: a.toggleDebug)
+            debug.state = a.debugOn ? .on : .off
+            menu.addItem(debug)
+        }
         menu.addItem(.separator())
         let login = ClosureMenuItem("Launch at Login", handler: a.toggleLogin)
         login.state = a.loginOn ? .on : .off

@@ -242,82 +242,15 @@ final class EdgePeekTests: XCTestCase {
         XCTAssertFalse(body.isMoving)
     }
 
-    // MARK: wall
-
-    /// The pack wall: 44 px wide, inner face on frame column 16, top 272 px above the feet.
-    let wall = EdgeWallSpec(folder: "edgeWall", width: 44, height: 272, faceColumn: 16)
-    let packScale = 0.2971
-
-    func testWithAWallTheFaceColumnSitsOnTheWallsInnerFace() throws {
-        let w = world([laptop])
-        let inset = wall.inset(packScale: packScale)
-        XCTAssertEqual(inset, 28 * 0.2971, accuracy: 1e-9)
-        let spot = try XCTUnwrap(EdgePeekFinder.find(feet: CGPoint(x: 80, y: 20), screens: w.screens, seams: w.seams,
-                                                     floors: w.segments, bounds: canvas, inset: inset))
-        XCTAssertEqual(spot.kind, .floor)
-        XCTAssertEqual(spot.inset, inset)
-        let column0 = spot.feetX(bounds: canvas) + canvas.minX
-        XCTAssertEqual(column0 + 16 * 0.2971, 44 * 0.2971, accuracy: 1e-9, "face column on the inner face")
-        // It walks right up to that spot: inside the floor, so coming out needs no snap.
-        XCTAssertEqual(try XCTUnwrap(spot.standX(bounds: canvas)), spot.feetX(bounds: canvas), accuracy: 1e-9)
-        XCTAssertGreaterThan(spot.feetX(bounds: canvas), try XCTUnwrap(spot.floorEnd))
-    }
-
-    func testWallMirrorsAtTheRightEdgeAndScales() throws {
-        let w = world([laptop])
-        let inset = wall.inset(packScale: packScale)
-        let spot = try XCTUnwrap(EdgePeekFinder.find(feet: CGPoint(x: 1360, y: 20), screens: w.screens, seams: w.seams,
-                                                     floors: w.segments, bounds: canvas, scale: 0.86, inset: inset))
-        XCTAssertEqual(spot.side, .right)
-        XCTAssertEqual(spot.feetX(bounds: canvas, scale: 0.86) - canvas.minX * 0.86, 1440 - inset * 0.86, accuracy: 1e-9)
-        let f = spot.wallFrame(width: CGFloat(wall.width * packScale), height: CGFloat(wall.height * packScale),
-                               scale: 0.86, groundY: floorY)
-        XCTAssertEqual(f.maxX, 1440, accuracy: 1e-9)
-        XCTAssertEqual(f.width, 44 * 0.2971 * 0.86, accuracy: 1e-9)
-        XCTAssertEqual(f.minY, floorY, accuracy: 1e-9)
-        XCTAssertEqual(f.maxY, floorY + 272 * 0.2971 * 0.86, accuracy: 1e-9)
-    }
-
-    func testHoldWallIsAShortSectionAroundTheGrip() throws {
-        let spot = EdgePeek(screen: 0, side: .left, kind: .hold, edgeX: 0, y: 400, inset: 8)
-        let f = spot.wallFrame(width: 13, height: 80, scale: 0.86, holdDepth: 1.2, groundY: floorY)
-        XCTAssertEqual(f.minX, 0)
-        XCTAssertEqual(f.width, 13 * 0.86, accuracy: 1e-9)
-        XCTAssertEqual(f.minY, 400 - 1.2 * 0.86, accuracy: 1e-9, "just below the feet, not down to the floor")
-        XCTAssertEqual(f.maxY, 400 + 80 * 0.86, accuracy: 1e-9)
-        // Without a depth the old behaviour stays: a wall from the display's floor.
-        let tall = spot.wallFrame(width: 13, height: 80, groundY: floorY)
-        XCTAssertEqual(tall.minY, floorY)
-        XCTAssertEqual(tall.maxY, 480)
-    }
-
-    func testFloorWallIgnoresTheHoldDepth() {
-        let spot = EdgePeek(screen: 0, side: .left, kind: .floor, edgeX: 0, y: floorY)
-        XCTAssertEqual(spot.wallFrame(width: 13, height: 77, holdDepth: 1.2, groundY: 0).minY, floorY)
-    }
-
-    func testManifestReadsTheWall() throws {
-        let json = #"""
-        {"states": {"idle": {"folder": "idle", "fps": 4, "loop": true, "anchor": [0.5, 0.075]}},
-         "edgeWall": {"folder": "edgeWall", "width": 44, "height": 272, "faceColumn": 16, "holdDepth": 4}}
-        """#
-        let m = try JSONDecoder().decode(AnimationManifest.self, from: Data(json.utf8))
-        XCTAssertEqual(m.edgeWall, EdgeWallSpec(folder: "edgeWall", width: 44, height: 272, faceColumn: 16, holdDepth: 4))
-        let old = try JSONDecoder().decode(AnimationManifest.self, from: Data(#"{"states": {}}"#.utf8))
-        XCTAssertNil(old.edgeWall)
-    }
-
     // MARK: packs
 
-    func testBothPacksHaveThePeekArtWithTheIdleAnchorAndNoWall() throws {
+    func testBothPacksHaveThePeekArtWithTheIdleAnchor() throws {
         let packs = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Assets/Packs")
         for pack in ["CorgiPack", "SheepPack"] {
             let dir = packs.appendingPathComponent(pack)
             let m = try AnimationManifest.load(from: dir.appendingPathComponent("manifest.json"))
             let idle = try XCTUnwrap(m.states["idle"])
-            // No wall: the pet peeks straight from the screen edge.
-            XCTAssertNil(m.edgeWall, pack)
             for state in [AnimState.peekEdge, .holdEdge] {
                 let spec = try XCTUnwrap(m.states[state.rawValue], "\(pack) \(state)")
                 // Same anchor as idle: canvas column 0 is the edge and the exit ends on the idle frame in place.

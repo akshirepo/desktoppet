@@ -20,8 +20,6 @@ final class PetController {
     private var stayX: CGFloat = 0
     /// Hiding behind a screen edge after being dropped next to it.
     private var peek: EdgePeekSession?
-    /// The brick wall it hides behind (when the pack has one).
-    private let edgeWall = EdgeWall()
 
     /// Each display's current Space, to tell which way a switch went (`Spaces`).
     private var spaces: [String: Int] = [:]
@@ -614,7 +612,7 @@ final class PetController {
     }
 
     private func hoverPet() {
-        // Hiding behind the wall: no hearts, wiggles or sounds.
+        // Hiding behind a screen edge: no hearts, wiggles or sounds.
         if peek != nil { return }
         boredom.noteInteraction()
         if needs.pet() {
@@ -839,7 +837,7 @@ final class PetController {
     /// Shows `line`. A bubble asking for `need` can be clicked to give the pet that.
     @discardableResult
     private func say(_ line: SpeechLibrary.Line, delay: TimeInterval = 0, need: Need? = nil) -> Bool {
-        if peek != nil { return false }                // quiet while hiding behind the wall
+        if peek != nil { return false }                // quiet while hiding behind a screen edge
         Effects.say(line.text, icon: line.icon, tailRight: tailRight, on: backend.node, height: backend.bubbleHeight, delay: delay)
         tagNewestBubble(need: need)
         return true
@@ -922,8 +920,7 @@ final class PetController {
         let bounds = backend.bounds(for: .peekEdge)
         let scale = world.display(at: body.position).map(targetScale(on:)) ?? drawScale
         guard let spot = EdgePeekFinder.find(feet: body.position, screens: world.screens, seams: world.seams,
-                                             floors: world.segments, bounds: bounds, scale: scale,
-                                             inset: backend.edgeWall?.inset ?? 0),
+                                             floors: world.segments, bounds: bounds, scale: scale),
               backend.available.contains(spot.animState) else { return nil }
         return spot
     }
@@ -934,19 +931,11 @@ final class PetController {
         executor.peekStandX = spot.standX(bounds: backend.bounds(for: spot.animState), scale: scale)
         brain.interrupt(with: .peek, duration: .infinity)
         beginBehavior(.peek)
-        // Put down at the edge: go straight behind the wall, with no fall, landing, walk or glide to watch.
+        // Put down at the edge: go straight behind the edge, with no fall, landing, walk or glide to watch.
         peek?.arrived()
         hide(spot, snap: true)
         TransitionLog.append("peek \(spot.kind.rawValue) \(spot.side.rawValue) edge x=\(Int(spot.edgeX)) y=\(Int(spot.y)) "
-            + "screen \(spot.screen) from \(Int(body.position.x)),\(Int(body.position.y)) for \(Int(peek!.remaining))s"
-            + (backend.edgeWall == nil ? " (no wall art)" : ""))
-        // The wall slides out from behind the edge first, so there's something to hide behind.
-        if let art = backend.edgeWall {
-            let ground = world.ground(of: spot.screen)?.y ?? world.screens[spot.screen].minY
-            let frame = spot.wallFrame(width: art.width, height: art.height, scale: scale, holdDepth: art.holdDepth,
-                                       groundY: ground)
-            edgeWall.show(art, frame: frame, side: spot.side, scale: scale, overlays: overlays)
-        }
+            + "screen \(spot.screen) from \(Int(body.position.x)),\(Int(body.position.y)) for \(Int(peek!.remaining))s")
         if spot.kind == .hold { hide(spot) }
     }
 
@@ -966,7 +955,7 @@ final class PetController {
         }
         switch p.phase {
         case .approaching:
-            // Walking up to the wall (the end of the floor without one); there it turns to face the screen and hides.
+            // Walking up to the end of the floor; there it turns to face the screen and hides.
             let target = spot.standX(bounds: backend.bounds(for: spot.animState), scale: drawScale)
             executor.peekStandX = target
             guard body.mode == .grounded, playback.reactionState == nil, let x = target,
@@ -999,7 +988,6 @@ final class PetController {
     private func comeOut(_ p: EdgePeekSession) {
         TransitionLog.append("peek over (\(p.spot.kind.rawValue))")
         executor.peekStandX = nil
-        edgeWall.hide()
         if p.spot.kind == .floor, let x = p.spot.floorEnd,
            let floor = world.segment(under: CGPoint(x: x, y: p.spot.y)) {
             body.stopPeeking(onto: floor)
@@ -1017,7 +1005,6 @@ final class PetController {
         peek = nil
         executor.peekStandX = nil
         TransitionLog.append("peek ended: \(reason)")
-        edgeWall.hide()
         guard body.mode == .peeking else { return }
         if p.spot.kind == .floor, let x = p.spot.floorEnd,
            let floor = world.segment(under: CGPoint(x: x, y: p.spot.y)) {

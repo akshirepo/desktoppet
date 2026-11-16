@@ -179,7 +179,7 @@ public final class Body {
         guard mode != .held else { return }
         mode = .peeking
         peekTarget = target
-        // Snapping is for when it starts out of sight behind the wall, so there's nothing to glide.
+        // Snapping is for when it starts out of sight behind the screen edge, so there's nothing to glide.
         if snap { position = target }
         cling = nil
         standingOn = nil

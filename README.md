@@ -67,8 +67,6 @@ A pack can also have `bridges`: one-shot transition animations between poses, li
 
 Edge peeking uses the states `peekEdge` (on the floor) and `holdEdge` (hanging on higher up) with the bridges `enter:peekEdge`, `exit:peekEdge`, `enter:holdEdge` and `exit:holdEdge`. Draw them facing right, peeking in from the **left** screen edge, with the same canvas size and anchor as `idle`. `enter:peekEdge` starts on the idle frame and ends on the first `peekEdge` frame; `enter:holdEdge` starts on the first `scared` frame (the pose it has while you carry it) and ends on the first `holdEdge` frame. The exits can be the entries reversed. A pack without these states just lands normally when dropped by an edge.
 
-The wall it hides behind is set with `"edgeWall": {"folder": "edgeWall", "width": 64, "height": 272, "faceColumn": 16}` (canvas pixels). The folder holds `cap.png` (the top of the wall) and `tile.png` (repeated below it down to the floor), both `width` wide and drawn for a left edge: outer side on column 0, inner face on the right. `height` is how far the wall top is above the pet's feet. `faceColumn` is the column of the peek frames that sits on the wall's inner face: cut the body there, and paws drawn left of it hook over the bricks (the wall is drawn behind the pet). The app stands the wall on the display edge and mirrors everything at a right edge. Without `edgeWall`, canvas column 0 of the peek frames is the screen edge itself.
-
 ## Development
 
 ```bash
