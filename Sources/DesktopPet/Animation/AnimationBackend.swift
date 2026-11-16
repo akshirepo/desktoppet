@@ -21,6 +21,8 @@ protocol AnimationBackend: AnimationPlaybackBackend {
     var directPairs: Set<[AnimState]> { get }
     var spriteNode: SKSpriteNode { get }
     var lastSetSize: String { get }
+    /// The size the sprite was last given, before the node's display scale.
+    var expectedSpriteSize: CGSize { get }
     func play(_ state: AnimState)
     func setFacing(right: Bool)
     /// Where a carried ball sits, facing right, relative to the feet.

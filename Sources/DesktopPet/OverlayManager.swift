@@ -108,8 +108,14 @@ final class OverlayManager {
         for o in overlays where o.ignoresMouseEvents != through { o.ignoresMouseEvents = through }
     }
 
-    func setFPS(_ fps: Int) {
-        for o in overlays where o.skView.preferredFramesPerSecond != fps { o.skView.preferredFramesPerSecond = fps }
+    /// The display the pet is on redraws at `fps`. The others have nothing moving on them unless the pet is half
+    /// across the seam or `everywhere` is set (a ball in play, the debug overlay), so they idle.
+    func setFPS(_ fps: Int, everywhere: Bool = false) {
+        for o in overlays {
+            let busy = everywhere || o.scene === corgiNode.scene || mirrors[ObjectIdentifier(o)]?.isHidden == false
+            let rate = busy ? fps : min(fps, 5)
+            if o.skView.preferredFramesPerSecond != rate { o.skView.preferredFramesPerSecond = rate }
+        }
     }
 
     func setPaused(_ paused: Bool) {

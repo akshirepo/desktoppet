@@ -3,826 +3,1442 @@
   "states": {
     "idle": {
       "folder": "idle",
-      "fps": 5.0,
+      "fps": 25.0,
       "loop": true,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 5,
+      "crop": [
+        110,
+        52,
+        200,
+        246
       ]
     },
     "walk": {
       "folder": "walk",
-      "fps": 7.692,
+      "fps": 23.076,
       "loop": true,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 3,
+      "crop": [
+        80,
+        54,
+        258,
+        244
       ]
     },
     "run": {
       "folder": "run",
-      "fps": 10.0,
+      "fps": 20.0,
       "loop": true,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 2,
+      "crop": [
+        24,
+        40,
+        324,
+        234
       ]
     },
     "sit": {
       "folder": "sit",
-      "fps": 5.556,
+      "fps": 22.224,
       "loop": true,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 4,
+      "crop": [
+        106,
+        52,
+        208,
+        246
       ]
     },
     "sleep": {
       "folder": "sleep",
-      "fps": 3.333,
+      "fps": 19.998,
       "loop": true,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 6,
+      "crop": [
+        70,
+        112,
+        280,
+        186
       ]
     },
     "eat": {
       "folder": "eat",
-      "fps": 9.091,
+      "fps": 27.273,
       "loop": true,
       "anchor": [
         0.5,
         0.075
       ],
-      "posture": "stand"
+      "posture": "stand",
+      "smooth": 3,
+      "crop": [
+        108,
+        96,
+        206,
+        202
+      ]
     },
     "beg": {
       "folder": "beg",
-      "fps": 6.667,
+      "fps": 26.668,
       "loop": true,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 4,
+      "crop": [
+        112,
+        18,
+        198,
+        280
       ]
     },
     "dangle": {
       "folder": "dangle",
-      "fps": 6.667,
+      "fps": 26.668,
       "loop": true,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 4,
+      "crop": [
+        114,
+        8,
+        190,
+        266
       ]
     },
     "fall": {
       "folder": "fall",
-      "fps": 8.333,
+      "fps": 24.999,
       "loop": true,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 3,
+      "crop": [
+        100,
+        12,
+        218,
+        254
       ]
     },
     "land": {
       "folder": "land",
-      "fps": 6.667,
+      "fps": 26.668,
       "loop": true,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 4,
+      "crop": [
+        70,
+        74,
+        288,
+        224
       ]
     },
     "wiggle": {
       "folder": "wiggle",
-      "fps": 5.556,
+      "fps": 22.224,
       "loop": true,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 4,
+      "crop": [
+        88,
+        46,
+        248,
+        252
       ]
     },
     "bath": {
       "folder": "bath",
-      "fps": 7.143,
+      "fps": 21.429,
       "loop": true,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 3,
+      "crop": [
+        94,
+        38,
+        238,
+        260
       ]
     },
     "fetch": {
       "folder": "fetch",
-      "fps": 9.524,
+      "fps": 28.572,
       "loop": true,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 3,
+      "crop": [
+        43,
+        33,
+        368,
+        276
       ]
     },
     "wave": {
       "folder": "wave",
-      "fps": 5.556,
+      "fps": 22.224,
       "loop": true,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 4,
+      "crop": [
+        62,
+        18,
+        254,
+        280
       ]
     },
     "back": {
       "folder": "back",
-      "fps": 5.882,
+      "fps": 23.528,
       "loop": true,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 4,
+      "crop": [
+        110,
+        52,
+        200,
+        246
       ]
     },
     "read": {
       "folder": "read",
-      "fps": 6.667,
+      "fps": 26.668,
       "loop": true,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 4,
+      "crop": [
+        100,
+        50,
+        220,
+        248
       ]
     },
     "readSleep": {
       "folder": "readSleep",
-      "fps": 3.333,
+      "fps": 19.998,
       "loop": true,
       "anchor": [
         0.5,
         0.075
       ],
-      "posture": "lie"
+      "posture": "lie",
+      "smooth": 6,
+      "crop": [
+        54,
+        84,
+        314,
+        214
+      ]
     },
     "music": {
       "folder": "music",
-      "fps": 9.091,
+      "fps": 27.273,
       "loop": true,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 3,
+      "crop": [
+        84,
+        64,
+        252,
+        234
       ]
     },
     "watch": {
       "folder": "watch",
-      "fps": 6.667,
+      "fps": 26.668,
       "loop": true,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 4,
+      "crop": [
+        28,
+        80,
+        374,
+        218
       ]
     },
     "yawn": {
       "folder": "yawn",
-      "fps": 5.556,
+      "fps": 22.224,
       "loop": true,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 4,
+      "crop": [
+        106,
+        52,
+        210,
+        246
       ]
     },
     "scared": {
       "folder": "scared",
-      "fps": 8.333,
+      "fps": 24.999,
       "loop": true,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 3,
+      "crop": [
+        94,
+        52,
+        234,
+        246
       ]
     },
     "happy": {
       "folder": "happy",
-      "fps": 7.692,
+      "fps": 23.076,
       "loop": true,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 3,
+      "crop": [
+        86,
+        46,
+        256,
+        246
       ]
     },
     "holdBall": {
       "folder": "holdBall",
-      "fps": 6.25,
+      "fps": 25.0,
       "loop": true,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 4,
+      "crop": [
+        110,
+        40,
+        198,
+        258
       ]
     },
     "kick": {
       "folder": "kick",
-      "fps": 9.524,
+      "fps": 28.572,
       "loop": true,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 3,
+      "crop": [
+        64,
+        56,
+        350,
+        242
       ]
     },
     "roam": {
       "folder": "roam",
-      "fps": 7.143,
+      "fps": 21.429,
       "loop": true,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 3,
+      "crop": [
+        82,
+        54,
+        258,
+        244
       ]
     },
     "clingSit": {
       "folder": "clingSit",
-      "fps": 13.333,
+      "fps": 26.666,
       "loop": true,
       "anchor": [
         0.5,
         0.2005
+      ],
+      "smooth": 2,
+      "crop": [
+        105,
+        65,
+        214,
+        294
       ]
     },
     "clingHang": {
       "folder": "clingHang",
-      "fps": 13.333,
+      "fps": 26.666,
       "loop": true,
       "anchor": [
         0.5,
         0.5651
+      ],
+      "smooth": 2,
+      "crop": [
+        111,
+        40,
+        202,
+        348
       ]
     },
     "clingPeek": {
       "folder": "clingPeek",
-      "fps": 13.333,
+      "fps": 26.666,
       "loop": true,
       "anchor": [
         0.5,
         0.362
+      ],
+      "smooth": 2,
+      "crop": [
+        72,
+        116,
+        191,
+        104
       ]
     },
     "clingLeft": {
       "folder": "clingLeft",
-      "fps": 13.333,
+      "fps": 26.666,
       "loop": true,
       "anchor": [
         0.737,
         0.5
+      ],
+      "smooth": 2,
+      "crop": [
+        97,
+        28,
+        192,
+        330
       ]
     },
     "clingRight": {
       "folder": "clingRight",
-      "fps": 13.333,
+      "fps": 26.666,
       "loop": true,
       "anchor": [
         0.2578,
         0.5
+      ],
+      "smooth": 2,
+      "crop": [
+        95,
+        30,
+        196,
+        328
       ]
     },
     "letGo": {
       "folder": "fall",
-      "fps": 8.333,
+      "fps": 24.999,
       "loop": true,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 3,
+      "crop": [
+        100,
+        12,
+        218,
+        254
       ]
     },
     "thirsty": {
       "folder": "thirsty",
-      "fps": 12,
+      "fps": 24,
       "loop": true,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 2,
+      "crop": [
+        110,
+        52,
+        240,
+        246
       ]
     },
     "drink": {
       "folder": "drink",
-      "fps": 12,
+      "fps": 24,
       "loop": true,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 2,
+      "crop": [
+        108,
+        96,
+        216,
+        202
       ]
     },
     "refreshed": {
       "folder": "refreshed",
-      "fps": 12,
+      "fps": 24,
       "loop": false,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 2,
+      "crop": [
+        86,
+        52,
+        256,
+        246
       ]
     },
     "eatHalf": {
       "folder": "eatHalf",
-      "fps": 9.091,
+      "fps": 27.273,
       "loop": true,
       "anchor": [
         0.5,
         0.075
       ],
-      "posture": "stand"
+      "posture": "stand",
+      "smooth": 3,
+      "crop": [
+        108,
+        96,
+        206,
+        202
+      ]
     },
     "eatEmpty": {
       "folder": "eatEmpty",
-      "fps": 9.091,
+      "fps": 27.273,
       "loop": true,
       "anchor": [
         0.5,
         0.075
       ],
-      "posture": "stand"
+      "posture": "stand",
+      "smooth": 3,
+      "crop": [
+        108,
+        96,
+        206,
+        202
+      ]
     },
     "drinkHalf": {
       "folder": "drinkHalf",
-      "fps": 12,
+      "fps": 24,
       "loop": true,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 2,
+      "crop": [
+        108,
+        96,
+        216,
+        202
       ]
     },
     "drinkEmpty": {
       "folder": "drinkEmpty",
-      "fps": 12,
+      "fps": 24,
       "loop": true,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 2,
+      "crop": [
+        108,
+        96,
+        216,
+        202
       ]
     },
     "peekEdge": {
       "folder": "peekEdge",
-      "fps": 5.0,
+      "fps": 25.0,
       "loop": true,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 5,
+      "crop": [
+        0,
+        52,
+        140,
+        246
       ]
     },
     "holdEdge": {
       "folder": "holdEdge",
-      "fps": 5.0,
+      "fps": 25.0,
       "loop": true,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 5,
+      "crop": [
+        0,
+        52,
+        140,
+        224
       ]
     }
   },
   "bridges": {
     "sit>sleep": {
       "folder": "bridges/sit-to-sleep",
-      "fps": 9,
+      "fps": 18,
       "loop": false,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 2,
+      "crop": [
+        70,
+        58,
+        283,
+        240
       ]
     },
     "sleep>sit": {
       "folder": "bridges/sit-to-sleep",
-      "fps": 10,
+      "fps": 20,
       "loop": false,
       "anchor": [
         0.5,
         0.075
       ],
-      "reversed": true
+      "reversed": true,
+      "smooth": 2,
+      "crop": [
+        70,
+        58,
+        283,
+        240
+      ]
     },
     "stand>sit": {
       "folder": "bridges/stand-to-sit",
-      "fps": 9,
+      "fps": 18,
       "loop": false,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 2,
+      "crop": [
+        96,
+        52,
+        216,
+        246
       ]
     },
     "sit>stand": {
       "folder": "bridges/stand-to-sit",
-      "fps": 10,
+      "fps": 20,
       "loop": false,
       "anchor": [
         0.5,
         0.075
       ],
-      "reversed": true
+      "reversed": true,
+      "smooth": 2,
+      "crop": [
+        96,
+        52,
+        216,
+        246
+      ]
     },
     "enter:walk": {
       "folder": "bridges/enter-walk",
-      "fps": 9,
+      "fps": 18,
       "loop": false,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 2,
+      "crop": [
+        90,
+        52,
+        246,
+        246
       ]
     },
     "exit:walk": {
       "folder": "bridges/enter-walk",
-      "fps": 10,
+      "fps": 20,
       "loop": false,
       "anchor": [
         0.5,
         0.075
       ],
-      "reversed": true
+      "reversed": true,
+      "smooth": 2,
+      "crop": [
+        90,
+        52,
+        246,
+        246
+      ]
     },
     "enter:run": {
       "folder": "bridges/enter-run",
-      "fps": 9,
+      "fps": 18,
       "loop": false,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 2,
+      "crop": [
+        44,
+        50,
+        300,
+        248
       ]
     },
     "exit:run": {
       "folder": "bridges/enter-run",
-      "fps": 10,
+      "fps": 20,
       "loop": false,
       "anchor": [
         0.5,
         0.075
       ],
-      "reversed": true
+      "reversed": true,
+      "smooth": 2,
+      "crop": [
+        44,
+        50,
+        300,
+        248
+      ]
     },
     "enter:kick": {
       "folder": "bridges/enter-kick",
-      "fps": 9,
+      "fps": 18,
       "loop": false,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 2,
+      "crop": [
+        68,
+        50,
+        352,
+        248
       ]
     },
     "exit:kick": {
       "folder": "bridges/enter-kick",
-      "fps": 10,
+      "fps": 20,
       "loop": false,
       "anchor": [
         0.5,
         0.075
       ],
-      "reversed": true
+      "reversed": true,
+      "smooth": 2,
+      "crop": [
+        68,
+        50,
+        352,
+        248
+      ]
     },
     "enter:eat": {
       "folder": "bridges/enter-eat",
-      "fps": 9,
+      "fps": 18,
       "loop": false,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 2,
+      "crop": [
+        92,
+        60,
+        224,
+        238
       ]
     },
     "exit:eat": {
       "folder": "bridges/enter-eat",
-      "fps": 10,
+      "fps": 20,
       "loop": false,
       "anchor": [
         0.5,
         0.075
       ],
-      "reversed": true
+      "reversed": true,
+      "smooth": 2,
+      "crop": [
+        92,
+        60,
+        224,
+        238
+      ]
     },
     "enter:fetch": {
       "folder": "bridges/enter-fetch",
-      "fps": 9,
+      "fps": 18,
       "loop": false,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 2,
+      "crop": [
+        47,
+        37,
+        373,
+        261
       ]
     },
     "exit:fetch": {
       "folder": "bridges/enter-fetch",
-      "fps": 10,
+      "fps": 20,
       "loop": false,
       "anchor": [
         0.5,
         0.075
       ],
-      "reversed": true
+      "reversed": true,
+      "smooth": 2,
+      "crop": [
+        47,
+        37,
+        373,
+        261
+      ]
     },
     "enter:bath": {
       "folder": "bridges/enter-bath",
-      "fps": 9,
+      "fps": 18,
       "loop": false,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 2,
+      "crop": [
+        94,
+        28,
+        238,
+        270
       ]
     },
     "exit:bath": {
       "folder": "bridges/enter-bath",
-      "fps": 10,
+      "fps": 20,
       "loop": false,
       "anchor": [
         0.5,
         0.075
       ],
-      "reversed": true
+      "reversed": true,
+      "smooth": 2,
+      "crop": [
+        94,
+        28,
+        238,
+        270
+      ]
     },
     "enter:watch": {
       "folder": "bridges/enter-watch",
-      "fps": 9,
+      "fps": 18,
       "loop": false,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 2,
+      "crop": [
+        30,
+        56,
+        372,
+        242
       ]
     },
     "exit:watch": {
       "folder": "bridges/enter-watch",
-      "fps": 10,
+      "fps": 20,
       "loop": false,
       "anchor": [
         0.5,
         0.075
       ],
-      "reversed": true
+      "reversed": true,
+      "smooth": 2,
+      "crop": [
+        30,
+        56,
+        372,
+        242
+      ]
     },
     "enter:readSleep": {
       "folder": "bridges/enter-readSleep",
-      "fps": 9,
+      "fps": 18,
       "loop": false,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 2,
+      "crop": [
+        54,
+        60,
+        314,
+        238
       ]
     },
     "exit:readSleep": {
       "folder": "bridges/enter-readSleep",
-      "fps": 10,
+      "fps": 20,
       "loop": false,
       "anchor": [
         0.5,
         0.075
       ],
-      "reversed": true
+      "reversed": true,
+      "smooth": 2,
+      "crop": [
+        54,
+        60,
+        314,
+        238
+      ]
     },
     "enter:drink": {
       "folder": "bridges/enter-drink",
-      "fps": 9,
+      "fps": 18,
       "loop": false,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 2,
+      "crop": [
+        100,
+        60,
+        224,
+        238
       ]
     },
     "exit:drink": {
       "folder": "bridges/enter-drink",
-      "fps": 10,
+      "fps": 20,
       "loop": false,
       "anchor": [
         0.5,
         0.075
       ],
-      "reversed": true
+      "reversed": true,
+      "smooth": 2,
+      "crop": [
+        100,
+        60,
+        224,
+        238
+      ]
     },
     "enter:read": {
       "folder": "bridges/enter-read",
-      "fps": 9,
+      "fps": 18,
       "loop": false,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 2,
+      "crop": [
+        102,
+        48,
+        222,
+        250
       ]
     },
     "exit:read": {
       "folder": "bridges/enter-read",
-      "fps": 10,
+      "fps": 20,
       "loop": false,
       "anchor": [
         0.5,
         0.075
       ],
-      "reversed": true
+      "reversed": true,
+      "smooth": 2,
+      "crop": [
+        102,
+        48,
+        222,
+        250
+      ]
     },
     "enter:music": {
       "folder": "bridges/enter-music",
-      "fps": 9,
+      "fps": 18,
       "loop": false,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 2,
+      "crop": [
+        86,
+        52,
+        228,
+        246
       ]
     },
     "exit:music": {
       "folder": "bridges/enter-music",
-      "fps": 10,
+      "fps": 20,
       "loop": false,
       "anchor": [
         0.5,
         0.075
       ],
-      "reversed": true
+      "reversed": true,
+      "smooth": 2,
+      "crop": [
+        86,
+        52,
+        228,
+        246
+      ]
     },
     "enter:beg": {
       "folder": "bridges/enter-beg",
-      "fps": 9,
+      "fps": 18,
       "loop": false,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 2,
+      "crop": [
+        106,
+        24,
+        222,
+        274
       ]
     },
     "exit:beg": {
       "folder": "bridges/enter-beg",
-      "fps": 10,
+      "fps": 20,
       "loop": false,
       "anchor": [
         0.5,
         0.075
       ],
-      "reversed": true
+      "reversed": true,
+      "smooth": 2,
+      "crop": [
+        106,
+        24,
+        222,
+        274
+      ]
     },
     "enter:wave": {
       "folder": "bridges/enter-wave",
-      "fps": 9,
+      "fps": 18,
       "loop": false,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 2,
+      "crop": [
+        102,
+        18,
+        220,
+        280
       ]
     },
     "exit:wave": {
       "folder": "bridges/enter-wave",
-      "fps": 10,
+      "fps": 20,
       "loop": false,
       "anchor": [
         0.5,
         0.075
       ],
-      "reversed": true
+      "reversed": true,
+      "smooth": 2,
+      "crop": [
+        102,
+        18,
+        220,
+        280
+      ]
     },
     "pair:walk>fetch": {
       "folder": "bridges/pair-walk-to-fetch",
-      "fps": 9,
+      "fps": 18,
       "loop": false,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 2,
+      "crop": [
+        47,
+        35,
+        373,
+        263
       ]
     },
     "pair:fetch>walk": {
       "folder": "bridges/pair-walk-to-fetch",
-      "fps": 10,
+      "fps": 20,
       "loop": false,
       "anchor": [
         0.5,
         0.075
       ],
-      "reversed": true
+      "reversed": true,
+      "smooth": 2,
+      "crop": [
+        47,
+        35,
+        373,
+        263
+      ]
     },
     "pair:run>kick": {
       "folder": "bridges/pair-run-to-kick",
-      "fps": 9,
+      "fps": 18,
       "loop": false,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 2,
+      "crop": [
+        26,
+        42,
+        394,
+        256
       ]
     },
     "pair:kick>run": {
       "folder": "bridges/pair-run-to-kick",
-      "fps": 10,
+      "fps": 20,
       "loop": false,
       "anchor": [
         0.5,
         0.075
       ],
-      "reversed": true
+      "reversed": true,
+      "smooth": 2,
+      "crop": [
+        26,
+        42,
+        394,
+        256
+      ]
     },
     "pair:run>fetch": {
       "folder": "bridges/pair-run-to-fetch",
-      "fps": 9,
+      "fps": 18,
       "loop": false,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 2,
+      "crop": [
+        27,
+        32,
+        393,
+        277
       ]
     },
     "pair:fetch>run": {
       "folder": "bridges/pair-run-to-fetch",
-      "fps": 10,
+      "fps": 20,
       "loop": false,
       "anchor": [
         0.5,
         0.075
       ],
-      "reversed": true
+      "reversed": true,
+      "smooth": 2,
+      "crop": [
+        27,
+        32,
+        393,
+        277
+      ]
     },
     "pair:walk>kick": {
       "folder": "bridges/pair-walk-to-kick",
-      "fps": 9,
+      "fps": 18,
       "loop": false,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 2,
+      "crop": [
+        64,
+        54,
+        356,
+        244
       ]
     },
     "pair:kick>walk": {
       "folder": "bridges/pair-walk-to-kick",
-      "fps": 10,
+      "fps": 20,
       "loop": false,
       "anchor": [
         0.5,
         0.075
       ],
-      "reversed": true
+      "reversed": true,
+      "smooth": 2,
+      "crop": [
+        64,
+        54,
+        356,
+        244
+      ]
     },
     "pair:kick>fetch": {
       "folder": "bridges/pair-kick-to-fetch",
-      "fps": 9,
+      "fps": 18,
       "loop": false,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 2,
+      "crop": [
+        47,
+        35,
+        364,
+        263
       ]
     },
     "pair:fetch>kick": {
       "folder": "bridges/pair-kick-to-fetch",
-      "fps": 10,
+      "fps": 20,
       "loop": false,
       "anchor": [
         0.5,
         0.075
       ],
-      "reversed": true
+      "reversed": true,
+      "smooth": 2,
+      "crop": [
+        47,
+        35,
+        364,
+        263
+      ]
     },
     "exit:eatEmpty": {
       "folder": "bridges/enter-eatEmpty",
-      "fps": 10,
+      "fps": 20,
       "loop": false,
       "anchor": [
         0.5,
         0.075
       ],
-      "reversed": true
+      "reversed": true,
+      "smooth": 2,
+      "crop": [
+        92,
+        60,
+        224,
+        238
+      ]
     },
     "exit:drinkEmpty": {
       "folder": "bridges/enter-drinkEmpty",
-      "fps": 10,
+      "fps": 20,
       "loop": false,
       "anchor": [
         0.5,
         0.075
       ],
-      "reversed": true
+      "reversed": true,
+      "smooth": 2,
+      "crop": [
+        100,
+        60,
+        224,
+        238
+      ]
     },
     "enter:roam": {
       "folder": "bridges/enter-walk",
-      "fps": 9,
+      "fps": 18,
       "loop": false,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 2,
+      "crop": [
+        90,
+        52,
+        246,
+        246
       ]
     },
     "exit:roam": {
       "folder": "bridges/enter-walk",
-      "fps": 10,
+      "fps": 20,
       "loop": false,
       "anchor": [
         0.5,
         0.075
       ],
-      "reversed": true
+      "reversed": true,
+      "smooth": 2,
+      "crop": [
+        90,
+        52,
+        246,
+        246
+      ]
     },
     "enter:peekEdge": {
       "folder": "bridges/enter-peekEdge",
-      "fps": 9,
+      "fps": 18,
       "loop": false,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 2,
+      "crop": [
+        0,
+        50,
+        310,
+        248
       ]
     },
     "exit:peekEdge": {
       "folder": "bridges/enter-peekEdge",
-      "fps": 10,
+      "fps": 20,
       "loop": false,
       "anchor": [
         0.5,
         0.075
       ],
-      "reversed": true
+      "reversed": true,
+      "smooth": 2,
+      "crop": [
+        0,
+        50,
+        310,
+        248
+      ]
     },
     "enter:holdEdge": {
       "folder": "bridges/enter-holdEdge",
-      "fps": 9,
+      "fps": 18,
       "loop": false,
       "anchor": [
         0.5,
         0.075
+      ],
+      "smooth": 2,
+      "crop": [
+        0,
+        50,
+        328,
+        248
       ]
     },
     "exit:holdEdge": {
       "folder": "bridges/enter-holdEdge",
-      "fps": 10,
+      "fps": 20,
       "loop": false,
       "anchor": [
         0.5,
         0.075
       ],
-      "reversed": true
+      "reversed": true,
+      "smooth": 2,
+      "crop": [
+        0,
+        50,
+        328,
+        248
+      ]
     }
   },
   "directGroups": [

@@ -34,6 +34,9 @@ public struct AnimationSpec: Codable, Equatable {
     public var reversed: Bool?
     /// Size correction for a pose drawn at a different scale than the rest of the pack (0.8 = draw 20% smaller).
     public var scale: Double?
+    /// The box the art stays inside across the folder's frames, in canvas pixels from the top-left: [x, y, w, h].
+    /// Only that part is kept in memory; the pose is still placed and measured by its full canvas.
+    public var crop: [Double]?
 
     public init(folder: String, fps: Double, loop: Bool, anchor: [Double], posture: Posture? = nil, reversed: Bool? = nil) {
         self.folder = folder

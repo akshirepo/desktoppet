@@ -142,8 +142,9 @@ final class PetController {
     private var lastSizeLog: CFTimeInterval = 0
     private func checkSpriteSize() {
         let sprite = backend.spriteNode
-        let h = abs(sprite.size.height) * backend.node.yScale
-        let normal = backend.size.height
+        // The drinking head-bob squashes it a little, so only a real jump in size counts.
+        let h = abs(sprite.size.height)
+        let normal = backend.expectedSpriteSize.height
         guard normal > 0, h > normal * 1.6 || h < normal * 0.4 else { return }
         let now = CACurrentMediaTime()
         guard now - lastSizeLog > 1 else { return }
@@ -231,13 +232,14 @@ final class PetController {
     }
 
     private func setRate(_ fps: Int) {
+        // Which displays are busy changes as the pet moves, so the overlays are told every time.
+        overlays.setFPS(fps, everywhere: ball != nil || debug.enabled || body.mode == .held)
         guard fps != timerFPS else { return }
         timerFPS = fps
         timer?.invalidate()
         let t = Timer(timeInterval: 1.0 / Double(fps), repeats: true) { [weak self] _ in self?.tick() }
         RunLoop.main.add(t, forMode: .common)
         timer = t
-        overlays.setFPS(fps)
     }
 
     /// The Dock can change the visible area without changing a screen's physical frame.
@@ -280,7 +282,7 @@ final class PetController {
         if overlays.overlays.map(\.frame) != NSScreen.screens.map(\.frame) {
             overlays.rebuild()
             overlays.setPaused(paused)
-            if timerFPS > 0 { overlays.setFPS(timerFPS) }
+            if timerFPS > 0 { overlays.setFPS(timerFPS, everywhere: true) }
         }
         refreshScreenBounds()
         clampBody()
@@ -679,7 +681,8 @@ final class PetController {
         debug.update(world: world, hitRect: hitRect, behavior: brain.current, overlays: overlays)
         let overBubble = visibleBubble()?.rect.contains(cursor) ?? false
         overlays.setClickThrough(!(body.mode == .held || hitRect.contains(cursor) || overBubble))
-        setRate(body.isMoving || body.mode == .held || playback.reactionState != nil || playback.transitionTarget != nil || ball != nil ? 30 : 15)
+        // The art plays at about 24 fps, so the screen never drops below 30; moving gets 60 so it glides.
+        setRate(body.isMoving || body.mode == .held || ball != nil ? 60 : 30)
     }
 
     /// A thought bubble for the lowest low need, about once a minute.
