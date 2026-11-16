@@ -88,6 +88,22 @@ final class OverlayManager {
         }
     }
 
+    /// For the debug recorder: each display's redraw rate, whether it's the one the pet is on, and where its copy of
+    /// the pet is drawn (screen points) when the pet reaches across onto it.
+    func debugState() -> String {
+        overlays.enumerated().map { i, o in
+            var s = "d\(i):\(o.skView.preferredFramesPerSecond)fps" + (o.scene === corgiNode.scene ? ":pet" : "")
+            if let m = mirrors[ObjectIdentifier(o)], !m.isHidden {
+                let f = m.frame.offsetBy(dx: o.frame.minX, dy: o.frame.minY)
+                s += String(format: ":copy[%.1f,%.1f,%.1f,%.1f]x%.2f", f.minX, f.minY, f.maxX, f.maxY, m.xScale)
+            }
+            return s
+        }.joined(separator: " ")
+    }
+
+    /// The copy of the pet on another display, if one is showing.
+    var visibleMirror: SKSpriteNode? { mirrors.values.first { !$0.isHidden } }
+
     func hideMirrors() {
         mirrors.values.forEach { $0.isHidden = true }
     }

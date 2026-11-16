@@ -180,7 +180,7 @@ final class PetController {
             forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
         ) { [weak self] _ in self?.screensChanged() }
         recorder.listen()
-        recorder.onReplay = { [weak self] in self?.replay() }
+        recorder.onReplay = { [weak self] in self?.replay($0) }
         spaces = Spaces.current()
         NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main
@@ -327,24 +327,46 @@ final class PetController {
         _ = say(SpeechLibrary.Line(text: text, bubble: .speech, icon: "sparkles"))
     }
 
-    /// Debug (SIGUSR2), taking turns: a care visit, then being put down at the left screen edge to peek.
-    private var replays = 0
-    private func replay() {
-        replays += 1
-        if replays % 2 == 1 { replayCareVisit() } else { replayPeek() }
+    /// Debug (SIGUSR2): "peek" puts it down at an outer screen edge, "cross" walks it over to the next display,
+    /// anything else is a care visit.
+    private func replay(_ what: String) {
+        switch what {
+        case "peek": replayPeek()
+        case "cross": replayCross()
+        default: replayCareVisit()
+        }
     }
 
-    /// Picks it up and lets it go by the left edge of its display, just above the floor, as a drag would.
+    /// Picks it up and lets it go by an outer edge of its display (not one another display carries on from), just
+    /// above the floor, as a drag would.
     private func replayPeek() {
         guard body.mode != .held, let i = world.display(at: body.position), let floor = world.ground(of: i) else { return }
         if peek != nil { endPeek(reason: "replay") }
         wake()
-        let spot = CGPoint(x: world.screens[i].minX + 30, y: floor.y + 12)
+        let screen = world.screens[i]
         body.pickUp()
+        var spot = CGPoint(x: screen.minX + 30, y: floor.y + 4)
         body.moveHeld(to: spot)
+        if edgePeekSpot() == nil {
+            spot.x = screen.maxX - 30
+            body.moveHeld(to: spot)
+        }
         dragging = true
         pressPoint = spot
         mouseUp(at: spot)
+    }
+
+    /// Walks over to the floor of the display next door, across the seam.
+    private func replayCross() {
+        guard body.mode == .grounded, peek == nil, let here = world.display(at: body.position),
+              let floor = world.screens.indices.filter({ $0 != here }).compactMap({ world.ground(of: $0) })
+                .min(by: { abs($0.clampX(body.position.x) - body.position.x) < abs($1.clampX(body.position.x) - body.position.x) })
+        else { return }
+        wake()
+        stayUntil = 0
+        brain.interrupt(with: .walk, duration: 30)
+        beginBehavior(.walk)
+        executor.targetX = floor.clampX(body.position.x) + (floor.minX > body.position.x ? 260 : -260)
     }
 
     /// Comes over to the cursor asking for food and, a moment later, gets it, as if clicked.
@@ -750,10 +772,12 @@ final class PetController {
             n.position = carryPoint
             n.isHidden = true   // the holdBall sprite already has the ball in its mouth
         }
-        recorder.capture(node: backend.node, global: body.position,
+        recorder.capture(node: backend.node, mirror: overlays.visibleMirror, global: body.position,
                          info: "\(playback.currentState?.rawValue ?? "nil")\t\(playback.transitionTarget?.rawValue ?? "-")\t"
                              + "\(brain.current.rawValue)\t\(body.mode)\t\(body.facingRight ? "R" : "L")\t\(timerFPS)"
-                             + "\t\(String(format: "%.1f", hitRect.minX))\t\(String(format: "%.1f", hitRect.maxX))")
+                             + "\t\(String(format: "%.1f", hitRect.minX))\t\(String(format: "%.1f", hitRect.maxX))"
+                             + "\t\(String(format: "%.1f,%.1f", hitRect.minY, hitRect.maxY))\t\(String(format: "%.3f", drawScale))"
+                             + "\t\(overlays.debugState())")
         debug.update(world: world, hitRect: hitRect, behavior: brain.current, overlays: overlays)
         let overBubble = visibleBubble()?.rect.contains(cursor) ?? false
         overlays.setClickThrough(!(body.mode == .held || hitRect.contains(cursor) || overBubble))

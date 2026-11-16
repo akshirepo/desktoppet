@@ -4,7 +4,7 @@ import SpriteKit
 
 /// Debug aid: `kill -USR1 <pid>` saves what the pet draws for the next few seconds, one PNG per tick with a line of
 /// timing next to it, in ~/Library/Logs/DesktopPet/recording. For checking motion without filming the screen.
-/// `kill -USR2 <pid>` runs `onReplay`.
+/// `kill -USR2 <pid>` runs `onReplay` with the word in ~/Library/Logs/DesktopPet/replay (empty if there's no file).
 final class FrameRecorder {
     static let seconds: CFTimeInterval = 12
     private let dir = FileManager.default.homeDirectoryForCurrentUser
@@ -12,7 +12,7 @@ final class FrameRecorder {
     private let queue = DispatchQueue(label: "DesktopPet.FrameRecorder")
     private var signalSources: [DispatchSourceSignal] = []
     /// What `kill -USR2 <pid>` does: replays a moment worth recording.
-    var onReplay: (() -> Void)?
+    var onReplay: ((String) -> Void)?
     /// Keeps every captured frame the same size, with the feet at the same spot.
     private let frameBox: SKSpriteNode = {
         let box = SKSpriteNode(color: .clear, size: CGSize(width: 320, height: 260))
@@ -25,13 +25,19 @@ final class FrameRecorder {
     private var lines: [String] = []
 
     func listen() {
-        for (number, action) in [(SIGUSR1, { [weak self] in self?.start() }), (SIGUSR2, { [weak self] in self?.onReplay?() })] as [(Int32, () -> Void)] {
+        for (number, action) in [(SIGUSR1, { [weak self] in self?.start() }), (SIGUSR2, { [weak self] in self?.replay() })] as [(Int32, () -> Void)] {
             signal(number, SIG_IGN)
             let source = DispatchSource.makeSignalSource(signal: number, queue: .main)
             source.setEventHandler(handler: action)
             source.resume()
             signalSources.append(source)
         }
+    }
+
+    private func replay() {
+        let file = dir.deletingLastPathComponent().appendingPathComponent("replay")
+        let word = (try? String(contentsOf: file, encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        onReplay?(word)
     }
 
     private func start() {
@@ -43,7 +49,7 @@ final class FrameRecorder {
     }
 
     /// Called every tick: the pet's node (pet, bubbles, effects) in a fixed box around the feet, plus `info` for the log.
-    func capture(node: SKNode, global: CGPoint, info: @autoclosure () -> String) {
+    func capture(node: SKNode, mirror: SKSpriteNode? = nil, global: CGPoint, info: @autoclosure () -> String) {
         guard until > 0 else { return }
         let now = CACurrentMediaTime()
         guard now < until, let view = node.scene?.view else {
@@ -60,12 +66,19 @@ final class FrameRecorder {
             frameBox.removeFromParent()
             node.addChild(frameBox)
         }
-        guard let image = view.texture(from: node)?.cgImage() else { return }
-        let file = dir.appendingPathComponent(String(format: "%04d.png", count))
+        var shots: [(String, CGImage)] = []
+        if let image = view.texture(from: node)?.cgImage() { shots.append((String(format: "%04d.png", count), image)) }
+        // The copy drawn on the neighbouring display while the pet reaches across the seam.
+        if let mirror, let other = mirror.scene?.view, let image = other.texture(from: mirror)?.cgImage() {
+            shots.append((String(format: "%04d-copy.png", count), image))
+        }
+        let dir = self.dir
         queue.async {
-            guard let out = CGImageDestinationCreateWithURL(file as CFURL, "public.png" as CFString, 1, nil) else { return }
-            CGImageDestinationAddImage(out, image, nil)
-            CGImageDestinationFinalize(out)
+            for (name, image) in shots {
+                guard let out = CGImageDestinationCreateWithURL(dir.appendingPathComponent(name) as CFURL, "public.png" as CFString, 1, nil) else { continue }
+                CGImageDestinationAddImage(out, image, nil)
+                CGImageDestinationFinalize(out)
+            }
         }
     }
 }
