@@ -38,6 +38,8 @@ struct PetMenuActions {
     var character: Character
     var characterAvailable: (Character) -> Bool
     var setCharacter: (Character) -> Void
+    var bubbleStyle: BubbleStyle
+    var setBubbleStyle: (BubbleStyle) -> Void
     var update: Updater.State
     var showUpdate: () -> Void
     var showUpdateLog: () -> Void
@@ -89,6 +91,15 @@ enum PetMenu {
         let care = ClosureMenuItem("Ask for Care", icon: "help", handler: a.toggleAskForCare)
         care.state = a.askForCareOn ? .on : .off
         menu.addItem(care)
+        let bubbles = NSMenuItem(title: "Bubble Style", action: nil, keyEquivalent: "")
+        let bubbleMenu = NSMenu()
+        for style in BubbleStyle.allCases {
+            let item = ClosureMenuItem(style.displayName) { a.setBubbleStyle(style) }
+            item.state = style == a.bubbleStyle ? .on : .off
+            bubbleMenu.addItem(item)
+        }
+        bubbles.submenu = bubbleMenu
+        menu.addItem(bubbles)
         let debug = ClosureMenuItem("Debug Overlay", handler: a.toggleDebug)
         debug.state = a.debugOn ? .on : .off
         menu.addItem(debug)

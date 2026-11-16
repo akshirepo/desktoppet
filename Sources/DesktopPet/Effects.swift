@@ -88,12 +88,123 @@ enum Effects {
         }
     }
 
+    /// How bubbles are drawn; the user picks it in the menu.
+    static var bubbleStyle = BubbleStyle.pill
+
+    private struct BubbleLook {
+        var fill: NSColor, stroke: NSColor, ink: NSColor
+        static let light = BubbleLook(fill: NSColor(srgbRed: 1, green: 0.99, blue: 0.96, alpha: 0.97),
+                                      stroke: bubbleInk.withAlphaComponent(0.85), ink: bubbleInk)
+        static let dark = BubbleLook(fill: NSColor(white: 0.12, alpha: 0.82), stroke: NSColor(white: 1, alpha: 0.18),
+                                     ink: NSColor(white: 0.97, alpha: 1))
+    }
+
+    /// A rounded box of `size` whose bottom edge sits `tail` above the origin, with a little tail down to the
+    /// origin. The box starts 12pt to the side of the tail and opens right (or left with `tailRight`).
+    private static func capsule(size: CGSize, tailRight: Bool, look: BubbleLook) -> SKShapeNode {
+        let tail: CGFloat = 5, r = min(9, size.height / 2)
+        let minX = tailRight ? 12 - size.width : -12
+        let box = CGRect(x: minX, y: tail, width: size.width, height: size.height)
+        let path = CGMutablePath()
+        path.move(to: CGPoint(x: box.minX + r, y: box.minY))
+        path.addLine(to: CGPoint(x: -4, y: box.minY))
+        path.addLine(to: CGPoint(x: 0, y: 0))
+        path.addLine(to: CGPoint(x: 4, y: box.minY))
+        path.addLine(to: CGPoint(x: box.maxX - r, y: box.minY))
+        path.addArc(tangent1End: CGPoint(x: box.maxX, y: box.minY), tangent2End: CGPoint(x: box.maxX, y: box.midY), radius: r)
+        path.addArc(tangent1End: CGPoint(x: box.maxX, y: box.maxY), tangent2End: CGPoint(x: box.midX, y: box.maxY), radius: r)
+        path.addArc(tangent1End: CGPoint(x: box.minX, y: box.maxY), tangent2End: CGPoint(x: box.minX, y: box.midY), radius: r)
+        path.addArc(tangent1End: CGPoint(x: box.minX, y: box.minY), tangent2End: CGPoint(x: box.minX + r, y: box.minY), radius: r)
+        path.closeSubpath()
+        let shape = SKShapeNode(path: path)
+        shape.fillColor = look.fill
+        shape.strokeColor = look.stroke
+        shape.lineWidth = 1
+        shape.isAntialiased = true
+        return shape
+    }
+
+    private static func bubbleLabel(_ text: String, color: NSColor, outlined: Bool) -> SKLabelNode {
+        let font = NSFont(name: "Avenir Next Demi Bold", size: 10) ?? .systemFont(ofSize: 10, weight: .semibold)
+        let style = NSMutableParagraphStyle()
+        style.alignment = .center
+        var attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color, .paragraphStyle: style]
+        if outlined {
+            // A dark edge so the words read on any wallpaper or window.
+            attributes[.strokeColor] = NSColor(white: 0.1, alpha: 0.9)
+            attributes[.strokeWidth] = -3.5
+        }
+        let label = SKLabelNode(attributedText: NSAttributedString(string: text, attributes: attributes))
+        label.numberOfLines = 2
+        label.preferredMaxLayoutWidth = 104
+        label.lineBreakMode = .byWordWrapping
+        label.horizontalAlignmentMode = .center
+        label.verticalAlignmentMode = .center
+        label.zPosition = 1
+        return label
+    }
+
+    /// The drawn styles: a capsule fitted to the text, the words alone, or just the icon.
+    private static func drawnBubble(_ text: String, icon: String?, tailRight: Bool, style: BubbleStyle) -> SKNode {
+        let container = SKNode()
+        let look = style == .dark ? BubbleLook.dark : .light
+        let accent = icon.flatMap { bubbleTexture("accents/\($0).png") }
+        if style == .icon, let accent {
+            let d: CGFloat = 24
+            let shape = capsule(size: CGSize(width: d, height: d), tailRight: tailRight, look: look)
+            let a = SKSpriteNode(texture: accent, size: CGSize(width: 15, height: 15))
+            a.position = CGPoint(x: (tailRight ? 12 - d : -12) + d / 2, y: 5 + d / 2)
+            a.zPosition = 1
+            container.addChild(shape)
+            container.addChild(a)
+            return container
+        }
+        let label = bubbleLabel(text, color: style == .text ? .white : look.ink, outlined: style == .text)
+        let textSize = label.frame.size
+        if style == .text {
+            label.position = CGPoint(x: 0, y: 4 + textSize.height / 2)
+            container.addChild(label)
+            return container
+        }
+        let iconWidth: CGFloat = accent == nil ? 0 : 15
+        let size = CGSize(width: ceil(textSize.width) + iconWidth + 16, height: ceil(textSize.height) + 9)
+        let minX = tailRight ? 12 - size.width : -12
+        container.addChild(capsule(size: size, tailRight: tailRight, look: look))
+        label.position = CGPoint(x: minX + 8 + iconWidth + textSize.width / 2, y: 5 + size.height / 2)
+        container.addChild(label)
+        if let accent {
+            let a = SKSpriteNode(texture: accent, size: CGSize(width: 13, height: 13))
+            a.position = CGPoint(x: minX + 8 + 5, y: 5 + size.height / 2)
+            a.zPosition = 1
+            container.addChild(a)
+        }
+        return container
+    }
+
     /// A speech or thought bubble with live text above the pet, its tail pointing at the pet.
     /// `tailRight` puts the tail on the right so the bubble opens to the left (for a pet near the right edge).
     /// Returns false when the artwork isn't bundled, so callers can fall back.
     @discardableResult
     static func say(_ text: String, bubble: SpeechLibrary.Bubble, icon: String?, tailRight: Bool,
                     on node: SKNode, height: CGFloat, delay: TimeInterval = 0) -> Bool {
+        if bubbleStyle != .classic {
+            let container = drawnBubble(text, icon: icon, tailRight: tailRight, style: bubbleStyle)
+            container.position = CGPoint(x: 0, y: height + 2)
+            container.zPosition = 50
+            container.alpha = 0
+            container.setScale(0.85)
+            container.name = bubbleName
+            node.addChild(container)
+            container.run(.sequence([
+                .wait(forDuration: delay),
+                replaceOtherBubbles(container, on: node),
+                .group([.fadeIn(withDuration: 0.2), .scale(to: 1, duration: 0.2)]),
+                .wait(forDuration: 2.4),
+                .fadeOut(withDuration: 0.32),
+                .removeFromParent(),
+            ]))
+            return true
+        }
         let name = "\(bubble.rawValue)-\(tailRight ? "right" : "left")"
         guard let geo = bubbleGeometry[name], let tex = bubbleTexture("bubbles/\(name).png") else { return false }
         let s: CGFloat = 0.6
@@ -143,6 +254,21 @@ enum Effects {
 
     /// Doodle thought bubble with an icon inside (mood bubbles). Falls back to the text bubble.
     static func thought(icon: String, fallback: String, on node: SKNode, height: CGFloat) {
+        if bubbleStyle != .classic, let inner = Doodles.texture(icon) {
+            // The same need icon in a small round bubble (or alone, for the words-only style).
+            let container = SKNode()
+            let d: CGFloat = 26
+            if bubbleStyle != .text {
+                container.addChild(capsule(size: CGSize(width: d, height: d), tailRight: false,
+                                           look: bubbleStyle == .dark ? .dark : .light))
+            }
+            let symbol = SKSpriteNode(texture: inner, size: CGSize(width: 16, height: 16))
+            symbol.position = CGPoint(x: -12 + d / 2, y: 5 + d / 2)
+            symbol.zPosition = 1
+            container.addChild(symbol)
+            show(container, on: node, at: CGPoint(x: 0, y: height + 2), delay: 0)
+            return
+        }
         guard let cloud = Doodles.texture("thought"), let inner = Doodles.texture(icon) else {
             speech(fallback, on: node, height: height, thought: true)
             return

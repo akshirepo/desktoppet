@@ -175,6 +175,7 @@ final class PetController {
             forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
         ) { [weak self] _ in self?.screensChanged() }
         recorder.listen()
+        recorder.onDemo = { [weak self] in self?.demoBubbleStyles() }
         spaces = Spaces.current()
         NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main
@@ -321,6 +322,29 @@ final class PetController {
     /// A one-off line that isn't about its needs, like a new version being out. Quiet while hiding at an edge.
     func announce(_ text: String) {
         _ = say(SpeechLibrary.Line(text: text, bubble: .speech, icon: "sparkles"))
+    }
+
+    /// Shows a sample line in the current bubble style, right after it's picked in the menu.
+    func previewBubble() {
+        _ = say(SpeechLibrary.Line(text: "How's this one?", bubble: .speech, icon: "heart"))
+    }
+
+    /// Debug (SIGUSR2): a sample speech bubble and a thought bubble in every style, then back to the chosen one.
+    private func demoBubbleStyles() {
+        let chosen = Effects.bubbleStyle
+        for (i, style) in BubbleStyle.allCases.enumerated() {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 2.2) { [weak self] in
+                guard let self else { return }
+                Effects.bubbleStyle = style
+                _ = self.say(SpeechLibrary.Line(text: i % 2 == 0 ? "A little nibble?" : "I missed you so much today!",
+                                                bubble: .speech, icon: "heart"))
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 2.2 + 1.3) { [weak self] in
+                guard let self else { return }
+                Effects.thought(icon: Self.icon(for: .hunger), fallback: "hungry", on: self.backend.node, height: self.backend.bubbleHeight)
+            }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + Double(BubbleStyle.allCases.count) * 2.2 + 0.5) { Effects.bubbleStyle = chosen }
     }
 
     /// Called when the floor disappears under the corgi.
@@ -686,7 +710,7 @@ final class PetController {
             n.position = carryPoint
             n.isHidden = true   // the holdBall sprite already has the ball in its mouth
         }
-        recorder.capture(scene: backend.node.scene, feet: backend.node.position, global: body.position,
+        recorder.capture(node: backend.node, global: body.position,
                          info: "\(playback.currentState?.rawValue ?? "nil")\t\(playback.transitionTarget?.rawValue ?? "-")\t"
                              + "\(brain.current.rawValue)\t\(body.mode)\t\(body.facingRight ? "R" : "L")\t\(timerFPS)")
         debug.update(world: world, hitRect: hitRect, behavior: brain.current, overlays: overlays)
@@ -869,6 +893,7 @@ final class PetController {
             brain.finishCurrent()
         }
         sounds.enabled = profile.soundsOn
+        Effects.bubbleStyle = profile.bubbleStyle
         petSound = profile.character == .sheep ? .petSheep : .petCorgi
     }
 

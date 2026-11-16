@@ -23,6 +23,35 @@ public enum Character: String, Codable, CaseIterable {
     }
 }
 
+/// How speech and thought bubbles are drawn.
+public enum BubbleStyle: String, Codable, CaseIterable {
+    /// A small light capsule fitted to the text.
+    case pill
+    /// The same capsule, dark with light text.
+    case dark
+    /// Just the words, outlined, with nothing behind them.
+    case text
+    /// Only the little icon in a round bubble; a line without an icon falls back to the capsule.
+    case icon
+    /// The original hand-drawn bubble artwork, one size for every line.
+    case classic
+
+    public var displayName: String {
+        switch self {
+        case .pill: return "Small Light"
+        case .dark: return "Small Dark"
+        case .text: return "Words Only"
+        case .icon: return "Icon Only"
+        case .classic: return "Classic (large)"
+        }
+    }
+
+    public init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        self = BubbleStyle(rawValue: raw) ?? .pill
+    }
+}
+
 public struct PetProfile: Codable, Equatable {
     public static let defaultName = "Corgi"
     public static let maxNameLength = 20
@@ -37,6 +66,7 @@ public struct PetProfile: Codable, Equatable {
     public var launchAtLogin = false
     /// Now and then, come to the cursor and ask for food, a bath, play or a nap when a need is low.
     public var askForCare = true
+    public var bubbleStyle = BubbleStyle.pill
 
     public init(name: String? = nil, soundsOn: Bool = false, askedForName: Bool = false,
                 character: Character = .corgi) {
@@ -60,7 +90,7 @@ public struct PetProfile: Codable, Equatable {
         set { if newValue { askedNames.insert(character.rawValue) } else { askedNames.remove(character.rawValue) } }
     }
 
-    private enum CodingKeys: String, CodingKey { case names, askedNames, soundsOn, character, launchAtLogin, askForCare, name, askedForName }
+    private enum CodingKeys: String, CodingKey { case names, askedNames, soundsOn, character, launchAtLogin, askForCare, bubbleStyle, name, askedForName }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -68,6 +98,7 @@ public struct PetProfile: Codable, Equatable {
         character = (try? c.decodeIfPresent(Character.self, forKey: .character)) ?? .corgi
         launchAtLogin = (try? c.decodeIfPresent(Bool.self, forKey: .launchAtLogin)) ?? false
         askForCare = (try? c.decodeIfPresent(Bool.self, forKey: .askForCare)) ?? true
+        bubbleStyle = (try? c.decodeIfPresent(BubbleStyle.self, forKey: .bubbleStyle)) ?? .pill
         let stored = (try? c.decodeIfPresent([String: String].self, forKey: .names)) ?? [:]
         for (key, value) in stored {
             guard let pet = Character(rawValue: key) else { continue }
@@ -89,6 +120,7 @@ public struct PetProfile: Codable, Equatable {
         try c.encode(character, forKey: .character)
         try c.encode(launchAtLogin, forKey: .launchAtLogin)
         try c.encode(askForCare, forKey: .askForCare)
+        try c.encode(bubbleStyle, forKey: .bubbleStyle)
     }
 
     public var packFolderName: String { character.packFolderName }
