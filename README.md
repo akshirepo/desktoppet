@@ -56,6 +56,7 @@ Click the menu bar icon or right-click the pet:
 - **Ask for Care:** let it ask for what it needs: coming to your cursor, begging, and "I'm hungry" bubbles. Turn it off and it stops asking; its needs still show in **Stats**. On by default.
 - **Sounds:** cartoony sound effects for petting, eating, baths, snoring, footsteps, hops and the ball. Off by default.
 - **Launch at Login**
+- **Update Available:** shows up at the top (with a small arrow next to the menu bar icon) when GitHub has a newer version. **Update and Restart** pulls, rebuilds and relaunches from the folder you built it in.
 
 ## Custom art
 
@@ -67,6 +68,8 @@ A pack can also have `bridges`: one-shot transition animations between poses, li
 
 Edge peeking uses the states `peekEdge` (on the floor) and `holdEdge` (hanging on higher up) with the bridges `enter:peekEdge`, `exit:peekEdge`, `enter:holdEdge` and `exit:holdEdge`. Draw them facing right, peeking in from the **left** screen edge, with the same canvas size and anchor as `idle`. `enter:peekEdge` starts on the idle frame and ends on the first `peekEdge` frame; `enter:holdEdge` starts on the first `scared` frame (the pose it has while you carry it) and ends on the first `holdEdge` frame. The exits can be the entries reversed. A pack without these states just lands normally when dropped by an edge.
 
+The built-in frames have in-between frames added so they play at about 24 fps. A spec can carry `"crop": [x, y, w, h]` (canvas pixels from the top-left): the box the art stays inside, which is all the app keeps in memory. Leave it out and the whole canvas is used.
+
 ## Development
 
 ```bash
@@ -76,6 +79,16 @@ swift test           # tests for the core logic (needs Xcode for XCTest on macOS
 
 - `Sources/CorgiCore`: all the logic (needs, behavior, movement, window edges) with no UI. It also builds and tests on Linux.
 - `Sources/DesktopPet`: the macOS app (AppKit + SpriteKit).
+
+With Xcode installed, `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test` also runs the app-side tests, which draw the pet off-screen.
+
+Debugging aids:
+
+- **Debug Overlay:** open the menu with Option held to get it.
+- **Recorder:** `kill -USR1 $(pgrep -x DesktopPet)` saves what the pet draws for the next 12 seconds, one PNG per tick with timings, in `~/Library/Logs/DesktopPet/recording`. `kill -USR2` replays the pet coming over to ask for food and being fed.
+- **Logs:** `~/Library/Logs/DesktopPet/transitions.log` has every animation change, late ticks and update checks.
+- **Update from a terminal:** `open -g /Applications/DesktopPet.app --args --update-now` checks GitHub straight away and installs what it finds.
+- **Icons:** `scripts/soft_icons.py` redraws the hearts, drops, Zzz and need icons (needs Pillow).
 - `Assets/`: the pet art, the doodle icons and the sound effects.
 - `scripts/sounds/`: the scripts that synthesize the sound effects from scratch.
 
