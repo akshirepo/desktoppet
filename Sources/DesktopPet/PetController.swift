@@ -745,6 +745,13 @@ final class PetController {
         needs.exert(effort, seconds: dt)
         if effort == .hard { lastHardExercise = now }
 
+        // The pose first, then where it's drawn: the copy on a neighbouring display is made from the sprite as it
+        // is now, so a change of animation shows on both displays in the same frame.
+        updateAnimation()
+        // Cling sprites are drawn for their side already, so they are never mirrored.
+        backend.setFacing(right: body.mode == .clinging ? true : body.facingRight,
+                          animated: body.mode == .grounded || body.mode == .roaming)
+        backend.setShadow(drop: shadowDrop)
         if let i = enteringScreen {
             // Still past the edge: drawn only on its own display, which hides the part not in yet.
             overlays.place(globalFeet: body.position, screen: i)
@@ -753,11 +760,6 @@ final class PetController {
             overlays.place(globalFeet: body.position)
             overlays.mirror(backend.spriteNode, globalFeet: body.position, scale: drawScale)
         }
-        // Cling sprites are drawn for their side already, so they are never mirrored.
-        backend.setFacing(right: body.mode == .clinging ? true : body.facingRight,
-                          animated: body.mode == .grounded || body.mode == .roaming)
-        backend.setShadow(drop: shadowDrop)
-        updateAnimation()
         if brain.current.countsAsSleep && now - lastZzz > 2 {
             lastZzz = now
             snoreTick.toggle()

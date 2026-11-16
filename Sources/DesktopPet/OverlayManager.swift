@@ -50,6 +50,8 @@ final class OverlayManager {
         corgiNode.position = CGPoint(x: p.x - target.frame.minX, y: p.y - target.frame.minY)
     }
 
+    /// Where the pet was last drawn, in screen points.
+    private var petRect = CGRect.null
     /// Copies of the pet sprite shown on the other displays it overlaps, keyed by overlay.
     private var mirrors: [ObjectIdentifier: SKSpriteNode] = [:]
 
@@ -59,6 +61,7 @@ final class OverlayManager {
         let f = sprite.frame                           // relative to the feet, before the pet's display scale
         let local = CGRect(x: f.minX * scale, y: f.minY * scale, width: f.width * scale, height: f.height * scale)
         let global = local.offsetBy(dx: p.x, dy: p.y)
+        petRect = global
         for o in overlays {
             let id = ObjectIdentifier(o)
             let needed = o.scene !== corgiNode.scene && o.frame.intersects(global)
@@ -130,7 +133,10 @@ final class OverlayManager {
     /// across the seam or `everywhere` is set (a ball in play, the debug overlay), so they idle.
     func setFPS(_ fps: Int, everywhere: Bool = false) {
         for o in overlays {
-            let busy = everywhere || o.scene === corgiNode.scene || mirrors[ObjectIdentifier(o)]?.isHidden == false
+            // A display the pet is about to reach onto is brought up to speed before it gets there, so its copy
+            // doesn't wait on a slow redraw.
+            let near = !petRect.isNull && o.frame.intersects(petRect.insetBy(dx: -120, dy: -120))
+            let busy = everywhere || near || o.scene === corgiNode.scene || mirrors[ObjectIdentifier(o)]?.isHidden == false
             let rate = busy ? fps : min(fps, 5)
             if o.skView.preferredFramesPerSecond != rate { o.skView.preferredFramesPerSecond = rate }
         }
