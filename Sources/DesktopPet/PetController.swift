@@ -28,6 +28,8 @@ final class PetController {
     /// The display it's running in on after a Space switch, while it's still past the edge.
     private var enteringScreen: Int?
 
+    /// It was floating by the cursor and just got what it wanted: it comes down pleased, not flailing.
+    private var happyDrop = false
     private let recorder = FrameRecorder()
     /// The current click started on a bubble, so its release isn't a pet.
     private var bubbleTapped = false
@@ -175,6 +177,7 @@ final class PetController {
             forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
         ) { [weak self] _ in self?.screensChanged() }
         recorder.listen()
+        recorder.onReplay = { [weak self] in self?.replayCareVisit() }
         spaces = Spaces.current()
         NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main
@@ -321,6 +324,16 @@ final class PetController {
         _ = say(SpeechLibrary.Line(text: text, bubble: .speech, icon: "sparkles"))
     }
 
+    /// Debug (SIGUSR2): comes over to the cursor asking for food and, a moment later, gets it, as if clicked.
+    private func replayCareVisit() {
+        guard peek == nil, body.mode != .held else { return }
+        wake()
+        askingFor = .hunger
+        brain.interrupt(with: .askCare, duration: 30)
+        beginBehavior(.askCare)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in self?.pet() }
+    }
+
     /// Called when the floor disappears under the corgi.
     func fell() {
         TransitionLog.append("fell at \(Int(body.position.x)),\(Int(body.position.y)) during \(brain.current.rawValue)")
@@ -357,7 +370,12 @@ final class PetController {
             Effects.floatDoodle("sweat-drops", fallback: "💦", on: backend.node, height: backend.size.height * 0.9)
         }
         executor.speedScale = needs.isLow(.happiness) ? 0.6 : 1
+        // Fed, watered, bathed or tucked in while up by the cursor: the way down is a happy one.
+        happyDrop = body.mode == .roaming && [.eat, .drink, .bath, .sleep].contains(b)
         executor.begin(b, body: body, world: world, cursor: NSEvent.mouseLocation)
+        if happyDrop {
+            Effects.floatDoodle("heart", fallback: "❤️", on: backend.node, height: backend.size.height, count: 3)
+        }
         if b == .ballChase { spawnBall() }
     }
 
@@ -638,8 +656,13 @@ final class PetController {
             if event == .landed {
                 // Landing after being dropped: that's the spot to stay around.
                 if now < stayUntil && stayUntil - now > Self.stayPutSeconds - 6 { stayX = body.position.x }
-                sounds.play(.land)
-                playback.requestReaction(.land, mode: body.mode)
+                // A happy drop skips the thud and the winded landing pose and gets straight to the treat.
+                if happyDrop {
+                    happyDrop = false
+                } else {
+                    sounds.play(.land)
+                    playback.requestReaction(.land, mode: body.mode)
+                }
                 if brain.current == .fall { brain.finishCurrent() }
             }
             if event == .startedFalling { fell() }
@@ -994,6 +1017,9 @@ final class PetController {
                          isRunning: body.isRunning, carrying: executor.carryingBall)
         if (body.mode == .grounded || body.mode == .roaming), brain.current == .askCare && !body.isMoving {
             state = askingFor == .thirst ? .thirsty : .beg   // asking nicely
+        }
+        if happyDrop {
+            if body.mode == .airborne { state = .happy } else if body.mode != .grounded { happyDrop = false }
         }
         if body.mode == .grounded && brain.current == .beg && needs.state.thirst < needs.state.hunger { state = .thirsty }
         // The last two seconds of a drink are the happy "ahh".

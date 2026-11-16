@@ -4,12 +4,15 @@ import SpriteKit
 
 /// Debug aid: `kill -USR1 <pid>` saves what the pet draws for the next few seconds, one PNG per tick with a line of
 /// timing next to it, in ~/Library/Logs/DesktopPet/recording. For checking motion without filming the screen.
+/// `kill -USR2 <pid>` runs `onReplay`.
 final class FrameRecorder {
     static let seconds: CFTimeInterval = 12
     private let dir = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Library/Logs/DesktopPet/recording", isDirectory: true)
     private let queue = DispatchQueue(label: "DesktopPet.FrameRecorder")
-    private var signalSource: DispatchSourceSignal?
+    private var signalSources: [DispatchSourceSignal] = []
+    /// What `kill -USR2 <pid>` does: replays a moment worth recording.
+    var onReplay: (() -> Void)?
     /// Keeps every captured frame the same size, with the feet at the same spot.
     private let frameBox: SKSpriteNode = {
         let box = SKSpriteNode(color: .clear, size: CGSize(width: 320, height: 260))
@@ -22,11 +25,13 @@ final class FrameRecorder {
     private var lines: [String] = []
 
     func listen() {
-        signal(SIGUSR1, SIG_IGN)
-        let source = DispatchSource.makeSignalSource(signal: SIGUSR1, queue: .main)
-        source.setEventHandler { [weak self] in self?.start() }
-        source.resume()
-        signalSource = source
+        for (number, action) in [(SIGUSR1, { [weak self] in self?.start() }), (SIGUSR2, { [weak self] in self?.onReplay?() })] as [(Int32, () -> Void)] {
+            signal(number, SIG_IGN)
+            let source = DispatchSource.makeSignalSource(signal: number, queue: .main)
+            source.setEventHandler(handler: action)
+            source.resume()
+            signalSources.append(source)
+        }
     }
 
     private func start() {
