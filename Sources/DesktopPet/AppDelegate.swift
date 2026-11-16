@@ -70,6 +70,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         updater.onChange = { [weak self] in self?.showUpdateBadge() }
         updater.onFound = { [weak self] _ in self?.controller.announce("I have an update! It's in my menu") }
         updater.start()
+        // `DesktopPet --update-now`: check straight away and install what's found, without the dialog.
+        if CommandLine.arguments.contains("--update-now") {
+            updater.onFound = { [weak self] _ in self?.installUpdate() }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in self?.updater.check() }
+        }
 
         save()
         saveTimer = Timer.scheduledTimer(timeInterval: 60, target: self, selector: #selector(saveTimerFired),
@@ -150,6 +155,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         button.toolTip = waiting ? "DesktopPet: update available" : nil
     }
 
+    private func installUpdate() {
+        guard updater.canInstall else { return }
+        updater.install { [weak self] ok in
+            if ok { self?.relaunch() } else { self?.controller.announce("The update didn't work. The log's in my menu") }
+        }
+    }
+
     func showUpdate() {
         guard let u = updater.update else { return }
         NSApp.activate(ignoringOtherApps: true)
@@ -171,9 +183,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let index = alert.runModal().rawValue - NSApplication.ModalResponse.alertFirstButtonReturn.rawValue
         switch choices.indices.contains(index) ? choices[index] : .later {
         case .install:
-            updater.install { [weak self] ok in
-                if ok { self?.relaunch() } else { self?.controller.announce("The update didn't work. The log's in my menu") }
-            }
+            installUpdate()
         case .changes:
             NSWorkspace.shared.open(Updater.changesURL)
         case .later:

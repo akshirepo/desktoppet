@@ -68,6 +68,7 @@ final class Updater {
         }
         state = .available(update)
         if announced != update.latest {
+            TransitionLog.append("update: \(update.count) new on GitHub, latest \(update.latest.prefix(7)), built from \(builtCommit?.prefix(7) ?? "?")")
             announced = update.latest
             onFound?(update)
         }
@@ -78,6 +79,7 @@ final class Updater {
     func install(done: @escaping (Bool) -> Void) {
         guard let update, let source = sourceDir, canInstall else { return done(false) }
         state = .updating(update)
+        TransitionLog.append("update: pulling and rebuilding in \(source.path)")
         let script = """
         set -euo pipefail
         echo "== $(date) updating from $1"
@@ -111,6 +113,7 @@ final class Updater {
             DispatchQueue.main.async {
                 try? log?.close()
                 let ok = p.terminationStatus == 0
+                TransitionLog.append(ok ? "update: installed \(update.latest.prefix(7))" : "update: failed (see update.log)")
                 self?.state = ok ? .upToDate : .failed(update)
                 done(ok)
             }

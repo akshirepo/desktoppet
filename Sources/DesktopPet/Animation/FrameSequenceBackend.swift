@@ -109,7 +109,7 @@ final class FrameSequenceBackend: AnimationBackend {
     private var bridgeAnims: [String: Entry] = [:]
     /// Decoded frames are held to about this much; the loops needed at once (standing, moving, falling, being
     /// picked up) are kept whatever happens.
-    private var budget = FrameBudget<String>(limit: 128 << 20)
+    private var budget = FrameBudget<String>(limit: 64 << 20)
     private static let keptReady: [AnimState] = [.idle, .walk, .run, .fall, .scared]
     /// The size `start` last gave the sprite, so a size glitch can be told from a small pose.
     private(set) var expectedSpriteSize: CGSize = .zero
