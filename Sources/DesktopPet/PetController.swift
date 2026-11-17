@@ -31,6 +31,8 @@ final class PetController {
     /// Whether it was floating down on the last tick, to tell a soft landing from a real one.
     private var wasFloatingDown = false
     private var pressTime: CFTimeInterval = 0
+    /// Debug: runs "Check for Updates" with its answer going to the log and no dialog.
+    var onCheckForUpdates: (() -> Void)?
     private let recorder = FrameRecorder()
     /// The current click started on a bubble, so its release isn't a pet.
     private var bubbleTapped = false
@@ -328,11 +330,12 @@ final class PetController {
     }
 
     /// Debug (SIGUSR2): "peek" puts it down at an outer screen edge, "cross" walks it over to the next display,
-    /// anything else is a care visit.
+    /// "check" checks for updates without the dialog, anything else is a care visit.
     private func replay(_ what: String) {
         switch what {
         case "peek": replayPeek()
         case "cross": replayCross()
+        case "check": onCheckForUpdates?()
         default: replayCareVisit()
         }
     }

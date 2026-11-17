@@ -70,6 +70,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         updater.onChange = { [weak self] in self?.showUpdateBadge() }
         updater.onFound = { [weak self] _ in self?.controller.announce("I have an update! It's in my menu") }
         updater.start()
+        controller.onCheckForUpdates = { [weak self] in self?.checkForUpdates(quietly: true) }
         // `DesktopPet --update-now`: check straight away and install what's found, without the dialog.
         if CommandLine.arguments.contains("--update-now") {
             updater.onFound = { [weak self] _ in self?.installUpdate() }
@@ -159,6 +160,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard updater.canInstall else { return }
         updater.install { [weak self] ok in
             if ok { self?.relaunch() } else { self?.controller.announce("The update didn't work. The log's in my menu") }
+        }
+    }
+
+    /// "Check for Updates…": asks GitHub now and says what it found. `quietly` only writes it to the log.
+    func checkForUpdates(quietly: Bool = false) {
+        updater.check { [weak self] result in
+            guard let self else { return }
+            let version = self.updater.builtCommit.map { String($0.prefix(7)) } ?? "unknown"
+            let title: String, detail: String
+            switch result {
+            case .available(let u):
+                TransitionLog.append("update check: \(u.count) new, latest \(u.latest.prefix(7))")
+                if !quietly { self.showUpdate() }
+                return
+            case .upToDate:
+                (title, detail) = ("DesktopPet is up to date", "You have the newest version (\(version)).")
+            case .unknown(let why):
+                (title, detail) = ("Couldn't check for updates", why)
+            }
+            TransitionLog.append("update check: \(title). \(detail)")
+            guard !quietly else { return }
+            NSApp.activate(ignoringOtherApps: true)
+            let alert = NSAlert()
+            alert.messageText = title
+            alert.informativeText = detail
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
         }
     }
 
@@ -284,7 +312,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             setCharacter: { [weak self] c in DispatchQueue.main.async { self?.switchCharacter(to: c) } },
             update: updater.state,
             showUpdate: { [weak self] in DispatchQueue.main.async { self?.showUpdate() } },
-            showUpdateLog: { NSWorkspace.shared.open(Updater.logURL) }
+            showUpdateLog: { NSWorkspace.shared.open(Updater.logURL) },
+            checkForUpdates: { [weak self] in DispatchQueue.main.async { self?.checkForUpdates() } }
         )
     }
 }

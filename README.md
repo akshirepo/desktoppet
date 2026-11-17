@@ -56,6 +56,7 @@ Click the menu bar icon or right-click the pet:
 - **Ask for Care:** let it ask for what it needs: coming to your cursor, begging, and "I'm hungry" bubbles. Turn it off and it stops asking; its needs still show in **Stats**. On by default.
 - **Sounds:** cartoony sound effects for petting, eating, baths, snoring, footsteps, hops and the ball. Off by default.
 - **Launch at Login**
+- **Check for Updates:** asks GitHub now and tells you whether you have the newest version. The app also checks by itself, 20 seconds after launch and every 6 hours.
 - **Update Available:** shows up at the top (with a small arrow next to the menu bar icon) when GitHub has a newer version. **Update and Restart** pulls, rebuilds and relaunches from the folder you built it in.
 
 ## Custom art

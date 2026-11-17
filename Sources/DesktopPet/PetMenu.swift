@@ -41,6 +41,7 @@ struct PetMenuActions {
     var update: Updater.State
     var showUpdate: () -> Void
     var showUpdateLog: () -> Void
+    var checkForUpdates: () -> Void
 }
 
 enum PetMenu {
@@ -96,6 +97,9 @@ enum PetMenu {
             menu.addItem(debug)
         }
         menu.addItem(.separator())
+        let check = ClosureMenuItem("Check for Updates…", handler: a.checkForUpdates)
+        if case .updating = a.update { check.isEnabled = false }
+        menu.addItem(check)
         let login = ClosureMenuItem("Launch at Login", handler: a.toggleLogin)
         login.state = a.loginOn ? .on : .off
         menu.addItem(login)

@@ -48,15 +48,45 @@ final class Updater {
         timer = Timer.scheduledTimer(withTimeInterval: 6 * 3600, repeats: true) { [weak self] _ in self?.check() }
     }
 
-    func check() {
-        guard let commit = builtCommit, let url = UpdateCheck.compareURL(from: commit) else { return }
+    /// What a check found. `unknown` carries a sentence to show: why it couldn't tell.
+    enum CheckResult: Equatable {
+        case upToDate
+        case available(AvailableUpdate)
+        case unknown(String)
+    }
+
+    /// Asks GitHub whether there's anything newer than this build. The timed checks ignore `done`; a check the
+    /// user asked for uses it to say what happened, including when it couldn't find out.
+    func check(then done: ((CheckResult) -> Void)? = nil) {
+        func finish(_ result: CheckResult) {
+            DispatchQueue.main.async { [weak self] in
+                switch result {
+                case .upToDate: self?.found(nil)
+                case .available(let update): self?.found(update)
+                case .unknown: break                      // keep whatever was known and try again next time
+                }
+                done?(result)
+            }
+        }
+        guard let commit = builtCommit, let url = UpdateCheck.compareURL(from: commit) else {
+            return finish(.unknown("This copy doesn't know which version it was built from. Rebuild it with scripts/bundle.sh."))
+        }
         var request = URLRequest(url: url, timeoutInterval: 20)
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-        URLSession.shared.dataTask(with: request) { [weak self] data, response, _ in
-            // Offline, rate limited, or a local commit GitHub doesn't have: try again next time.
-            guard (response as? HTTPURLResponse)?.statusCode == 200, let data else { return }
-            let found = UpdateCheck.parse(compare: data)
-            DispatchQueue.main.async { self?.found(found) }
+        URLSession.shared.dataTask(with: request) { data, response, _ in
+            switch (response as? HTTPURLResponse)?.statusCode {
+            case 200?:
+                guard let data else { return finish(.unknown("GitHub's answer came back empty. Try again in a moment.")) }
+                finish(UpdateCheck.parse(compare: data).map(CheckResult.available) ?? .upToDate)
+            case 404?:
+                finish(.unknown("This copy was built from a version that isn't on GitHub, so there's nothing to compare it with."))
+            case 403?, 429?:
+                finish(.unknown("GitHub is limiting requests right now. Try again in a little while."))
+            case let code?:
+                finish(.unknown("GitHub answered with an error (\(code)). Try again later."))
+            case nil:
+                finish(.unknown("Couldn't reach GitHub. Check your connection and try again."))
+            }
         }.resume()
     }
 
